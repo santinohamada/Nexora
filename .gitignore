@@ -1,0 +1,25 @@
+# Virtual environment
+venv/
+env/
+.env
+
+# Data and models
+data/raw/
+data/raw_flat/
+data/processed/
+models/
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# IDEs and editors
+.vscode/
+.idea/
+.vs/
+*.swp
+
+# OS generated files
+.DS_Store
+Thumbs.db
