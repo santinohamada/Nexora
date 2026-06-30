@@ -6,7 +6,7 @@ env/
 # Data and models
 data/raw/
 data/raw_flat/
-data/processed/
+data/raw_organized/
 models/
 
 # Python cache

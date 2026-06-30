@@ -49,5 +49,5 @@ def organize_dataset(raw_dir):
     print(f"Organización completa: {moved} videos movidos a {organized_dir}")
 
 if __name__ == '__main__':
-    raw_directory = 'c:/Nexora/data/raw'
+    raw_directory = 'c:/Nexora/data/raw_flat'
     organize_dataset(raw_directory)
