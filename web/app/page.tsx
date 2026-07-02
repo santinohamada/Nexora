@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 const API_URL = "http://localhost:8000/predict";
 const CAPTURE_API_URL = "http://localhost:8000/capture";
 const STATS_API_URL = "http://localhost:8000/dataset_stats";
-const RECORDING_MAX_FRAMES = 30;
+const RECORDING_MAX_FRAMES = 45;
 const NUM_LANDMARKS = 75;
 
 const PILOT_LABELS = [

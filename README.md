@@ -66,3 +66,12 @@ El script tomará todas tus grabaciones en `dataset/custom/`, las mezclará alea
 ### 4. Predicción en Vivo
 Volvé a iniciar la API de FastAPI con Uvicorn (si la habías frenado). Al arrancar, el servidor detectará automáticamente la existencia del nuevo `lstm.pth`.
 Finalmente, en la aplicación web activá el modo **Inferencia**. A partir de ahora, MediaPipe extraerá tus esqueletos en vivo y el modelo te reconocerá en la pantalla.
+
+### 5. Configurar la cantidad de frames
+Por defecto, el proyecto captura e infiere usando ventanas de 45 frames. Si necesitás cambiar esta cantidad de frames (por ejemplo a 30 o 60), tenés que modificar 3 variables en el código de forma coordinada:
+
+1. **Backend - Inferencia** (`app.py`): Modificá la variable `MAX_FRAMES` a la cantidad deseada.
+2. **Backend - Entrenamiento** (`train_lstm.py`): Modificá la variable `MAX_FRAMES` a la cantidad deseada.
+3. **Frontend - Captura** (`web/app/page.tsx`): Modificá la constante `RECORDING_MAX_FRAMES` a la cantidad deseada.
+
+> **Importante**: Si cambiás la cantidad de frames, los archivos `.npy` de tu dataset actual dejarán de ser compatibles. Recordá renombrar la carpeta `dataset/custom/` a modo de backup y crear una nueva para poder grabar el dataset ajustado a los nuevos tiempos.
