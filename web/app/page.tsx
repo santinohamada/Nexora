@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 const API_URL = "http://localhost:8000/predict";
 const CAPTURE_API_URL = "http://localhost:8000/capture";
 const STATS_API_URL = "http://localhost:8000/dataset_stats";
-const RECORDING_MAX_FRAMES = 60;
+const RECORDING_MAX_FRAMES = 30;
 const NUM_LANDMARKS = 75;
 
 const PILOT_LABELS = [
@@ -130,7 +130,7 @@ export default function HomePage() {
         }
         
         framesSinceLastPredictRef.current++;
-        if (recordedFrames.current.length === RECORDING_MAX_FRAMES && framesSinceLastPredictRef.current >= 15) {
+        if (recordedFrames.current.length === RECORDING_MAX_FRAMES && framesSinceLastPredictRef.current >= 10) {
           if (!isPredictingRef.current) {
             framesSinceLastPredictRef.current = 0;
             triggerRealtimePredictionRef.current([...recordedFrames.current]);

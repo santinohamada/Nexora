@@ -42,7 +42,7 @@ else:
     model = SignLanguageLSTM(num_classes=len(CLASSES)).to(device)
     model.load_state_dict(torch.load(LSTM_MODEL_PATH, map_location=device, weights_only=False))
     model.eval()
-    MAX_FRAMES = 60
+    MAX_FRAMES = 30
     print(f"[Nexora] Custom LSTM Model loaded on {device} — {len(CLASSES)} classes")
 
 
