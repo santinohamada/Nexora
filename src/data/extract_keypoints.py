@@ -12,6 +12,25 @@ def extract_keypoints(results):
     rh = np.array([[res.x, res.y, res.z, 1.0] for res in results.right_hand_landmarks.landmark]) if results.right_hand_landmarks else np.zeros((21, 4))
     return np.concatenate([pose, lh, rh])
 
+def process_video(video_path, holistic_model):
+    cap = cv2.VideoCapture(video_path)
+    frames_data = []
+    
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+            
+        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image.flags.writeable = False                  
+        
+        results = holistic_model.process(image)
+        keypoints = extract_keypoints(results)
+        frames_data.append(keypoints)
+        
+    cap.release()
+    return np.array(frames_data)
+
 def process_single_video(video_path, out_path):
     # Skip if already exists
     if os.path.exists(out_path):
