@@ -65,9 +65,7 @@ export default function HomePage() {
   const wsRef = useRef<WebSocket | null>(null);
 
   const [prediction, setPrediction] = useState<PredictionResult>(null);
-  const [frameCount, setFrameCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [hands, setHands] = useState<HandDetection>({ left: false, right: false });
 
   const [countdown, setCountdown] = useState<number | null>(null);
   const [repeatCount, setRepeatCount] = useState<number>(1);
@@ -103,8 +101,23 @@ export default function HomePage() {
       }
       ctx.restore();
 
-      // Track hand detection state
-      setHands({ left: !!results.leftHandLandmarks, right: !!results.rightHandLandmarks });
+      // Track hand detection state directly in DOM to avoid 30fps React re-renders
+      const elL = document.getElementById('hand-indicator-l');
+      if (elL) {
+        if (results.leftHandLandmarks) {
+          elL.className = "text-xs px-2 py-1 rounded-full font-medium bg-amber-500/80 text-white";
+        } else {
+          elL.className = "text-xs px-2 py-1 rounded-full font-medium bg-neutral-800/80 text-neutral-500";
+        }
+      }
+      const elR = document.getElementById('hand-indicator-r');
+      if (elR) {
+        if (results.rightHandLandmarks) {
+          elR.className = "text-xs px-2 py-1 rounded-full font-medium bg-emerald-500/80 text-white";
+        } else {
+          elR.className = "text-xs px-2 py-1 rounded-full font-medium bg-neutral-800/80 text-neutral-500";
+        }
+      }
 
       // ─── Collect keypoints ───────────────────────────────
       const currentMode = modeRef.current;
@@ -137,7 +150,10 @@ export default function HomePage() {
           }
         }
       } else {
-        setFrameCount(recordedFrames.current.length);
+        const frameCounterEl = document.getElementById('frame-counter');
+        if (frameCounterEl) {
+          frameCounterEl.innerText = `${recordedFrames.current.length} / ${RECORDING_MAX_FRAMES} frames`;
+        }
         if (recordedFrames.current.length >= RECORDING_MAX_FRAMES) {
           isRecording.current = false;
           handleStopRecordingRef.current();
@@ -152,7 +168,6 @@ export default function HomePage() {
   const handleStopRecording = useCallback(async () => {
     const frames = [...recordedFrames.current];
     recordedFrames.current = [];
-    setFrameCount(0);
     setStatus("processing");
     setPrediction(null);
     setError(null);
@@ -373,7 +388,6 @@ export default function HomePage() {
       
       // Start recording
       recordedFrames.current = [];
-      setFrameCount(0);
       setPrediction(null);
       setError(null);
       isRecording.current = true;
@@ -510,16 +524,16 @@ export default function HomePage() {
 
         {/* Hand detection indicators */}
         <div className="absolute top-4 right-4 flex gap-2">
-          <span className={`text-xs px-2 py-1 rounded-full font-medium ${ hands.left ? "bg-amber-500/80 text-white" : "bg-neutral-800/80 text-neutral-500" }`}>L</span>
-          <span className={`text-xs px-2 py-1 rounded-full font-medium ${ hands.right ? "bg-emerald-500/80 text-white" : "bg-neutral-800/80 text-neutral-500" }`}>R</span>
+          <span id="hand-indicator-l" className="text-xs px-2 py-1 rounded-full font-medium bg-neutral-800/80 text-neutral-500">L</span>
+          <span id="hand-indicator-r" className="text-xs px-2 py-1 rounded-full font-medium bg-neutral-800/80 text-neutral-500">R</span>
         </div>
 
         {/* Recording indicator */}
         {status === "recording" && (
           <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-xs text-white font-medium">
-              {frameCount} / {RECORDING_MAX_FRAMES} frames
+            <span id="frame-counter" className="text-xs text-white font-medium">
+              0 / {RECORDING_MAX_FRAMES} frames
             </span>
           </div>
         )}
