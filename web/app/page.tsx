@@ -51,9 +51,13 @@ export default function HomePage() {
   const isRecording = useRef(false);
   const frameIndexRef = useRef(0); // for throttling MediaPipe calls
   const handleStopRecordingRef = useRef<() => void>(() => {});
+  const isPredictingRef = useRef(false);
+  const framesSinceLastPredictRef = useRef(0);
+  const triggerRealtimePredictionRef = useRef<(frames: Frame[]) => void>(() => {});
 
   const [status, setStatus] = useState<Status>("loading");
   const [mode, setMode] = useState<"predict" | "capture">("predict");
+  const modeRef = useRef(mode);
   const [captureLabel, setCaptureLabel] = useState<string>("dolor");
   const [capturedCount, setCapturedCount] = useState(0);
 
@@ -94,8 +98,9 @@ export default function HomePage() {
       // Track hand detection state
       setHands({ left: !!results.leftHandLandmarks, right: !!results.rightHandLandmarks });
 
-      // ─── Collect keypoints when recording ───────────────────────────────
-      if (!isRecording.current) return;
+      // ─── Collect keypoints ───────────────────────────────
+      const currentMode = modeRef.current;
+      if (currentMode === "capture" && !isRecording.current) return;
 
       // IMPORTANT: match extract_keypoints.py zero-padding exactly:
       // pose visibility comes from MediaPipe (0-1), hands default to 0 when not detected
@@ -105,18 +110,30 @@ export default function HomePage() {
       };
 
       const pose = extractLandmarks(results.poseLandmarks, 33, 0);
-      // Training order: left hand (33-53), right hand (54-74) — both default visibility = 0 when absent
       const leftHand = extractLandmarks(results.leftHandLandmarks, 21, 0);
       const rightHand = extractLandmarks(results.rightHandLandmarks, 21, 0);
       const frame: Frame = [...pose, ...leftHand, ...rightHand]; // 75 landmarks
 
       recordedFrames.current.push(frame);
-      setFrameCount(recordedFrames.current.length);
 
-      // Auto-stop at max frames
-      if (recordedFrames.current.length >= RECORDING_MAX_FRAMES) {
-        isRecording.current = false;
-        handleStopRecordingRef.current();
+      if (currentMode === "predict") {
+        if (recordedFrames.current.length > RECORDING_MAX_FRAMES) {
+          recordedFrames.current.shift();
+        }
+        
+        framesSinceLastPredictRef.current++;
+        if (recordedFrames.current.length === RECORDING_MAX_FRAMES && framesSinceLastPredictRef.current >= 15) {
+          if (!isPredictingRef.current) {
+            framesSinceLastPredictRef.current = 0;
+            triggerRealtimePredictionRef.current([...recordedFrames.current]);
+          }
+        }
+      } else {
+        setFrameCount(recordedFrames.current.length);
+        if (recordedFrames.current.length >= RECORDING_MAX_FRAMES) {
+          isRecording.current = false;
+          handleStopRecordingRef.current();
+        }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,9 +176,38 @@ export default function HomePage() {
     }
   }, [mode, captureLabel]);
 
+  const triggerRealtimePrediction = useCallback(async (frames: Frame[]) => {
+    isPredictingRef.current = true;
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frames }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPrediction(data);
+      }
+    } catch (e) {
+      console.error("Realtime prediction error:", e);
+    } finally {
+      isPredictingRef.current = false;
+    }
+  }, []);
+
   useEffect(() => {
     handleStopRecordingRef.current = handleStopRecording;
-  }, [handleStopRecording]);
+    triggerRealtimePredictionRef.current = triggerRealtimePrediction;
+  }, [handleStopRecording, triggerRealtimePrediction]);
+
+  useEffect(() => {
+    modeRef.current = mode;
+    recordedFrames.current = [];
+    framesSinceLastPredictRef.current = 0;
+    if (mode === "predict") {
+      setStatus("idle");
+    }
+  }, [mode]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -371,7 +417,7 @@ export default function HomePage() {
       </div>
 
       {/* Result card */}
-      {prediction && status === "done" && (
+      {prediction && mode === "predict" && (
         <div className="w-full max-w-2xl bg-neutral-900 border border-neutral-800 rounded-2xl p-6">
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-semibold capitalize">{prediction.sign}</span>
@@ -402,34 +448,36 @@ export default function HomePage() {
       )}
 
       {/* Controls */}
-      <div className="flex gap-3">
-        {isIdle && (
-          <button
-            id="btn-start-sign"
-            onClick={handleStart}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
-          >
-            Empezar seña
-          </button>
-        )}
-        {status === "recording" && (
-          <button
-            id="btn-stop-sign"
-            onClick={handleStop}
-            className="px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
-          >
-            {mode === "predict" ? "Detener y predecir" : "Detener y guardar"}
-          </button>
-        )}
-      </div>
+      {mode === "capture" && (
+        <div className="flex gap-3">
+          {isIdle && (
+            <button
+              id="btn-start-sign"
+              onClick={handleStart}
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
+            >
+              Empezar captura
+            </button>
+          )}
+          {status === "recording" && (
+            <button
+              id="btn-stop-sign"
+              onClick={handleStop}
+              className="px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
+            >
+              Detener y guardar
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Status hint */}
-      <p className="text-xs text-neutral-600">
-        {status === "idle" && mode === "predict" && 'Presioná "Empezar seña", realizá el movimiento y luego "Detener y predecir".'}
-        {status === "idle" && mode === "capture" && 'Presioná "Empezar seña", realizá el movimiento y luego "Detener y guardar".'}
+      <p className="text-xs text-neutral-600 text-center max-w-md">
+        {status === "idle" && mode === "predict" && 'Hacé la seña frente a la cámara. La inferencia es automática.'}
+        {status === "idle" && mode === "capture" && 'Presioná "Empezar captura", realizá el movimiento y luego "Detener y guardar".'}
         {status === "recording" && "Realizá la seña ahora…"}
-        {status === "processing" && (mode === "predict" ? "Analizando…" : "Guardando…")}
-        {status === "done" && (mode === "predict" ? "Resultado listo. Podés hacer otra seña." : "Muestra guardada correctamente.")}
+        {status === "processing" && mode === "capture" && "Guardando…"}
+        {status === "done" && mode === "capture" && "Muestra guardada correctamente."}
       </p>
     </main>
   );
