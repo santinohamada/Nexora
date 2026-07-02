@@ -1,54 +1,68 @@
 # Nexora Sign Language Recognition
 
-Este proyecto utiliza **MediaPipe Holistic** para la extracción de esqueletos corporales/manos y una arquitectura **CTR-GCN** (Channel-Topology Routing Graph Convolutional Network) para el reconocimiento de la Lengua de Señas Argentina (LSA-64).
+Este proyecto implementa un sistema end-to-end de reconocimiento de Lengua de Señas Argentina (LSA). Utiliza **MediaPipe Tasks** en el cliente web (Next.js) para extraer de forma ultra liviana los esqueletos 3D corporales y de manos directamente desde la cámara del navegador, y un backend en **FastAPI** impulsado por una red **LSTM (Long Short-Term Memory)** en PyTorch entrenada a medida.
+
+El flujo de trabajo actual está pensado para **evitar el "domain shift"**, permitiéndote grabar tu propio dataset directamente desde la cámara web y entrenar tu propia versión del modelo LSTM para tu entorno, ángulo de visión y contextura física de forma iterativa.
 
 ## Requisitos Previos
 - Python 3.9 o superior.
-- Dataset de LSA-64 (los 3.200 videos en formato `.mp4`).
+- Node.js (18+) y NPM.
 
-## Pasos para la instalación y ejecución
+## Configuración del Entorno
 
-### 1. Clonar el repositorio y configurar el entorno
-Una vez que clones este repositorio en tu nueva máquina, abrí una terminal en la carpeta del proyecto y ejecutá:
+### 1. Backend (FastAPI + PyTorch)
+Abrí una terminal en la raíz del proyecto y configurá Python:
 
 ```powershell
-# 1. Crear entorno virtual
+# Crear y activar entorno virtual (Windows)
 python -m venv venv
-
-# 2. Activar el entorno virtual (Windows)
 .\venv\Scripts\activate
 
-# 3. Instalar las dependencias
+# Instalar dependencias livianas (PyTorch, FastAPI, NumPy)
 pip install -r requirements.txt
 ```
 
-### 2. Preparar los datos (Dataset LSA-64)
-El repositorio ignora los videos pesados para no colapsar Git. Tenés que volver a acomodarlos.
-1. Creá la carpeta `data/raw_flat` y pegá adentro los 3.200 videos crudos del dataset (ej: `001_001_001.mp4`).
-2. Ejecutá el script de organización (esto los va a mover a la carpeta `data/raw` separados por seña en inglés):
+### 2. Frontend (Next.js)
+Abrí otra terminal y navegá a la carpeta `web/`:
+
 ```powershell
-python organize_dataset.py
+cd web
+npm install
 ```
 
-### 3. Extraer Keypoints (MediaPipe)
-Este paso convierte los videos en archivos `.npy` con las coordenadas 3D de los esqueletos (75 nodos). Utiliza multiprocesamiento para acelerar la extracción en CPUs multi-núcleo (ideal para Ryzen 7).
-```powershell
-python src/data/extract_keypoints.py --input_dir data/raw --output_dir data/processed
-```
-*(Nota: Esto puede tardar entre 40 minutos y un par de horas dependiendo de tu CPU. Vas a escuchar los ventiladores al máximo, es normal).*
+## Flujo de Trabajo: Captura, Entrenamiento e Inferencia
 
-### 4. Entrenar el Modelo
-Una vez finalizada la extracción, podés entrenar la CTR-GCN. El script automáticamente detecta la cantidad de clases (64) y divide los sujetos (001-008 para train, 009-010 para validación).
+El proyecto opera bajo un flujo de retroalimentación continua: podés grabar datos, entrenar y predecir sobre tu entorno.
+
+### 1. Levantar los servidores
+Asegurate de tener corriendo tanto el backend como el frontend al mismo tiempo en dos consolas separadas:
+
+**Terminal Backend (Raíz):**
 ```powershell
-python train.py
+python -m uvicorn app:app --reload
 ```
 
-### 5. Predicción en Tiempo Real (Webcam o Video)
-Una vez entrenado (se generará el archivo `models/ctr_gcn.pth`), podés probarlo con tu cámara web:
+**Terminal Frontend (`web/`):**
 ```powershell
-python predict.py
+npm run dev
 ```
-O probando un video en específico:
+Luego abrí `http://localhost:3000` en tu navegador.
+
+### 2. Capturar tu Dataset Custom
+1. En la aplicación web, activá el modo **Capturar Dataset**.
+2. Seleccioná la seña que querés grabar desde el menú desplegable (ej. *Dolor*, *Doctor*, *Ayuda*, *Revisar*, *Respirar*).
+3. Hacé el gesto frente a la cámara web. Cada vez que frenes la grabación, un archivo `.npy` con los esqueletos 3D se guardará automáticamente en el backend (en la ruta `dataset/custom/`).
+4. Repetí hasta tener al menos **20 muestras por cada seña** para una prueba piloto decente. El contador web consultará automáticamente a la API y te mostrará en tiempo real tu progreso para cada etiqueta.
+
+### 3. Entrenar el Modelo LSTM
+Una vez que tengas suficientes datos grabados, frená o abrí otra terminal en el backend (con tu entorno virtual activado) y ejecutá el entrenamiento:
+
 ```powershell
-python predict_video.py "ruta/al/video.mp4"
+python train_lstm.py
 ```
+
+El script tomará todas tus grabaciones en `dataset/custom/`, las mezclará aleatoriamente, separará un 20% para validación y entrenará una red LSTM veloz de 2 capas. Finalizado el proceso, se generarán los archivos `models/lstm.pth` y `models/custom_classes.json`.
+
+### 4. Predicción en Vivo
+Volvé a iniciar la API de FastAPI con Uvicorn (si la habías frenado). Al arrancar, el servidor detectará automáticamente la existencia del nuevo `lstm.pth`.
+Finalmente, en la aplicación web activá el modo **Inferencia**. A partir de ahora, MediaPipe extraerá tus esqueletos en vivo y el modelo te reconocerá en la pantalla.
