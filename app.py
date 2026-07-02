@@ -4,7 +4,7 @@ import json
 import numpy as np
 import torch
 import torch.nn.functional as F
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -136,3 +136,56 @@ def predict(payload: SkeletonPayload):
         "confidence": round(confidence.item() * 100, 2),
         "top3": top3,
     }
+
+@app.websocket("/ws/predict")
+async def websocket_predict(websocket: WebSocket):
+    await websocket.accept()
+    if model is None:
+        await websocket.close(code=1011, reason="Modelo no entrenado")
+        return
+        
+    try:
+        while True:
+            # Receive frames
+            data_json = await websocket.receive_json()
+            frames = data_json.get("frames", [])
+            if len(frames) < 5:
+                await websocket.send_json({"error": "Too few frames (min 5)"})
+                continue
+                
+            data_np = np.array(frames, dtype=np.float32)
+            
+            # LSTM Preprocessing
+            T = data_np.shape[0]
+            if T > MAX_FRAMES:
+                data_np = data_np[:MAX_FRAMES]
+            elif T < MAX_FRAMES:
+                pad_len = MAX_FRAMES - T
+                pad_arr = np.zeros((pad_len, 75, 4), dtype=data_np.dtype)
+                data_np = np.concatenate((data_np, pad_arr), axis=0)
+                
+            data_np = data_np.reshape(MAX_FRAMES, -1)
+            input_tensor = torch.tensor(data_np, dtype=torch.float32).unsqueeze(0).to(device)
+            
+            with torch.no_grad():
+                outputs = model(input_tensor)
+                probs = F.softmax(outputs, dim=1)
+                confidence, predicted_idx = torch.max(probs, 1)
+
+            top3_probs, top3_idx = torch.topk(probs, 3, dim=1)
+            top3 = [
+                {"sign": CLASSES[i.item()], "confidence": round(p.item() * 100, 2)}
+                for p, i in zip(top3_probs[0], top3_idx[0])
+            ]
+
+            result = {
+                "sign": CLASSES[predicted_idx.item()],
+                "confidence": round(confidence.item() * 100, 2),
+                "top3": top3,
+            }
+            await websocket.send_json(result)
+            
+    except WebSocketDisconnect:
+        print("[Nexora] Client disconnected from WebSocket")
+    except Exception as e:
+        print(f"[Nexora] WebSocket error: {e}")

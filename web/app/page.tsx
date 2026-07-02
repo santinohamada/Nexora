@@ -58,13 +58,21 @@ export default function HomePage() {
   const [status, setStatus] = useState<Status>("loading");
   const [mode, setMode] = useState<"predict" | "capture">("predict");
   const modeRef = useRef(mode);
+  const [labels, setLabels] = useState<{value: string, label: string}[]>(PILOT_LABELS);
   const [captureLabel, setCaptureLabel] = useState<string>("dolor");
+  const [newLabel, setNewLabel] = useState<string>("");
   const [capturedCount, setCapturedCount] = useState(0);
+  const wsRef = useRef<WebSocket | null>(null);
 
   const [prediction, setPrediction] = useState<PredictionResult>(null);
   const [frameCount, setFrameCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [hands, setHands] = useState<HandDetection>({ left: false, right: false });
+
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [repeatCount, setRepeatCount] = useState<number>(1);
+  const [currentRepeat, setCurrentRepeat] = useState<number>(0);
+  const abortSequenceRef = useRef(false);
 
   // ─── Draw skeleton on canvas ──────────────────────────────────────────────
   const onResults = useCallback(
@@ -151,14 +159,7 @@ export default function HomePage() {
 
     try {
       if (mode === "predict") {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ frames }),
-        });
-        if (!res.ok) throw new Error(`API error ${res.status}`);
-        const data: PredictionResult = await res.json();
-        setPrediction(data);
+        // En predict mode, las predicciones viajan por WebSocket continuamente
       } else {
         const res = await fetch(CAPTURE_API_URL, {
           method: "POST",
@@ -176,24 +177,46 @@ export default function HomePage() {
     }
   }, [mode, captureLabel]);
 
+  const connectWebSocket = useCallback(() => {
+    if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+    const ws = new WebSocket("ws://localhost:8000/ws/predict");
+    ws.onopen = () => console.log("WebSocket connected");
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.error) {
+        console.error("WS Error:", data.error);
+      } else {
+        setPrediction(data);
+      }
+      isPredictingRef.current = false;
+    };
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");
+      isPredictingRef.current = false;
+    };
+    ws.onerror = (e) => {
+      console.error("WebSocket error", e);
+      isPredictingRef.current = false;
+    };
+    wsRef.current = ws;
+  }, []);
+
   const triggerRealtimePrediction = useCallback(async (frames: Frame[]) => {
     isPredictingRef.current = true;
     try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frames }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPrediction(data);
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ frames }));
+      } else {
+        isPredictingRef.current = false;
+        connectWebSocket();
       }
     } catch (e) {
       console.error("Realtime prediction error:", e);
-    } finally {
       isPredictingRef.current = false;
     }
-  }, []);
+  }, [connectWebSocket]);
 
   useEffect(() => {
     handleStopRecordingRef.current = handleStopRecording;
@@ -204,9 +227,24 @@ export default function HomePage() {
     modeRef.current = mode;
     recordedFrames.current = [];
     framesSinceLastPredictRef.current = 0;
+    
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
     if (mode === "predict") {
       setStatus("idle");
+      setCountdown(null);
+      setCurrentRepeat(0);
+      abortSequenceRef.current = true;
+      connectWebSocket();
     }
+    
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
   }, [mode]);
 
   const fetchStats = useCallback(async () => {
@@ -215,6 +253,17 @@ export default function HomePage() {
       if (res.ok) {
         const stats = await res.json();
         setCapturedCount(stats[captureLabel] || 0);
+        
+        const existingKeys = Object.keys(stats);
+        setLabels(prev => {
+          const newLabels = [...prev];
+          existingKeys.forEach(key => {
+            if (!newLabels.find(l => l.value === key)) {
+              newLabels.push({ value: key, label: key.charAt(0).toUpperCase() + key.slice(1) });
+            }
+          });
+          return newLabels;
+        });
       }
     } catch (e) {
       console.error("Error fetching stats:", e);
@@ -244,11 +293,11 @@ export default function HomePage() {
       });
 
       holistic.setOptions({
-        modelComplexity: 1,       // 1 = good balance of accuracy vs speed
+        modelComplexity: 2,       // 2 = highest accuracy
         smoothLandmarks: true,
         enableSegmentation: false,
-        minDetectionConfidence: 0.4,
-        minTrackingConfidence: 0.4,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6,
       });
 
       holistic.onResults(onResults);
@@ -306,17 +355,58 @@ export default function HomePage() {
   }, [onResults]);
 
   // ─── Button handlers ──────────────────────────────────────────────────────
-  const handleStart = () => {
-    recordedFrames.current = [];
-    setFrameCount(0);
-    setPrediction(null);
-    setError(null);
-    isRecording.current = true;
-    setStatus("recording");
+  const handleStartSequence = async () => {
+    abortSequenceRef.current = false;
+    for (let i = 0; i < repeatCount; i++) {
+      if (abortSequenceRef.current) break;
+      
+      setCurrentRepeat(i + 1);
+      
+      // 3 second countdown
+      for (let c = 3; c > 0; c--) {
+        if (abortSequenceRef.current) break;
+        setCountdown(c);
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      if (abortSequenceRef.current) break;
+      setCountdown(null);
+      
+      // Start recording
+      recordedFrames.current = [];
+      setFrameCount(0);
+      setPrediction(null);
+      setError(null);
+      isRecording.current = true;
+      setStatus("recording");
+      
+      // Wait for recording to finish
+      await new Promise<void>(resolve => {
+        const check = setInterval(() => {
+          if (!isRecording.current || abortSequenceRef.current) {
+            clearInterval(check);
+            resolve();
+          }
+        }, 100);
+      });
+      
+      if (abortSequenceRef.current) break;
+      
+      // Delay before next iteration to let the POST request finish and user relax
+      await new Promise(r => setTimeout(r, 800));
+    }
+    
+    setCountdown(null);
+    setCurrentRepeat(0);
+    // Only set to idle if we weren't aborted and we aren't in error
+    setStatus(prev => prev === "done" ? "idle" : prev);
   };
 
   const handleStop = () => {
+    abortSequenceRef.current = true;
     isRecording.current = false;
+    setCountdown(null);
+    setCurrentRepeat(0);
+    
     if (recordedFrames.current.length >= 5) {
       handleStopRecording();
     } else {
@@ -358,18 +448,44 @@ export default function HomePage() {
       {mode === "capture" && (
         <div className="flex items-center gap-4 bg-neutral-900 border border-neutral-800 p-3 rounded-xl w-full max-w-2xl">
           <label className="text-sm font-medium text-neutral-300">Seña a grabar:</label>
-          <select
-            value={captureLabel}
-            onChange={(e) => setCaptureLabel(e.target.value)}
-            className="bg-neutral-950 border border-neutral-800 text-white text-sm rounded-lg block w-full p-2.5 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-            disabled={!isIdle}
-          >
-            {PILOT_LABELS.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2 flex-1">
+            <select
+              value={captureLabel}
+              onChange={(e) => setCaptureLabel(e.target.value)}
+              className="bg-neutral-950 border border-neutral-800 text-white text-sm rounded-lg block w-full p-2.5 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              disabled={!isIdle}
+            >
+              {labels.map((l) => (
+                <option key={l.value} value={l.value}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="Nueva seña"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              className="bg-neutral-950 border border-neutral-800 text-white text-sm rounded-lg p-2.5 focus:ring-indigo-500 focus:border-indigo-500 outline-none w-32"
+              disabled={!isIdle}
+            />
+            <button
+              onClick={() => {
+                if (newLabel.trim()) {
+                  const val = newLabel.trim().toLowerCase();
+                  if (!labels.find(l => l.value === val)) {
+                    setLabels(prev => [...prev, { value: val, label: newLabel.trim() }]);
+                  }
+                  setCaptureLabel(val);
+                  setNewLabel("");
+                }
+              }}
+              disabled={!isIdle || !newLabel.trim()}
+              className="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Añadir
+            </button>
+          </div>
           <div className="flex flex-col text-right min-w-[80px]">
             <span className="text-xs text-neutral-500">Muestras</span>
             <span className="text-lg font-semibold text-indigo-400">{capturedCount}</span>
@@ -410,8 +526,20 @@ export default function HomePage() {
 
         {/* Processing overlay */}
         {status === "processing" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-20">
             <div className="w-8 h-8 border-2 border-neutral-600 border-t-indigo-500 rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* Countdown overlay */}
+        {countdown !== null && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
+            <span className="text-8xl font-bold text-white drop-shadow-lg animate-pulse">{countdown}</span>
+            {repeatCount > 1 && (
+               <span className="absolute bottom-10 text-xl font-medium text-neutral-300">
+                 Grabación {currentRepeat} de {repeatCount}
+               </span>
+            )}
           </div>
         )}
       </div>
@@ -449,23 +577,34 @@ export default function HomePage() {
 
       {/* Controls */}
       {mode === "capture" && (
-        <div className="flex gap-3">
-          {isIdle && (
-            <button
-              id="btn-start-sign"
-              onClick={handleStart}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
-            >
-              Empezar captura
-            </button>
+        <div className="flex flex-col gap-4 items-center">
+          {isIdle && countdown === null && (
+            <div className="flex items-center gap-3 bg-neutral-900 border border-neutral-800 p-2 rounded-xl">
+              <label className="text-sm font-medium text-neutral-300 ml-2">Repeticiones:</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={repeatCount}
+                onChange={(e) => setRepeatCount(Math.max(1, parseInt(e.target.value) || 1))}
+                className="bg-neutral-950 border border-neutral-800 text-white text-sm rounded-lg p-2 w-16 text-center focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              />
+              <button
+                id="btn-start-sign"
+                onClick={handleStartSequence}
+                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
+              >
+                Empezar captura
+              </button>
+            </div>
           )}
-          {status === "recording" && (
+          {(status === "recording" || countdown !== null || status === "processing") && (
             <button
               id="btn-stop-sign"
               onClick={handleStop}
-              className="px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
+              className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white text-sm font-medium rounded-xl transition-colors cursor-pointer"
             >
-              Detener y guardar
+              Detener secuencia
             </button>
           )}
         </div>
