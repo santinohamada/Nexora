@@ -8,10 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from src.model.ctr_gcn import TwoStreamModel
 from src.model.lstm import SignLanguageLSTM
-from src.graph.mediapipe_graph import MediaPipeGraph
-from src.data.transforms import center_skeleton, get_bone_tensor, random_temporal_shift
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -32,40 +29,21 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 LSTM_MODEL_PATH = "models/lstm.pth"
 LSTM_CLASSES_PATH = "models/custom_classes.json"
-GCN_MODEL_PATH = "models/ctr_gcn.pth"
-GCN_CLASSES_PATH = "models/classes.json"
 
-USE_LSTM = os.path.exists(LSTM_MODEL_PATH) and os.path.exists(LSTM_CLASSES_PATH)
-
-if USE_LSTM:
+if not os.path.exists(LSTM_MODEL_PATH) or not os.path.exists(LSTM_CLASSES_PATH):
+    print("[Nexora] ATENCIÓN: No se encontraron los archivos del modelo LSTM. Por favor graba datos y entrena el modelo.")
+    # Initialize empty classes and dummy model to avoid crash, but predict will fail if not trained
+    CLASSES = []
+    model = None
+else:
     with open(LSTM_CLASSES_PATH, "r", encoding="utf-8") as f:
-        CLASSES: list[str] = json.load(f)
+        CLASSES = json.load(f)
         
     model = SignLanguageLSTM(num_classes=len(CLASSES)).to(device)
     model.load_state_dict(torch.load(LSTM_MODEL_PATH, map_location=device, weights_only=False))
     model.eval()
     MAX_FRAMES = 60
     print(f"[Nexora] Custom LSTM Model loaded on {device} — {len(CLASSES)} classes")
-else:
-    with open(GCN_CLASSES_PATH, "r", encoding="utf-8") as f:
-        CLASSES: list[str] = json.load(f)
-
-    graph = MediaPipeGraph()
-    A = torch.tensor(graph.get_spatial_graph(), dtype=torch.float32).to(device)
-
-    model = TwoStreamModel(
-        num_class=len(CLASSES),
-        num_point=75,
-        in_channels=4,
-        num_subset=A.shape[0],
-    ).to(device)
-
-    model.load_state_dict(
-        torch.load(GCN_MODEL_PATH, map_location=device, weights_only=False)
-    )
-    model.eval()
-    MAX_FRAMES = 100
-    print(f"[Nexora] CTR-GCN Model loaded on {device} — {len(CLASSES)} classes")
 
 
 # ---------------------------------------------------------------------------
@@ -126,38 +104,25 @@ def predict(payload: SkeletonPayload):
 
     data = np.array(payload.frames, dtype=np.float32)  # (T, 75, 4)
 
-    if USE_LSTM:
-        # LSTM Preprocessing
-        T = data.shape[0]
-        if T > MAX_FRAMES:
-            data = data[:MAX_FRAMES]
-        elif T < MAX_FRAMES:
-            pad_len = MAX_FRAMES - T
-            pad_arr = np.zeros((pad_len, 75, 4), dtype=data.dtype)
-            data = np.concatenate((data, pad_arr), axis=0)
-            
-        data = data.reshape(MAX_FRAMES, -1)
-        input_tensor = torch.tensor(data, dtype=torch.float32).unsqueeze(0).to(device)
+    if model is None:
+        raise HTTPException(status_code=500, detail="Modelo no entrenado. Por favor entrena el LSTM primero.")
+
+    # LSTM Preprocessing
+    T = data.shape[0]
+    if T > MAX_FRAMES:
+        data = data[:MAX_FRAMES]
+    elif T < MAX_FRAMES:
+        pad_len = MAX_FRAMES - T
+        pad_arr = np.zeros((pad_len, 75, 4), dtype=data.dtype)
+        data = np.concatenate((data, pad_arr), axis=0)
         
-        with torch.no_grad():
-            outputs = model(input_tensor)
-            probs = F.softmax(outputs, dim=1)
-            confidence, predicted_idx = torch.max(probs, 1)
-    else:
-        # Same preprocessing as training for GCN
-        joint_data = center_skeleton(data)
-        bone_data = get_bone_tensor(joint_data)
-
-        joint_data = random_temporal_shift(joint_data, max_frames=MAX_FRAMES, is_training=False)
-        bone_data = random_temporal_shift(bone_data, max_frames=MAX_FRAMES, is_training=False)
-
-        joint_tensor = torch.tensor(joint_data, dtype=torch.float32).unsqueeze(0).to(device)
-        bone_tensor = torch.tensor(bone_data, dtype=torch.float32).unsqueeze(0).to(device)
-
-        with torch.no_grad():
-            outputs = model(joint_tensor, bone_tensor, A)
-            probs = F.softmax(outputs, dim=1)
-            confidence, predicted_idx = torch.max(probs, 1)
+    data = data.reshape(MAX_FRAMES, -1)
+    input_tensor = torch.tensor(data, dtype=torch.float32).unsqueeze(0).to(device)
+    
+    with torch.no_grad():
+        outputs = model(input_tensor)
+        probs = F.softmax(outputs, dim=1)
+        confidence, predicted_idx = torch.max(probs, 1)
 
     # Top-3 for debugging
     top3_probs, top3_idx = torch.topk(probs, 3, dim=1)
