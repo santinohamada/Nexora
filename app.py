@@ -188,4 +188,6 @@ async def websocket_predict(websocket: WebSocket):
     except WebSocketDisconnect:
         print("[Nexora] Client disconnected from WebSocket")
     except Exception as e:
+        import traceback
         print(f"[Nexora] WebSocket error: {e}")
+        traceback.print_exc()
