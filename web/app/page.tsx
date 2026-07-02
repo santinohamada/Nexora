@@ -196,7 +196,7 @@ export default function HomePage() {
     if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
       return;
     }
-    const ws = new WebSocket("ws://localhost:8000/ws/predict");
+    const ws = new WebSocket("ws://127.0.0.1:8000/ws/predict");
     ws.onopen = () => console.log("WebSocket connected");
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
