@@ -18,10 +18,11 @@ EPOCHS = 50
 LEARNING_RATE = 0.001
 
 class CustomSignDataset(Dataset):
-    def __init__(self, file_paths, labels, class_to_idx):
+    def __init__(self, file_paths, labels, class_to_idx, augment=False):
         self.file_paths = file_paths
         self.labels = labels
         self.class_to_idx = class_to_idx
+        self.augment = augment
 
     def __len__(self):
         return len(self.file_paths)
@@ -34,15 +35,26 @@ class CustomSignDataset(Dataset):
         # Load numpy array: expected shape (T, 75, 4)
         data = np.load(file_path)
         
-        # Padding / Truncating
         T = data.shape[0]
-        if T > MAX_FRAMES:
-            data = data[:MAX_FRAMES]
-        elif T < MAX_FRAMES:
-            # Pad with zeros
-            pad_len = MAX_FRAMES - T
-            pad_arr = np.zeros((pad_len, 75, 4), dtype=data.dtype)
-            data = np.concatenate((data, pad_arr), axis=0)
+        if self.augment:
+            if T > MAX_FRAMES:
+                start_idx = np.random.randint(0, T - MAX_FRAMES + 1)
+                data = data[start_idx:start_idx + MAX_FRAMES]
+            elif T < MAX_FRAMES:
+                pad_len = MAX_FRAMES - T
+                pad_arr = np.zeros((pad_len, 75, 4), dtype=data.dtype)
+                data = np.concatenate((data, pad_arr), axis=0)
+                
+            noise = np.random.normal(0, 0.01, size=(MAX_FRAMES, 75, 2))
+            scale = np.random.uniform(0.95, 1.05)
+            data[:, :, :2] = (data[:, :, :2] * scale) + noise
+        else:
+            if T > MAX_FRAMES:
+                data = data[:MAX_FRAMES]
+            elif T < MAX_FRAMES:
+                pad_len = MAX_FRAMES - T
+                pad_arr = np.zeros((pad_len, 75, 4), dtype=data.dtype)
+                data = np.concatenate((data, pad_arr), axis=0)
             
         # Flatten the features per frame: (MAX_FRAMES, 300)
         data = data.reshape(MAX_FRAMES, -1)
@@ -102,8 +114,8 @@ def train():
     X_val = [x[0] for x in val_data]
     y_val = [x[1] for x in val_data]
     
-    train_dataset = CustomSignDataset(X_train, y_train, class_to_idx)
-    val_dataset = CustomSignDataset(X_val, y_val, class_to_idx)
+    train_dataset = CustomSignDataset(X_train, y_train, class_to_idx, augment=True)
+    val_dataset = CustomSignDataset(X_val, y_val, class_to_idx, augment=False)
     
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)

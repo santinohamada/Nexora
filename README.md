@@ -75,3 +75,14 @@ Por defecto, el proyecto captura e infiere usando ventanas de 45 frames. Si nece
 3. **Frontend - Captura** (`web/app/page.tsx`): Modificá la constante `RECORDING_MAX_FRAMES` a la cantidad deseada.
 
 > **Importante**: Si cambiás la cantidad de frames, los archivos `.npy` de tu dataset actual dejarán de ser compatibles. Recordá renombrar la carpeta `dataset/custom/` a modo de backup y crear una nueva para poder grabar el dataset ajustado a los nuevos tiempos.
+
+### 6. Configurar Umbral de Inferencia (Threshold)
+Durante la predicción en vivo, el sistema ignorará cualquier seña que no supere un umbral de confianza mínimo para evitar falsos positivos y traducciones erróneas.
+Si deseás que el modelo sea más exigente o más permisivo a la hora de escribir una palabra en el cuadro de texto de traducción, podés modificar este umbral:
+
+1. Abrí el archivo de frontend `web/app/page.tsx`.
+2. Al inicio del archivo (alrededor de la línea 9), buscá la constante:
+   ```typescript
+   const CONFIDENCE_THRESHOLD = 80;
+   ```
+3. Cambiá `80` (que representa un 80% de confianza) por el valor que prefieras (por ejemplo, `95` para ser más estricto, o `60` si tu modelo recién está aprendiendo).

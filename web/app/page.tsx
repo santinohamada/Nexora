@@ -6,6 +6,7 @@ const API_URL = "http://localhost:8000/predict";
 const CAPTURE_API_URL = "http://localhost:8000/capture";
 const STATS_API_URL = "http://localhost:8000/dataset_stats";
 const RECORDING_MAX_FRAMES = 45;
+const CONFIDENCE_THRESHOLD = 70; // Min confidence % to accept a sign
 const NUM_LANDMARKS = 75;
 
 const PILOT_LABELS = [
@@ -14,6 +15,7 @@ const PILOT_LABELS = [
   { value: "ayuda", label: "Ayuda" },
   { value: "revisar", label: "Revisar" },
   { value: "respirar", label: "Respirar" },
+  { value: "idle", label: "Reposo (Idle)" },
 ];
 
 type Landmark = [number, number, number, number]; // x, y, z, visibility
@@ -50,15 +52,15 @@ export default function HomePage() {
   const recordedFrames = useRef<Frame[]>([]);
   const isRecording = useRef(false);
   const frameIndexRef = useRef(0); // for throttling MediaPipe calls
-  const handleStopRecordingRef = useRef<() => void>(() => {});
+  const handleStopRecordingRef = useRef<() => void>(() => { });
   const isPredictingRef = useRef(false);
   const framesSinceLastPredictRef = useRef(0);
-  const triggerRealtimePredictionRef = useRef<(frames: Frame[]) => void>(() => {});
+  const triggerRealtimePredictionRef = useRef<(frames: Frame[]) => void>(() => { });
 
   const [status, setStatus] = useState<Status>("loading");
   const [mode, setMode] = useState<"predict" | "capture">("predict");
   const modeRef = useRef(mode);
-  const [labels, setLabels] = useState<{value: string, label: string}[]>(PILOT_LABELS);
+  const [labels, setLabels] = useState<{ value: string, label: string }[]>(PILOT_LABELS);
   const [captureLabel, setCaptureLabel] = useState<string>("dolor");
   const [newLabel, setNewLabel] = useState<string>("");
   const [capturedCount, setCapturedCount] = useState(0);
@@ -66,6 +68,8 @@ export default function HomePage() {
 
   const [prediction, setPrediction] = useState<PredictionResult>(null);
   const [error, setError] = useState<string | null>(null);
+  const [transcript, setTranscript] = useState<string>("");
+  const lastWordRef = useRef<string>("");
 
   const [countdown, setCountdown] = useState<number | null>(null);
   const [repeatCount, setRepeatCount] = useState<number>(1);
@@ -133,7 +137,17 @@ export default function HomePage() {
       const pose = extractLandmarks(results.poseLandmarks, 33, 0);
       const leftHand = extractLandmarks(results.leftHandLandmarks, 21, 0);
       const rightHand = extractLandmarks(results.rightHandLandmarks, 21, 0);
-      const frame: Frame = [...pose, ...leftHand, ...rightHand]; // 75 landmarks
+      let frame: Frame = [...pose, ...leftHand, ...rightHand]; // 75 landmarks
+
+      const nose = pose[0];
+      if (nose) {
+        frame = frame.map(lm => [
+          lm[0] - nose[0], // x relative
+          lm[1] - nose[1], // y relative
+          lm[2],
+          lm[3]
+        ]);
+      }
 
       recordedFrames.current.push(frame);
 
@@ -141,7 +155,7 @@ export default function HomePage() {
         if (recordedFrames.current.length > RECORDING_MAX_FRAMES) {
           recordedFrames.current.shift();
         }
-        
+
         framesSinceLastPredictRef.current++;
         if (recordedFrames.current.length === RECORDING_MAX_FRAMES && framesSinceLastPredictRef.current >= 10) {
           if (!isPredictingRef.current) {
@@ -204,6 +218,12 @@ export default function HomePage() {
         console.error("WS Error:", data.error);
       } else {
         setPrediction(data);
+        if (data.confidence >= CONFIDENCE_THRESHOLD && data.sign !== "idle") {
+          if (data.sign !== lastWordRef.current) {
+            setTranscript((prev) => (prev ? prev + " " + data.sign : data.sign));
+            lastWordRef.current = data.sign;
+          }
+        }
       }
       isPredictingRef.current = false;
     };
@@ -242,7 +262,7 @@ export default function HomePage() {
     modeRef.current = mode;
     recordedFrames.current = [];
     framesSinceLastPredictRef.current = 0;
-    
+
     if (wsRef.current) {
       wsRef.current.close();
     }
@@ -254,7 +274,7 @@ export default function HomePage() {
       abortSequenceRef.current = true;
       connectWebSocket();
     }
-    
+
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
@@ -268,7 +288,7 @@ export default function HomePage() {
       if (res.ok) {
         const stats = await res.json();
         setCapturedCount(stats[captureLabel] || 0);
-        
+
         const existingKeys = Object.keys(stats);
         setLabels(prev => {
           const newLabels = [...prev];
@@ -374,9 +394,9 @@ export default function HomePage() {
     abortSequenceRef.current = false;
     for (let i = 0; i < repeatCount; i++) {
       if (abortSequenceRef.current) break;
-      
+
       setCurrentRepeat(i + 1);
-      
+
       // 3 second countdown
       for (let c = 3; c > 0; c--) {
         if (abortSequenceRef.current) break;
@@ -385,14 +405,14 @@ export default function HomePage() {
       }
       if (abortSequenceRef.current) break;
       setCountdown(null);
-      
+
       // Start recording
       recordedFrames.current = [];
       setPrediction(null);
       setError(null);
       isRecording.current = true;
       setStatus("recording");
-      
+
       // Wait for recording to finish
       await new Promise<void>(resolve => {
         const check = setInterval(() => {
@@ -402,13 +422,13 @@ export default function HomePage() {
           }
         }, 100);
       });
-      
+
       if (abortSequenceRef.current) break;
-      
+
       // Delay before next iteration to let the POST request finish and user relax
       await new Promise(r => setTimeout(r, 800));
     }
-    
+
     setCountdown(null);
     setCurrentRepeat(0);
     // Only set to idle if we weren't aborted and we aren't in error
@@ -420,7 +440,7 @@ export default function HomePage() {
     isRecording.current = false;
     setCountdown(null);
     setCurrentRepeat(0);
-    
+
     if (recordedFrames.current.length >= 5) {
       handleStopRecording();
     } else {
@@ -443,17 +463,15 @@ export default function HomePage() {
       <div className="flex bg-neutral-900 border border-neutral-800 rounded-xl p-1 gap-1">
         <button
           onClick={() => setMode("predict")}
-          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-            mode === "predict" ? "bg-indigo-600 text-white" : "text-neutral-400 hover:text-white"
-          }`}
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${mode === "predict" ? "bg-indigo-600 text-white" : "text-neutral-400 hover:text-white"
+            }`}
         >
           Inferencia
         </button>
         <button
           onClick={() => setMode("capture")}
-          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-            mode === "capture" ? "bg-indigo-600 text-white" : "text-neutral-400 hover:text-white"
-          }`}
+          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${mode === "capture" ? "bg-indigo-600 text-white" : "text-neutral-400 hover:text-white"
+            }`}
         >
           Capturar Dataset
         </button>
@@ -507,53 +525,75 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Camera + Canvas */}
-      <div className="relative w-full max-w-2xl aspect-video rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800">
-        <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover opacity-0" playsInline muted />
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" />
+      {/* Main Content Area */}
+      <div className="flex flex-col md:flex-row gap-6 w-full max-w-5xl justify-center">
+        {/* Camera + Canvas */}
+        <div className="relative w-full max-w-2xl aspect-video rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-800">
+          <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover opacity-0" playsInline muted />
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" />
 
-        {/* Loading overlay */}
-        {status === "loading" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-neutral-900">
-            <div className="flex flex-col items-center gap-3 text-neutral-500">
-              <div className="w-8 h-8 border-2 border-neutral-600 border-t-indigo-500 rounded-full animate-spin" />
-              <span className="text-sm">Iniciando cámara y MediaPipe…</span>
+          {/* Loading overlay */}
+          {status === "loading" && (
+            <div className="absolute inset-0 flex items-center justify-center bg-neutral-900">
+              <div className="flex flex-col items-center gap-3 text-neutral-500">
+                <div className="w-8 h-8 border-2 border-neutral-600 border-t-indigo-500 rounded-full animate-spin" />
+                <span className="text-sm">Iniciando cámara y MediaPipe…</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Hand detection indicators */}
-        <div className="absolute top-4 right-4 flex gap-2">
-          <span id="hand-indicator-l" className="text-xs px-2 py-1 rounded-full font-medium bg-neutral-800/80 text-neutral-500">L</span>
-          <span id="hand-indicator-r" className="text-xs px-2 py-1 rounded-full font-medium bg-neutral-800/80 text-neutral-500">R</span>
+          {/* Hand detection indicators */}
+          <div className="absolute top-4 right-4 flex gap-2">
+            <span id="hand-indicator-l" className="text-xs px-2 py-1 rounded-full font-medium bg-neutral-800/80 text-neutral-500">L</span>
+            <span id="hand-indicator-r" className="text-xs px-2 py-1 rounded-full font-medium bg-neutral-800/80 text-neutral-500">R</span>
+          </div>
+
+          {/* Recording indicator */}
+          {status === "recording" && (
+            <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span id="frame-counter" className="text-xs text-white font-medium">
+                0 / {RECORDING_MAX_FRAMES} frames
+              </span>
+            </div>
+          )}
+
+          {/* Processing overlay */}
+          {status === "processing" && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-20">
+              <div className="w-8 h-8 border-2 border-neutral-600 border-t-indigo-500 rounded-full animate-spin" />
+            </div>
+          )}
+
+          {/* Countdown overlay */}
+          {countdown !== null && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
+              <span className="text-8xl font-bold text-white drop-shadow-lg animate-pulse">{countdown}</span>
+              {repeatCount > 1 && (
+                <span className="absolute bottom-10 text-xl font-medium text-neutral-300">
+                  Grabación {currentRepeat} de {repeatCount}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Recording indicator */}
-        {status === "recording" && (
-          <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span id="frame-counter" className="text-xs text-white font-medium">
-              0 / {RECORDING_MAX_FRAMES} frames
-            </span>
-          </div>
-        )}
-
-        {/* Processing overlay */}
-        {status === "processing" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-20">
-            <div className="w-8 h-8 border-2 border-neutral-600 border-t-indigo-500 rounded-full animate-spin" />
-          </div>
-        )}
-
-        {/* Countdown overlay */}
-        {countdown !== null && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30">
-            <span className="text-8xl font-bold text-white drop-shadow-lg animate-pulse">{countdown}</span>
-            {repeatCount > 1 && (
-               <span className="absolute bottom-10 text-xl font-medium text-neutral-300">
-                 Grabación {currentRepeat} de {repeatCount}
-               </span>
-            )}
+        {/* Textarea for predictions (Only in Predict mode) */}
+        {mode === "predict" && (
+          <div className="w-full md:w-80 flex flex-col gap-2">
+            <h2 className="text-lg font-semibold text-neutral-200">Traducción</h2>
+            <textarea
+              className="flex-1 w-full bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-white resize-none outline-none focus:ring-1 focus:ring-indigo-500"
+              readOnly
+              value={transcript}
+              placeholder="El texto traducido aparecerá aquí..."
+            />
+            <button
+              onClick={() => { setTranscript(""); lastWordRef.current = ""; }}
+              className="w-full py-2 bg-neutral-800 hover:bg-neutral-700 text-white font-medium rounded-lg transition-colors"
+            >
+              Limpiar
+            </button>
           </div>
         )}
       </div>
