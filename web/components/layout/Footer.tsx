@@ -9,6 +9,7 @@ export const Footer = memo(function Footer({
   prediction: PredictionResult | null;
   wsStatus: string;
 }) {
+  console.log("[Render] Footer");
   return (
     <footer className="fixed bottom-0 left-0 w-full bg-slate-100/80 backdrop-blur-md border-t border-slate-200 px-6 py-2 flex justify-between items-center text-xs font-mono text-slate-500 z-50">
       <div className="flex items-center gap-6">

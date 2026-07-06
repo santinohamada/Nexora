@@ -57,7 +57,7 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
         });
 
         holistic.setOptions({
-          modelComplexity: 1,
+          modelComplexity: 0,
           smoothLandmarks: true,
           enableSegmentation: false,
           smoothSegmentation: false,
@@ -182,6 +182,7 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
 
         // Accurate camera loop synchronized to hardware frame rate
         let lastVideoTime = -1;
+        const MEDIAPIPE_STRIDE = 2;
         const startLoop = () => {
           const loop = async () => {
             if (!isComponentMounted) return;
@@ -194,10 +195,13 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
               const currentTime = videoRef.current.currentTime;
               if (currentTime !== lastVideoTime) {
                 lastVideoTime = currentTime;
-                try {
-                  await holisticRef.current.send({ image: videoRef.current });
-                } catch (e) {
-                  console.error(e);
+                frameIndexRef.current++;
+                if (frameIndexRef.current % MEDIAPIPE_STRIDE === 0) {
+                  try {
+                    await holisticRef.current.send({ image: videoRef.current });
+                  } catch (e) {
+                    console.error(e);
+                  }
                 }
               }
             }
@@ -209,8 +213,8 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
         navigator.mediaDevices
           .getUserMedia({
             video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
+              width: { ideal: 640 },
+              height: { ideal: 480 },
               frameRate: { ideal: 30 },
             },
           })

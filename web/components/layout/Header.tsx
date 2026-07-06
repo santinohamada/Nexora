@@ -9,6 +9,7 @@ export const Header = memo(function Header({
   view: "paciente" | "recepcion";
   setView: (v: "paciente" | "recepcion") => void;
 }) {
+  console.log("[Render] Header");
   return (
     <header className="flex justify-between items-center px-8 py-4 bg-white/50 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-50">
       <div className="flex items-center gap-3">

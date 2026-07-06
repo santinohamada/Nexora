@@ -6,6 +6,7 @@ export const ReceptionControls = memo(function ReceptionControls({
 }: {
   onSend: (text: string) => void;
 }) {
+  console.log("[Render] ReceptionControls");
   const [receptionText, setReceptionText] = useState("");
 
   const handleSend = () => {

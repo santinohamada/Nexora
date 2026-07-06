@@ -6,6 +6,7 @@ export const TopPredictions = memo(function TopPredictions({
 }: {
   prediction: PredictionResult | null;
 }) {
+  console.log("[Render] TopPredictions");
   if (!prediction || !prediction.top3) return null;
 
   return (

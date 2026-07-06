@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Camera, MonitorPlay, Trash2, Settings } from "lucide-react";
 import { Header } from "../components/layout/Header";
-import { Footer } from "../components/layout/Footer";
 import { TopPredictions } from "../components/camera/TopPredictions";
 import { ChatBubble } from "../components/chat/ChatBubble";
 import { ReceptionControls } from "../components/reception/ReceptionControls";
@@ -17,6 +16,7 @@ const RECORDING_MAX_FRAMES = 45;
 const CONFIDENCE_THRESHOLD = 70;
 
 export default function HomePage() {
+  console.log("[Render] HomePage");
   const [mode, setMode] = useState<"predict" | "capture">("predict");
   const modeRef = useRef(mode);
   const [view, setView] = useState<"paciente" | "recepcion">("paciente");
@@ -91,7 +91,7 @@ export default function HomePage() {
 
   const { videoRef, canvasRef, status, setStatus } = useMediaPipe({
     onFrame: handleFrame,
-    drawLandmarksOnCanvas: mode === "capture",
+    drawLandmarksOnCanvas: true,
   });
 
   // --- Event handlers ---
@@ -287,8 +287,6 @@ export default function HomePage() {
           </div>
         </div>
       </div>
-
-        <Footer prediction={prediction} wsStatus={wsStatus} />
       </main>
     </>
   );

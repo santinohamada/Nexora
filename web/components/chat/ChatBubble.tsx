@@ -6,6 +6,7 @@ export const ChatBubble = memo(function ChatBubble({
 }: {
   msg: ChatMessage;
 }) {
+  console.log("[Render] ChatBubble");
   const isPatient = msg.role === "PACIENTE";
 
   return (

@@ -12,6 +12,7 @@ export const CaptureMode = memo(function CaptureMode({
   setStatus: React.Dispatch<React.SetStateAction<Status>>;
   setMode: (mode: "predict" | "capture") => void;
 }) {
+  console.log("[Render] CaptureMode");
   const [captureLabel, setCaptureLabel] = useState("ayuda");
   const [repeatCount, setRepeatCount] = useState<number>(1);
   const [countdown, setCountdown] = useState<number | null>(null);
