@@ -83,6 +83,17 @@ Si deseás que el modelo sea más exigente o más permisivo a la hora de escribi
 1. Abrí el archivo de frontend `web/app/page.tsx`.
 2. Al inicio del archivo (alrededor de la línea 9), buscá la constante:
    ```typescript
-   const CONFIDENCE_THRESHOLD = 80;
-   ```
-3. Cambiá `80` (que representa un 80% de confianza) por el valor que prefieras (por ejemplo, `95` para ser más estricto, o `60` si tu modelo recién está aprendiendo).
+   const CONFIDENCE_THRESHOLD = 70;
+3. Cambiá `70` (que representa un 70% de confianza) por el valor que prefieras (por ejemplo, `95` para ser más estricto, o `60` si tu modelo recién está aprendiendo).
+
+### 7. Traducción Natural (LLM) y Voz (TTS)
+El sistema cuenta con un pipeline inteligente de procesamiento de lenguaje natural. Cuando el usuario realiza una secuencia de señas y luego baja las manos (estado `idle` de reposo) por 2 segundos, el sistema asume que la oración terminó y se activa el proceso:
+
+1. **Traducción (Ollama):** La secuencia de palabras sueltas (ej: "ayuda doctor rápido") se envía a un modelo de lenguaje local corriendo vía [Ollama](https://ollama.com/) (por defecto usa `qwen2:1.5b`). El LLM sigue reglas de contexto médico para transformar la secuencia en una oración fluida ("Necesito ayuda del doctor, rápido").
+2. **Síntesis de Voz (Piper TTS):** Esa oración natural pasa inmediatamente por un modelo Text-To-Speech (TTS) ultra rápido y local llamado Piper (con voz argentina "Daniela"). El backend procesa el audio 100% en memoria (RAM).
+3. **Reproducción Web:** El audio generado se envía en formato Base64 al cliente web de Next.js, que instancia un objeto nativo de HTML5 para reproducirlo automáticamente de forma imperceptible.
+
+**Requisitos para esta función:**
+- Instalar Ollama y mantener el modelo corriendo en una terminal de fondo: `ollama run qwen2:1.5b`
+- Descargar y ubicar el modelo `.onnx` de la voz en `voices/es_AR-daniela-high.onnx`.
+- (Opcional) Si preferís usar otro modelo en Ollama (ej. `llama3` o `mistral`), podés modificar el string `"model"` dentro del endpoint `/process_sentence` en `app.py`.
