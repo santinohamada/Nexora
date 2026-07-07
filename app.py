@@ -4,6 +4,11 @@ import json
 import numpy as np
 import torch
 import torch.nn.functional as F
+import base64
+import io
+import wave
+import requests
+from piper.voice import PiperVoice
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -45,6 +50,18 @@ else:
     MAX_FRAMES = 45
     print(f"[Nexora] Custom LSTM Model loaded on {device} — {len(CLASSES)} classes")
 
+PIPER_MODEL_PATH = "voices/es_AR-daniela-high.onnx"
+if os.path.exists(PIPER_MODEL_PATH):
+    try:
+        piper_voice = PiperVoice.load(PIPER_MODEL_PATH)
+        print("[Nexora] Piper TTS Model loaded")
+    except Exception as e:
+        print(f"[Nexora] Error loading Piper TTS: {e}")
+        piper_voice = None
+else:
+    piper_voice = None
+    print("[Nexora] Piper TTS Model not found")
+
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -57,6 +74,9 @@ class CapturePayload(BaseModel):
     label: str
     frames: list[list[list[float]]]
 
+class SentencePayload(BaseModel):
+    words: str
+
 
 # ---------------------------------------------------------------------------
 # Endpoints
@@ -65,6 +85,10 @@ os.makedirs("dataset/custom", exist_ok=True)
 @app.get("/")
 def health():
     return {"status": "ok", "device": str(device), "classes": len(CLASSES)}
+
+@app.get("/classes")
+def get_classes():
+    return CLASSES
 
 
 @app.get("/dataset_stats")
@@ -184,10 +208,71 @@ async def websocket_predict(websocket: WebSocket):
                 "top3": top3,
             }
             await websocket.send_json(result)
-            
+
     except WebSocketDisconnect:
         print("[Nexora] Client disconnected from WebSocket")
     except Exception as e:
         import traceback
         print(f"[Nexora] WebSocket error: {e}")
         traceback.print_exc()
+
+@app.post("/process_sentence")
+def process_sentence(payload: SentencePayload):
+    words = payload.words.strip()
+    if not words:
+        raise HTTPException(status_code=400, detail="Empty words")
+
+    prompt = f"""Sos un intérprete que traduce secuencias de palabras sueltas en Lengua de Señas Argentina (LSA) a oraciones en español argentino, para uso médico (consultorio/guardia).
+
+Reglas:
+1. Armá UNA sola oración natural y gramaticalmente correcta a partir de las palabras dadas.
+2. Respetá el sujeto real de las palabras: si aparece "yo" o no hay sujeto explícito, asumí primera persona ("tengo", "siento"). Si aparece "ella", "él", "vos" u otro sujeto, respetalo y conjugá acorde.
+3. En español argentino evitamos "yo tengo" al inicio: usamos directamente el verbo conjugado en presente indicativo ("tengo", "siento", "duele").
+4. No agregues información, síntomas, ni partes del cuerpo que no estén en las palabras dadas.
+5. No agregues saludos, aclaraciones, ni explicaciones. Respondé solo con la oración final.
+6. Si las palabras no forman una idea clara o son insuficientes, respondé exactamente: "NO_CLARO".
+
+Ejemplos:
+Palabras: Yo dolor cabeza mucho -> Tengo mucho dolor de cabeza.
+Palabras: Ella dolor pecho -> Ella tiene dolor en el pecho.
+Palabras: Ayuda doctor rápido -> Necesito ayuda del doctor, rápido.
+Palabras: Idle idle -> NO_CLARO
+
+Palabras a traducir: {words}"""
+    
+    natural_sentence = words
+    try:
+        ollama_res = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "qwen2:1.5b", 
+                "prompt": prompt,
+                "stream": False
+            },
+            timeout=10
+        )
+        if ollama_res.status_code == 200:
+            natural_sentence = ollama_res.json().get("response", words).strip()
+    except Exception as e:
+        print(f"[Nexora] Ollama error: {e}")
+        
+    audio_base64 = ""
+    if piper_voice:
+        try:
+            buf = io.BytesIO()
+            with wave.open(buf, "wb") as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(piper_voice.config.sample_rate)
+                piper_voice.synthesize_wav(natural_sentence, wav_file)
+            
+            audio_bytes = buf.getvalue()
+            audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+        except Exception as e:
+            print(f"[Nexora] Piper error: {e}")
+            
+    return {
+        "original": words,
+        "natural_sentence": natural_sentence,
+        "audio_base64": audio_base64
+    }
