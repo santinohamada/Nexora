@@ -61,6 +61,7 @@ Pensada para el monitor del personal, quien lee lo que el paciente dice y respon
    pip install -r requirements.txt
    ```
 4. Asegurate de tener el modelo de voz `.onnx` descargado dentro de la carpeta `voices/` y los pesos del LSTM en `models/`.
+   link: https://huggingface.co/rhasspy/piper-voices/tree/main/es/es_AR/daniela/high
 
 ### 3. Configurar el Frontend (Next.js)
 1. Abrí otra terminal y navegá a `web/`.
