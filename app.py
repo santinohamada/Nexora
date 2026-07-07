@@ -86,6 +86,10 @@ os.makedirs("dataset/custom", exist_ok=True)
 def health():
     return {"status": "ok", "device": str(device), "classes": len(CLASSES)}
 
+@app.get("/classes")
+def get_classes():
+    return CLASSES
+
 
 @app.get("/dataset_stats")
 def dataset_stats():

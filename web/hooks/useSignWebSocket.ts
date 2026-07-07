@@ -3,13 +3,17 @@ import { PredictionResult, Frame } from "../types";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
-export function useSignWebSocket() {
-  const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionResult) => void } = {}) {
   const [wsStatus, setWsStatus] = useState<
     "connecting" | "connected" | "disconnected"
   >("connecting");
   const wsRef = useRef<WebSocket | null>(null);
   const isPredictingRef = useRef(false);
+  const onMessageRef = useRef(onMessage);
+
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -26,7 +30,7 @@ export function useSignWebSocket() {
           const data = JSON.parse(event.data);
           isPredictingRef.current = false;
           if (data.sign && data.confidence !== undefined) {
-            setPrediction(data);
+            onMessageRef.current?.(data);
           }
         } catch {
           isPredictingRef.current = false;
@@ -63,5 +67,5 @@ export function useSignWebSocket() {
     wsRef.current.send(JSON.stringify({ frames }));
   }, []);
 
-  return { prediction, wsStatus, sendFrames };
+  return { wsStatus, sendFrames };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Status, Frame, Landmark } from "../types";
 
 declare global {
@@ -18,15 +18,28 @@ type UseMediaPipeOptions = {
 };
 
 export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMediaPipeOptions = {}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const holisticRef = useRef<any>(null);
   const frameIndexRef = useRef(0);
-  const isProcessingRef = useRef(false);
   const onFrameRef = useRef(onFrame);
   const drawLandmarksRef = useRef(drawLandmarksOnCanvas);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const isSendingRef = useRef(false);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Callback ref: whenever React mounts a new <video> element (e.g. mode switch),
+  // automatically re-attach the camera stream so it never goes black.
+  const setVideoNode = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (node && streamRef.current && node.srcObject !== streamRef.current) {
+      node.srcObject = streamRef.current;
+      node.play().catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     onFrameRef.current = onFrame;
@@ -37,14 +50,12 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
   }, [drawLandmarksOnCanvas]);
 
   useEffect(() => {
-    let camera: any = null;
     let isComponentMounted = true;
     let retryTimeout: NodeJS.Timeout;
 
     const init = () => {
       if (typeof window === "undefined") return;
 
-      // Wait for MediaPipe scripts to load (afterInteractive strategy)
       if (!window.Holistic) {
         retryTimeout = setTimeout(init, 500);
         return;
@@ -70,24 +81,28 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
 
         holistic.onResults((results: any) => {
           if (!isComponentMounted) return;
+          isSendingRef.current = false;
 
           const canvasElement = canvasRef.current;
-          const videoElement = videoRef.current;
-          
-          if (canvasElement && videoElement) {
-            const ctx = canvasElement.getContext("2d");
+
+          if (canvasElement) {
+            // Cache context — invalidate if canvas element changed (mode switch)
+            if (!ctxRef.current || ctxRef.current.canvas !== canvasElement) {
+              ctxRef.current = canvasElement.getContext("2d");
+            }
+            const ctx = ctxRef.current;
             if (ctx) {
-              // Only resize when dimensions actually change (avoids context reset per frame)
-              if (videoElement.videoWidth > 0 && canvasElement.width !== videoElement.videoWidth) {
+              const videoElement = videoRef.current;
+              if (videoElement && videoElement.videoWidth > 0 && canvasElement.width !== videoElement.videoWidth) {
                 canvasElement.width = videoElement.videoWidth;
                 canvasElement.height = videoElement.videoHeight;
               }
 
-              ctx.save();
+              // Clear previous landmarks (canvas is transparent overlay on top of <video>)
               ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-              ctx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
               if (window.drawConnectors && drawLandmarksRef.current) {
+                ctx.save();
                 window.drawConnectors(
                   ctx,
                   results.poseLandmarks,
@@ -121,8 +136,8 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
                   lineWidth: 1,
                   radius: 2,
                 });
+                ctx.restore();
               }
-              ctx.restore();
             }
           }
 
@@ -177,32 +192,28 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
 
             onFrameRef.current(frameData);
           }
-          isProcessingRef.current = false;
         });
 
-        // Accurate camera loop synchronized to hardware frame rate
-        let lastVideoTime = -1;
+        // Non-blocking loop: fire-and-forget send to MediaPipe
+        // Does NOT use await — the rAF loop keeps running smoothly
+        // while MediaPipe processes in the background
         const MEDIAPIPE_STRIDE = 2;
         const startLoop = () => {
-          const loop = async () => {
+          const loop = () => {
             if (!isComponentMounted) return;
-            
+
             if (
               videoRef.current &&
               holisticRef.current &&
-              videoRef.current.readyState >= 2
+              videoRef.current.readyState >= 2 &&
+              !isSendingRef.current
             ) {
-              const currentTime = videoRef.current.currentTime;
-              if (currentTime !== lastVideoTime) {
-                lastVideoTime = currentTime;
-                frameIndexRef.current++;
-                if (frameIndexRef.current % MEDIAPIPE_STRIDE === 0) {
-                  try {
-                    await holisticRef.current.send({ image: videoRef.current });
-                  } catch (e) {
-                    console.error(e);
-                  }
-                }
+              frameIndexRef.current++;
+              if (frameIndexRef.current % MEDIAPIPE_STRIDE === 0) {
+                isSendingRef.current = true;
+                holisticRef.current.send({ image: videoRef.current }).catch(() => {
+                  isSendingRef.current = false;
+                });
               }
             }
             requestAnimationFrame(loop);
@@ -213,12 +224,14 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
         navigator.mediaDevices
           .getUserMedia({
             video: {
-              width: { ideal: 640 },
-              height: { ideal: 480 },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
               frameRate: { ideal: 30 },
             },
           })
           .then((stream) => {
+            streamRef.current = stream;
+            setStream(stream);
             if (videoRef.current) {
               videoRef.current.srcObject = stream;
               videoRef.current.onloadedmetadata = () => {
@@ -260,5 +273,5 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
     };
   }, []);
 
-  return { videoRef, canvasRef, status, setStatus, error };
+  return { videoRef: setVideoNode, canvasRef, status, setStatus, error, stream };
 }
