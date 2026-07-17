@@ -105,6 +105,11 @@ MEDICAL_TEMPLATES: dict[frozenset[str], str] = {
     frozenset({"dolor", "respirar", "revisar"}): "Tengo dolor al respirar, necesito que me revisen.",
     frozenset({"ayuda", "respirar", "revisar"}): "Necesito ayuda, no puedo respirar y necesito que me revisen.",
     frozenset({"doctor", "respirar", "revisar"}): "Doctor, no puedo respirar, necesito que me revise.",
+    # Casos demo/video
+    frozenset({"cabeza", "dolor"}): "Tengo dolor de cabeza.",
+    frozenset({"yo", "cabeza", "dolor"}): "Me duele la cabeza.",
+    frozenset({"yo", "cabeza", "dolor", "respirar"}): "Me duele la cabeza y me cuesta respirar.",
+    frozenset({"cabeza", "dolor", "respirar"}): "Tengo dolor de cabeza al respirar.",
 }
 
 
@@ -332,17 +337,25 @@ Reglas:
 1. Armá UNA sola oración natural y gramaticalmente correcta a partir de las palabras dadas.
 2. Respetá el sujeto real de las palabras: si aparece "yo" o no hay sujeto explícito, asumí primera persona ("tengo", "siento"). Si aparece "ella", "él", "vos" u otro sujeto, respetalo y conjugá acorde.
 3. En español argentino evitamos "yo tengo" al inicio: usamos directamente el verbo conjugado en presente indicativo ("tengo", "siento", "duele").
-4. No agregues información, síntomas, ni partes del cuerpo que no estén en las palabras dadas.
+4. REGLA CRÍTICA: ESTÁ ESTRICTAMENTE PROHIBIDO inventar, asumir o agregar síntomas, causas, enfermedades o partes del cuerpo que no estén EXPRESAMENTE mencionadas en las palabras a traducir. Limitate 100% a las palabras dadas.
 5. No agregues saludos, aclaraciones, ni explicaciones. Respondé solo con la oración final.
 6. Si las palabras no forman una idea clara o son insuficientes, respondé exactamente: "NO_CLARO".
 
 Ejemplos:
-Palabras: Yo dolor cabeza mucho -> Tengo mucho dolor de cabeza.
-Palabras: Ella dolor pecho -> Ella tiene dolor en el pecho.
-Palabras: Ayuda doctor rápido -> Necesito ayuda del doctor, rápido.
-Palabras: Idle idle -> NO_CLARO
+Palabras a traducir: "yo dolor cabeza mucho"
+Traducción: Tengo mucho dolor de cabeza.
 
-Palabras a traducir: {words}"""
+Palabras a traducir: "ella dolor pecho"
+Traducción: Ella tiene dolor en el pecho.
+
+Palabras a traducir: "yo dolor brazo"
+Traducción: Me duele el brazo. (NO agregues fiebre, ni cansancio, ni nada extra).
+
+Palabras a traducir: "idle idle"
+Traducción: NO_CLARO
+
+Palabras a traducir: "{words}"
+Traducción:"""
 
         natural_sentence = words  # fallback
         try:
