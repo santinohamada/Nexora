@@ -8,6 +8,7 @@ import base64
 import io
 import wave
 import requests
+from collections import OrderedDict
 from piper.voice import PiperVoice
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,13 +55,99 @@ PIPER_MODEL_PATH = "voices/es_AR-daniela-high.onnx"
 if os.path.exists(PIPER_MODEL_PATH):
     try:
         piper_voice = PiperVoice.load(PIPER_MODEL_PATH)
-        print("[Nexora] Piper TTS Model loaded")
+        # Warm up TTS to avoid cold-start latency on first real request
+        _warmup_buf = io.BytesIO()
+        with wave.open(_warmup_buf, "wb") as _wf:
+            _wf.setnchannels(1)
+            _wf.setsampwidth(2)
+            _wf.setframerate(piper_voice.config.sample_rate)
+            piper_voice.synthesize_wav("ok", _wf)
+        del _warmup_buf
+        print("[Nexora] Piper TTS Model loaded (warmed up)")
     except Exception as e:
         print(f"[Nexora] Error loading Piper TTS: {e}")
         piper_voice = None
 else:
     piper_voice = None
     print("[Nexora] Piper TTS Model not found")
+
+# ---------------------------------------------------------------------------
+# Medical phrase templates — bypass LLM for known word combinations
+# ---------------------------------------------------------------------------
+# Key: frozenset of normalized words (order-independent matching)
+# Value: natural sentence in Argentine Spanish
+MEDICAL_TEMPLATES: dict[frozenset[str], str] = {
+    # Single words
+    frozenset({"dolor"}): "Tengo dolor.",
+    frozenset({"ayuda"}): "Necesito ayuda.",
+    frozenset({"doctor"}): "Necesito un doctor.",
+    frozenset({"respirar"}): "No puedo respirar bien.",
+    frozenset({"revisar"}): "Necesito que me revisen.",
+    # Two-word combos
+    frozenset({"dolor", "ayuda"}): "Tengo dolor, necesito ayuda.",
+    frozenset({"dolor", "doctor"}): "Tengo dolor, necesito un doctor.",
+    frozenset({"dolor", "respirar"}): "Tengo dolor al respirar.",
+    frozenset({"ayuda", "doctor"}): "Necesito ayuda del doctor.",
+    frozenset({"ayuda", "respirar"}): "Necesito ayuda, no puedo respirar.",
+    frozenset({"doctor", "revisar"}): "Necesito que el doctor me revise.",
+    frozenset({"doctor", "respirar"}): "Doctor, no puedo respirar.",
+    frozenset({"ayuda", "revisar"}): "Necesito ayuda, que me revisen.",
+    frozenset({"dolor", "revisar"}): "Tengo dolor, necesito que me revisen.",
+    frozenset({"respirar", "revisar"}): "No puedo respirar bien, necesito que me revisen.",
+    # Three-word combos
+    frozenset({"dolor", "ayuda", "doctor"}): "Tengo dolor, necesito ayuda del doctor.",
+    frozenset({"dolor", "doctor", "respirar"}): "Doctor, tengo dolor al respirar.",
+    frozenset({"ayuda", "doctor", "respirar"}): "Necesito ayuda del doctor, no puedo respirar.",
+    frozenset({"dolor", "ayuda", "respirar"}): "Tengo dolor y no puedo respirar, necesito ayuda.",
+    frozenset({"dolor", "doctor", "revisar"}): "Tengo dolor, necesito que el doctor me revise.",
+    frozenset({"ayuda", "doctor", "revisar"}): "Necesito ayuda, que el doctor me revise.",
+    frozenset({"dolor", "ayuda", "revisar"}): "Tengo dolor, necesito ayuda y que me revisen.",
+    frozenset({"dolor", "respirar", "revisar"}): "Tengo dolor al respirar, necesito que me revisen.",
+    frozenset({"ayuda", "respirar", "revisar"}): "Necesito ayuda, no puedo respirar y necesito que me revisen.",
+    frozenset({"doctor", "respirar", "revisar"}): "Doctor, no puedo respirar, necesito que me revise.",
+}
+
+
+def _normalize_words(words: str) -> str:
+    """Lowercase, deduplicate, remove 'idle', sort — stable cache key."""
+    tokens = words.lower().split()
+    unique = list(dict.fromkeys(t for t in tokens if t != "idle"))
+    return " ".join(sorted(unique))
+
+
+def _match_template(words: str) -> str | None:
+    """Try to match words against known medical templates."""
+    tokens = words.lower().split()
+    meaningful = frozenset(t for t in tokens if t != "idle")
+    if not meaningful:
+        return None
+    return MEDICAL_TEMPLATES.get(meaningful)
+
+
+# ---------------------------------------------------------------------------
+# LRU caches — translation & TTS audio
+# ---------------------------------------------------------------------------
+MAX_TRANSLATION_CACHE = 200
+MAX_AUDIO_CACHE = 50
+
+_translation_cache: OrderedDict[str, str] = OrderedDict()
+_audio_cache: OrderedDict[str, str] = OrderedDict()  # sentence -> base64
+
+
+def _cache_get(cache: OrderedDict, key: str):
+    """Get from LRU cache, moving to end on hit."""
+    if key in cache:
+        cache.move_to_end(key)
+        return cache[key]
+    return None
+
+
+def _cache_put(cache: OrderedDict, key: str, value: str, max_size: int):
+    """Put into LRU cache, evicting oldest if full."""
+    cache[key] = value
+    cache.move_to_end(key)
+    while len(cache) > max_size:
+        cache.popitem(last=False)
 
 
 # ---------------------------------------------------------------------------
@@ -218,11 +305,28 @@ async def websocket_predict(websocket: WebSocket):
 
 @app.post("/process_sentence")
 def process_sentence(payload: SentencePayload):
+    t0 = time.perf_counter()
     words = payload.words.strip()
     if not words:
         raise HTTPException(status_code=400, detail="Empty words")
 
-    prompt = f"""Sos un intérprete que traduce secuencias de palabras sueltas en Lengua de Señas Argentina (LSA) a oraciones en español argentino, para uso médico (consultorio/guardia).
+    cache_key = _normalize_words(words)
+    source = "template"
+
+    # --- Step 1: Try template match (instant) ---
+    natural_sentence = _match_template(words)
+
+    # --- Step 2: Try translation cache (instant) ---
+    if natural_sentence is None:
+        cached = _cache_get(_translation_cache, cache_key)
+        if cached is not None:
+            natural_sentence = cached
+            source = "cache"
+
+    # --- Step 3: Fall back to Ollama (slow) ---
+    if natural_sentence is None:
+        source = "ollama"
+        prompt = f"""Sos un intérprete que traduce secuencias de palabras sueltas en Lengua de Señas Argentina (LSA) a oraciones en español argentino, para uso médico (consultorio/guardia).
 
 Reglas:
 1. Armá UNA sola oración natural y gramaticalmente correcta a partir de las palabras dadas.
@@ -239,40 +343,65 @@ Palabras: Ayuda doctor rápido -> Necesito ayuda del doctor, rápido.
 Palabras: Idle idle -> NO_CLARO
 
 Palabras a traducir: {words}"""
-    
-    natural_sentence = words
-    try:
-        ollama_res = requests.post(
-            "http://localhost:11434/api/generate",
-            json={
-                "model": "qwen2:1.5b", 
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=10
-        )
-        if ollama_res.status_code == 200:
-            natural_sentence = ollama_res.json().get("response", words).strip()
-    except Exception as e:
-        print(f"[Nexora] Ollama error: {e}")
-        
-    audio_base64 = ""
-    if piper_voice:
+
+        natural_sentence = words  # fallback
         try:
-            buf = io.BytesIO()
-            with wave.open(buf, "wb") as wav_file:
-                wav_file.setnchannels(1)
-                wav_file.setsampwidth(2)
-                wav_file.setframerate(piper_voice.config.sample_rate)
-                piper_voice.synthesize_wav(natural_sentence, wav_file)
-            
-            audio_bytes = buf.getvalue()
-            audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+            ollama_res = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": "qwen2:1.5b",
+                    "prompt": prompt,
+                    "stream": True
+                },
+                timeout=8,
+                stream=True,
+            )
+            if ollama_res.status_code == 200:
+                tokens: list[str] = []
+                for line in ollama_res.iter_lines():
+                    if not line:
+                        continue
+                    chunk = json.loads(line)
+                    token = chunk.get("response", "")
+                    if token:
+                        tokens.append(token)
+                    if chunk.get("done"):
+                        break
+                result = "".join(tokens).strip()
+                if result and result != "NO_CLARO":
+                    natural_sentence = result
+                    _cache_put(_translation_cache, cache_key, natural_sentence, MAX_TRANSLATION_CACHE)
         except Exception as e:
-            print(f"[Nexora] Piper error: {e}")
-            
+            print(f"[Nexora] Ollama error: {e}")
+
+    # --- Step 4: TTS with audio cache ---
+    audio_base64 = ""
+    if piper_voice and natural_sentence:
+        cached_audio = _cache_get(_audio_cache, natural_sentence)
+        if cached_audio is not None:
+            audio_base64 = cached_audio
+        else:
+            try:
+                buf = io.BytesIO()
+                with wave.open(buf, "wb") as wav_file:
+                    wav_file.setnchannels(1)
+                    wav_file.setsampwidth(2)
+                    wav_file.setframerate(piper_voice.config.sample_rate)
+                    piper_voice.synthesize_wav(natural_sentence, wav_file)
+
+                audio_bytes = buf.getvalue()
+                audio_base64 = base64.b64encode(audio_bytes).decode("utf-8")
+                _cache_put(_audio_cache, natural_sentence, audio_base64, MAX_AUDIO_CACHE)
+            except Exception as e:
+                print(f"[Nexora] Piper error: {e}")
+
+    elapsed_ms = (time.perf_counter() - t0) * 1000
+    print(f"[Nexora] process_sentence: {elapsed_ms:.0f}ms (source={source}) '{words}' -> '{natural_sentence}'")
+
     return {
         "original": words,
         "natural_sentence": natural_sentence,
-        "audio_base64": audio_base64
+        "audio_base64": audio_base64,
+        "source": source,
+        "latency_ms": round(elapsed_ms),
     }

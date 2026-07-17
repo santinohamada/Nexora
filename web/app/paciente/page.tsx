@@ -65,7 +65,7 @@ export default function PacientePage() {
         idleTimerRef.current = setTimeout(() => {
           processSentence();
           idleTimerRef.current = null;
-        }, 2000);
+        }, 1200);
       }
     }
   }, [addWord, processSentence, transcript, isProcessingSentence]);
@@ -90,8 +90,8 @@ export default function PacientePage() {
 
       framesSinceLastPredictRef.current++;
       if (
-        recordedFrames.current.length === RECORDING_MAX_FRAMES &&
-        framesSinceLastPredictRef.current >= 15
+        recordedFrames.current.length >= 20 &&
+        framesSinceLastPredictRef.current >= 8
       ) {
         sendFrames([...recordedFrames.current]);
         framesSinceLastPredictRef.current = 0;
@@ -191,8 +191,8 @@ export default function PacientePage() {
             </div>
 
             {/* Right panel - Chat History */}
-            <div className="flex-1 flex flex-col gap-6">
-              <div className="flex-1 bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 flex flex-col">
+            <div className="flex-1 flex flex-col gap-6 min-h-0">
+              <div className="flex-1 bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 flex flex-col min-h-0 overflow-hidden">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <MonitorPlay className="text-indigo-600" size={24} />
