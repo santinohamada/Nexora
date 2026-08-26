@@ -94,6 +94,13 @@ export default function PacientePage() {
       }
 
       if (data.sign !== "idle") {
+        const idleDominant = (data.top3 ?? []).some(
+          (item) => item.sign === "idle" && item.confidence > 50
+        );
+        if (idleDominant) {
+          handleIdlePrediction();
+          return;
+        }
         if (data.confidence >= CONFIDENCE_THRESHOLD) {
           addWord(data.sign);
         }
