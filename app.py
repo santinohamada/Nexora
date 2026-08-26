@@ -380,19 +380,67 @@ async def websocket_predict(websocket: WebSocket):
     if model is None:
         await websocket.close(code=1011, reason="Modelo no entrenado")
         return
-        
+
+    proto_version = "1"
+    try:
+        query = getattr(websocket, "scope", {}).get("query", {})
+        if isinstance(query, dict):
+            proto_version = str(query.get("v", "1") or "1").lower()
+    except Exception:
+        proto_version = "1"
+
     try:
         while True:
-            # Receive frames
-            data_json = await websocket.receive_json()
-            frames = data_json.get("frames", [])
-            if len(frames) < 5:
-                await websocket.send_json({"error": "Too few frames (min 5)"})
+            data_np = None
+            if proto_version == "2":
+                payload = await websocket.receive_bytes()
+                if len(payload) < 4:
+                    await websocket.send_json({"error": "binary header too short"})
+                    continue
+                if payload[0] != 0x02:
+                    await websocket.send_json({"error": "unsupported binary version"})
+                    continue
+                flags = payload[1]
+                left_omit = bool(flags & 0x01)
+                right_omit = bool(flags & 0x02)
+                pose_floats = 33 * 3
+                hand_floats = 21 * 3
+                floats_per_frame = pose_floats + (0 if left_omit else hand_floats) + (0 if right_omit else hand_floats)
+                body_bytes = len(payload) - 4
+                if floats_per_frame <= 0 or body_bytes % (floats_per_frame * 4) != 0:
+                    await websocket.send_json({"error": "binary payload misaligned"})
+                    continue
+                T = body_bytes // (floats_per_frame * 4)
+                if T < 5 or T > 64:
+                    await websocket.send_json({"error": "frame count out of range"})
+                    continue
+                arr = np.frombuffer(payload, dtype=np.float32, offset=4)
+                arr = arr.reshape(T, floats_per_frame)
+                pose = arr[:, :pose_floats].reshape(T, 33, 3)
+                offset = pose_floats
+                if left_omit:
+                    left = np.zeros((T, 21, 3), dtype=np.float32)
+                else:
+                    left = arr[:, offset:offset + hand_floats].reshape(T, 21, 3)
+                    offset += hand_floats
+                if right_omit:
+                    right = np.zeros((T, 21, 3), dtype=np.float32)
+                else:
+                    right = arr[:, offset:offset + hand_floats].reshape(T, 21, 3)
+                frame_xyz = np.concatenate([pose, left, right], axis=1)
+                vis = np.zeros((T, 75, 1), dtype=np.float32)
+                data_np = np.concatenate([frame_xyz, vis], axis=2)
+            else:
+                data_json = await websocket.receive_json()
+                frames = data_json.get("frames", [])
+                if len(frames) < 5:
+                    await websocket.send_json({"error": "Too few frames (min 5)"})
+                    continue
+                data_np = np.array(frames, dtype=np.float32)
+
+            if data_np is None:
                 continue
-                
-            data_np = np.array(frames, dtype=np.float32)
-            
-            # LSTM Preprocessing
+
             T = data_np.shape[0]
             if T > MAX_FRAMES:
                 data_np = data_np[:MAX_FRAMES]
@@ -400,7 +448,7 @@ async def websocket_predict(websocket: WebSocket):
                 pad_len = MAX_FRAMES - T
                 pad_arr = np.zeros((pad_len, 75, 4), dtype=data_np.dtype)
                 data_np = np.concatenate((data_np, pad_arr), axis=0)
-                
+
             data_np = data_np.reshape(MAX_FRAMES, -1)
             input_tensor = torch.tensor(data_np, dtype=torch.float32).unsqueeze(0).to(device)
 
