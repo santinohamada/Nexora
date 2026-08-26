@@ -7,6 +7,7 @@ import { TopPredictions } from "../../components/camera/TopPredictions";
 import { ChatBubble } from "../../components/chat/ChatBubble";
 import { CaptureMode } from "../../components/capture/CaptureMode";
 import { useMediaPipe } from "../../hooks/useMediaPipe";
+import { useMediaPipeTasks } from "../../hooks/useMediaPipeTasks";
 import { useSignWebSocket } from "../../hooks/useSignWebSocket";
 import { useSentenceBuilder } from "../../hooks/useSentenceBuilder";
 import { useChatChannel } from "../../hooks/useChatChannel";
@@ -35,11 +36,26 @@ const PREDICT_STRIDE_FRAMES = readIntEnv(
   4
 );
 
+function detectTasksHarness(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("mp") === "tasks";
+  } catch (e) {
+    return false;
+  }
+}
+
 export default function PacientePage() {
   console.log("[Render] PacientePage");
   const [mode, setMode] = useState<"predict" | "capture">("predict");
   const modeRef = useRef(mode);
-  
+  const [useTasksHarness, setUseTasksHarness] = useState(false);
+
+  useEffect(() => {
+    setUseTasksHarness(detectTasksHarness());
+  }, []);
+
   const { chatHistory, sendMessage, clearHistory } = useChatChannel();
 
   const recordedFrames = useRef<Frame[]>([]);
@@ -120,10 +136,15 @@ export default function PacientePage() {
     [sendFrames, onFrameTick]
   );
 
-  const { videoRef, canvasRef, status, setStatus, stream } = useMediaPipe({
-    onFrame: handleFrame,
-    drawLandmarksOnCanvas: true,
-  });
+  const { videoRef, canvasRef, status, setStatus, stream } = useTasksHarness
+    ? useMediaPipeTasks({
+        onFrame: handleFrame,
+        drawLandmarksOnCanvas: true,
+      })
+    : useMediaPipe({
+        onFrame: handleFrame,
+        drawLandmarksOnCanvas: true,
+      });
 
   return (
     <>
