@@ -12,8 +12,28 @@ import { useSentenceBuilder } from "../../hooks/useSentenceBuilder";
 import { useChatChannel } from "../../hooks/useChatChannel";
 import { ChatMessage, Frame, PredictionResult } from "../../types";
 
-const RECORDING_MAX_FRAMES = 45;
 const CONFIDENCE_THRESHOLD = 70;
+
+function readIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === null || raw === "") {
+    return fallback;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return fallback;
+  }
+  return parsed;
+}
+
+const RECORDING_MAX_FRAMES = readIntEnv(
+  "NEXT_PUBLIC_RECORDING_MAX_FRAMES",
+  24
+);
+const PREDICT_STRIDE_FRAMES = readIntEnv(
+  "NEXT_PUBLIC_SEND_STRIDE",
+  4
+);
 
 export default function PacientePage() {
   console.log("[Render] PacientePage");
@@ -89,7 +109,7 @@ export default function PacientePage() {
       framesSinceLastPredictRef.current++;
       if (
         recordedFrames.current.length >= 20 &&
-        framesSinceLastPredictRef.current >= 8
+        framesSinceLastPredictRef.current >= PREDICT_STRIDE_FRAMES
       ) {
         sendFrames([...recordedFrames.current]);
         framesSinceLastPredictRef.current = 0;
