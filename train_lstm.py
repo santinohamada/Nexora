@@ -10,12 +10,43 @@ from src.model.lstm import SignLanguageLSTM
 # Configurations
 DATASET_PATH = "dataset/custom"
 MODELS_DIR = "models"
-MODEL_PATH = os.path.join(MODELS_DIR, "lstm.pth")
+LSTM_DEFAULT_FRAMES = 45
+LSTM_DEFAULT_VERSION = "v1"
 CLASSES_PATH = os.path.join(MODELS_DIR, "custom_classes.json")
-MAX_FRAMES = 45
+MAX_FRAMES = int(os.environ.get("LSTM_MAX_FRAMES", str(LSTM_DEFAULT_FRAMES)))
+MODEL_VERSION_TAG = (
+    "v2_24frames" if MAX_FRAMES == 24 else f"v1_{MAX_FRAMES}frames"
+)
+MODEL_PATH = os.path.join(MODELS_DIR, f"lstm_{MODEL_VERSION_TAG}.pth")
+LEGACY_MODEL_PATH = os.path.join(MODELS_DIR, "lstm.pth")
 BATCH_SIZE = 8
 EPOCHS = 50
 LEARNING_RATE = 0.001
+
+
+def _center_crop(arr: np.ndarray, max_frames: int) -> np.ndarray:
+    T = arr.shape[0]
+    if T == max_frames:
+        return arr
+    if T > max_frames:
+        start = max(0, (T - max_frames) // 2)
+        return arr[start:start + max_frames]
+    pad_len = max_frames - T
+    pad_arr = np.zeros((pad_len, 75, 4), dtype=arr.dtype)
+    return np.concatenate((arr, pad_arr), axis=0)
+
+
+def _random_crop(arr: np.ndarray, max_frames: int) -> np.ndarray:
+    T = arr.shape[0]
+    if T == max_frames:
+        return arr
+    if T > max_frames:
+        start_idx = np.random.randint(0, T - max_frames + 1)
+        return arr[start_idx:start_idx + max_frames]
+    pad_len = max_frames - T
+    pad_arr = np.zeros((pad_len, 75, 4), dtype=arr.dtype)
+    return np.concatenate((arr, pad_arr), axis=0)
+
 
 class CustomSignDataset(Dataset):
     def __init__(self, file_paths, labels, class_to_idx, augment=False):
@@ -31,34 +62,19 @@ class CustomSignDataset(Dataset):
         file_path = self.file_paths[idx]
         label_str = self.labels[idx]
         label_idx = self.class_to_idx[label_str]
-        
-        # Load numpy array: expected shape (T, 75, 4)
+
         data = np.load(file_path)
-        
-        T = data.shape[0]
+
         if self.augment:
-            if T > MAX_FRAMES:
-                start_idx = np.random.randint(0, T - MAX_FRAMES + 1)
-                data = data[start_idx:start_idx + MAX_FRAMES]
-            elif T < MAX_FRAMES:
-                pad_len = MAX_FRAMES - T
-                pad_arr = np.zeros((pad_len, 75, 4), dtype=data.dtype)
-                data = np.concatenate((data, pad_arr), axis=0)
-                
+            data = _random_crop(data, MAX_FRAMES)
             noise = np.random.normal(0, 0.01, size=(MAX_FRAMES, 75, 2))
             scale = np.random.uniform(0.95, 1.05)
             data[:, :, :2] = (data[:, :, :2] * scale) + noise
         else:
-            if T > MAX_FRAMES:
-                data = data[:MAX_FRAMES]
-            elif T < MAX_FRAMES:
-                pad_len = MAX_FRAMES - T
-                pad_arr = np.zeros((pad_len, 75, 4), dtype=data.dtype)
-                data = np.concatenate((data, pad_arr), axis=0)
-            
-        # Flatten the features per frame: (MAX_FRAMES, 300)
+            data = _center_crop(data, MAX_FRAMES)
+
         data = data.reshape(MAX_FRAMES, -1)
-        
+
         return torch.tensor(data, dtype=torch.float32), torch.tensor(label_idx, dtype=torch.long)
 
 

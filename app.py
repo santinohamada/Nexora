@@ -119,23 +119,36 @@ atexit.register(_timing_close_sink)
 # ---------------------------------------------------------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-LSTM_MODEL_PATH = "models/lstm.pth"
+LSTM_MAX_FRAMES = int(os.environ.get("LSTM_MAX_FRAMES", "45"))
+LSTM_VERSIONED_MODEL_PATH = (
+    "models/lstm_v2_24frames.pth"
+    if LSTM_MAX_FRAMES == 24
+    else f"models/lstm_v1_{LSTM_MAX_FRAMES}frames.pth"
+)
+LEGACY_MODEL_PATH = "models/lstm.pth"
 LSTM_CLASSES_PATH = "models/custom_classes.json"
 
-if not os.path.exists(LSTM_MODEL_PATH) or not os.path.exists(LSTM_CLASSES_PATH):
+if os.path.exists(LSTM_VERSIONED_MODEL_PATH):
+    LSTM_MODEL_PATH = LSTM_VERSIONED_MODEL_PATH
+elif os.path.exists(LEGACY_MODEL_PATH):
+    LSTM_MODEL_PATH = LEGACY_MODEL_PATH
+else:
+    LSTM_MODEL_PATH = ""
+
+if not LSTM_MODEL_PATH or not os.path.exists(LSTM_CLASSES_PATH):
     print("[Nexora] ATENCIÓN: No se encontraron los archivos del modelo LSTM. Por favor graba datos y entrena el modelo.")
-    # Initialize empty classes and dummy model to avoid crash, but predict will fail if not trained
     CLASSES = []
     model = None
+    MAX_FRAMES = LSTM_MAX_FRAMES
 else:
     with open(LSTM_CLASSES_PATH, "r", encoding="utf-8") as f:
         CLASSES = json.load(f)
-        
+
     model = SignLanguageLSTM(num_classes=len(CLASSES)).to(device)
     model.load_state_dict(torch.load(LSTM_MODEL_PATH, map_location=device, weights_only=False))
     model.eval()
-    MAX_FRAMES = 45
-    print(f"[Nexora] Custom LSTM Model loaded on {device} — {len(CLASSES)} classes")
+    MAX_FRAMES = LSTM_MAX_FRAMES
+    print(f"[Nexora] Custom LSTM Model loaded on {device} — {len(CLASSES)} classes — {MAX_FRAMES} frames ({LSTM_MODEL_PATH})")
 
 PIPER_MODEL_PATH = "voices/es_AR-daniela-high.onnx"
 if os.path.exists(PIPER_MODEL_PATH):
