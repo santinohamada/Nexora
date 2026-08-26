@@ -3,7 +3,7 @@ import { ChatMessage, Frame } from "../types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-const DEFAULT_DISPLAY_WINDOW_MS = 3000;
+const DEFAULT_DISPLAY_WINDOW_MS = 1000;
 const DISPLAY_WINDOW_MS = (() => {
   const raw = process.env.NEXT_PUBLIC_LATENCY_V2_DISPLAY_WINDOW_MS;
   if (raw === undefined || raw === null || raw === "") {
