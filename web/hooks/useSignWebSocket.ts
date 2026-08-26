@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { PredictionResult, Frame } from "../types";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+const LATENCY_TIMING_ENABLED =
+  process.env.NEXT_PUBLIC_LATENCY_V2_TIMING === "on";
 
 export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionResult) => void } = {}) {
   const [wsStatus, setWsStatus] = useState<
@@ -9,6 +11,7 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
   >("connecting");
   const wsRef = useRef<WebSocket | null>(null);
   const isPredictingRef = useRef(false);
+  const sendTimestampRef = useRef<number | null>(null);
   const onMessageRef = useRef(onMessage);
 
   useEffect(() => {
@@ -29,6 +32,13 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
         try {
           const data = JSON.parse(event.data);
           isPredictingRef.current = false;
+          if (LATENCY_TIMING_ENABLED && sendTimestampRef.current !== null) {
+            const wsRoundtripMs = performance.now() - sendTimestampRef.current;
+            sendTimestampRef.current = null;
+            console.debug(
+              `[Nexora timing] stage=ws_roundtrip_ms ms=${wsRoundtripMs.toFixed(2)}`,
+            );
+          }
           if (data.sign && data.confidence !== undefined) {
             onMessageRef.current?.(data);
           }
@@ -64,6 +74,9 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
     )
       return;
     isPredictingRef.current = true;
+    if (LATENCY_TIMING_ENABLED) {
+      sendTimestampRef.current = performance.now();
+    }
     wsRef.current.send(JSON.stringify({ frames }));
   }, []);
 

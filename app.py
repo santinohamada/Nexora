@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import atexit
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -12,6 +13,7 @@ from collections import OrderedDict
 from piper.voice import PiperVoice
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from src.model.lstm import SignLanguageLSTM
@@ -27,6 +29,90 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------------------------------------------------------------------
+# Per-stage telemetry (LATENCY_V2_TIMING: off | stdout | jsonl)
+# ---------------------------------------------------------------------------
+TIMING_MODE = os.environ.get("LATENCY_V2_TIMING", "off").lower()
+TIMING_ENDPOINT_ENABLED = (
+    os.environ.get("LATENCY_V2_TIMING_ENDPOINT", "false").lower() == "true"
+)
+TIMING_FILE_PATH = "timings.jsonl"
+TIMING_STREAM_MAX_LINES = 1000
+TIMING_FILE_HANDLE = None
+TIMING_CYCLE_COUNTER = 0
+TIMING_FIELDS = (
+    "lstm_ms",
+    "translation_ms",
+    "tts_ms",
+    "total_ms",
+)
+
+
+def _timing_open_sink():
+    global TIMING_FILE_HANDLE
+    if TIMING_FILE_HANDLE is not None:
+        return True
+    try:
+        TIMING_FILE_HANDLE = open(TIMING_FILE_PATH, "a", encoding="utf-8", buffering=1)
+        return True
+    except Exception as e:
+        print(f"[Nexora timing] failed to open {TIMING_FILE_PATH}: {e}")
+        return False
+
+
+def _timing_close_sink():
+    global TIMING_FILE_HANDLE
+    if TIMING_FILE_HANDLE is not None:
+        try:
+            TIMING_FILE_HANDLE.close()
+        finally:
+            TIMING_FILE_HANDLE = None
+
+
+def _timing_next_cycle_id():
+    global TIMING_CYCLE_COUNTER
+    TIMING_CYCLE_COUNTER += 1
+    return TIMING_CYCLE_COUNTER
+
+
+def _timing_emit_cycle(record: dict):
+    if TIMING_MODE == "off":
+        return
+    if TIMING_MODE == "stdout":
+        parts = []
+        for k in TIMING_FIELDS:
+            if k in record:
+                parts.append(f"{k}={record[k]}")
+        if "cycle_id" in record:
+            parts.insert(0, f"cycle={record['cycle_id']}")
+        if "top3_count" in record:
+            parts.append(f"top3={record['top3_count']}")
+        if "source" in record:
+            parts.append(f"source={record['source']}")
+        print("[Nexora timing] " + " ".join(parts))
+    elif TIMING_MODE == "jsonl":
+        if _timing_open_sink():
+            try:
+                TIMING_FILE_HANDLE.write(json.dumps(record) + "\n")
+            except Exception as e:
+                print(f"[Nexora timing] write failed: {e}")
+
+
+def _stream_timings_tail():
+    try:
+        with open(TIMING_FILE_PATH, "rb") as f:
+            tail = f.readlines()[-TIMING_STREAM_MAX_LINES:]
+        for line in tail:
+            yield line
+    except FileNotFoundError:
+        return
+    except Exception as e:
+        print(f"[Nexora timing] stream failed: {e}")
+        return
+
+
+atexit.register(_timing_close_sink)
 
 # ---------------------------------------------------------------------------
 # Load model once at startup
@@ -234,7 +320,10 @@ def predict(payload: SkeletonPayload):
         
     data = data.reshape(MAX_FRAMES, -1)
     input_tensor = torch.tensor(data, dtype=torch.float32).unsqueeze(0).to(device)
-    
+
+    if TIMING_MODE != "off":
+        lstm_t0 = time.perf_counter()
+
     with torch.no_grad():
         outputs = model(input_tensor)
         probs = F.softmax(outputs, dim=1)
@@ -246,6 +335,17 @@ def predict(payload: SkeletonPayload):
         {"sign": CLASSES[i.item()], "confidence": round(p.item() * 100, 2)}
         for p, i in zip(top3_probs[0], top3_idx[0])
     ]
+
+    if TIMING_MODE != "off":
+        lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
+        cycle_id = _timing_next_cycle_id()
+        _timing_emit_cycle({
+            "cycle_id": cycle_id,
+            "lstm_ms": round(lstm_ms, 2),
+            "total_ms": round(lstm_ms, 2),
+            "top3_count": len(top3),
+            "source": "predict",
+        })
 
     return {
         "sign": CLASSES[predicted_idx.item()],
@@ -282,7 +382,10 @@ async def websocket_predict(websocket: WebSocket):
                 
             data_np = data_np.reshape(MAX_FRAMES, -1)
             input_tensor = torch.tensor(data_np, dtype=torch.float32).unsqueeze(0).to(device)
-            
+
+            if TIMING_MODE != "off":
+                lstm_t0 = time.perf_counter()
+
             with torch.no_grad():
                 outputs = model(input_tensor)
                 probs = F.softmax(outputs, dim=1)
@@ -301,6 +404,17 @@ async def websocket_predict(websocket: WebSocket):
             }
             await websocket.send_json(result)
 
+            if TIMING_MODE != "off":
+                lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
+                cycle_id = _timing_next_cycle_id()
+                _timing_emit_cycle({
+                    "cycle_id": cycle_id,
+                    "lstm_ms": round(lstm_ms, 2),
+                    "total_ms": round(lstm_ms, 2),
+                    "top3_count": len(top3),
+                    "source": "ws_predict",
+                })
+
     except WebSocketDisconnect:
         print("[Nexora] Client disconnected from WebSocket")
     except Exception as e:
@@ -311,6 +425,7 @@ async def websocket_predict(websocket: WebSocket):
 @app.post("/process_sentence")
 def process_sentence(payload: SentencePayload):
     t0 = time.perf_counter()
+    translation_t0 = time.perf_counter()
     words = payload.words.strip()
     if not words:
         raise HTTPException(status_code=400, detail="Empty words")
@@ -387,7 +502,10 @@ Traducción:"""
         except Exception as e:
             print(f"[Nexora] Ollama error: {e}")
 
+    translation_ms = (time.perf_counter() - translation_t0) * 1000.0
+
     # --- Step 4: TTS with audio cache ---
+    tts_t0 = time.perf_counter()
     audio_base64 = ""
     if piper_voice and natural_sentence:
         cached_audio = _cache_get(_audio_cache, natural_sentence)
@@ -407,9 +525,20 @@ Traducción:"""
                 _cache_put(_audio_cache, natural_sentence, audio_base64, MAX_AUDIO_CACHE)
             except Exception as e:
                 print(f"[Nexora] Piper error: {e}")
+    tts_ms = (time.perf_counter() - tts_t0) * 1000.0
 
     elapsed_ms = (time.perf_counter() - t0) * 1000
     print(f"[Nexora] process_sentence: {elapsed_ms:.0f}ms (source={source}) '{words}' -> '{natural_sentence}'")
+
+    if TIMING_MODE != "off":
+        cycle_id = _timing_next_cycle_id()
+        _timing_emit_cycle({
+            "cycle_id": cycle_id,
+            "translation_ms": round(translation_ms, 2),
+            "tts_ms": round(tts_ms, 2),
+            "total_ms": round(elapsed_ms, 2),
+            "source": source,
+        })
 
     return {
         "original": words,
@@ -418,3 +547,13 @@ Traducción:"""
         "source": source,
         "latency_ms": round(elapsed_ms),
     }
+
+
+@app.get("/debug/timings.jsonl")
+def debug_timings():
+    if TIMING_MODE != "jsonl" or not TIMING_ENDPOINT_ENABLED:
+        raise HTTPException(status_code=404, detail="timing disabled")
+    return StreamingResponse(
+        _stream_timings_tail(),
+        media_type="application/x-ndjson",
+    )

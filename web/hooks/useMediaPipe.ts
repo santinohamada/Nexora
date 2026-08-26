@@ -30,6 +30,12 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
   const [stream, setStream] = useState<MediaStream | null>(null);
   const isSendingRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
+  const sendTimestampRef = useRef<number | null>(null);
+  const inferenceMsRef = useRef<number | null>(null);
+  const latencyTimingEnabled =
+    (typeof process !== "undefined" &&
+      process.env.NEXT_PUBLIC_LATENCY_V2_TIMING === "on") ||
+    false;
 
   // Callback ref: whenever React mounts a new <video> element (e.g. mode switch),
   // automatically re-attach the camera stream so it never goes black.
@@ -82,6 +88,15 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
         holistic.onResults((results: any) => {
           if (!isComponentMounted) return;
           isSendingRef.current = false;
+
+          if (latencyTimingEnabled && sendTimestampRef.current !== null) {
+            const inferenceMs = performance.now() - sendTimestampRef.current;
+            sendTimestampRef.current = null;
+            inferenceMsRef.current = inferenceMs;
+            console.debug(
+              `[Nexora timing] stage=mediapipe_ms ms=${inferenceMs.toFixed(2)}`,
+            );
+          }
 
           const canvasElement = canvasRef.current;
 
@@ -211,6 +226,9 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
               frameIndexRef.current++;
               if (frameIndexRef.current % MEDIAPIPE_STRIDE === 0) {
                 isSendingRef.current = true;
+                if (latencyTimingEnabled) {
+                  sendTimestampRef.current = performance.now();
+                }
                 holisticRef.current.send({ image: videoRef.current }).catch(() => {
                   isSendingRef.current = false;
                 });
