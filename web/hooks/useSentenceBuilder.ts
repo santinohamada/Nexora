@@ -29,7 +29,7 @@ const IDLE_MS = (() => {
   return parsed;
 })();
 
-const DEFAULT_QUIET_THRESHOLD = 0.005;
+const DEFAULT_QUIET_THRESHOLD = 0.05;
 const QUIETNESS_THRESHOLD = (() => {
   const raw = process.env.NEXT_PUBLIC_LATENCY_V2_QUIETNESS_THRESHOLD;
   if (raw === undefined || raw === null || raw === "") {
