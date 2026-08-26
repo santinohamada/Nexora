@@ -76,7 +76,6 @@ export function useSentenceBuilder(
   const lastWordRef = useRef<string>("");
   const isProcessingRef = useRef<boolean>(false);
   const displayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quietFramesRef = useRef<number[]>([]);
   const lastFrameRef = useRef<Frame | null>(null);
   const lastNonIdlePredictionTsRef = useRef<number>(performance.now());
@@ -92,19 +91,11 @@ export function useSentenceBuilder(
     }
   }, []);
 
-  const cancelIdleTimer = useCallback(() => {
-    if (idleTimerRef.current !== null) {
-      clearTimeout(idleTimerRef.current as ReturnType<typeof setTimeout>);
-      idleTimerRef.current = null;
-    }
-  }, []);
-
   useEffect(() => {
     return () => {
       cancelDisplayTimer();
-      cancelIdleTimer();
     };
-  }, [cancelDisplayTimer, cancelIdleTimer]);
+  }, [cancelDisplayTimer]);
 
   const processSentence = useCallback(async () => {
     const sentence = transcriptRef.current;
@@ -169,10 +160,9 @@ export function useSentenceBuilder(
       performance.now() - lastNonIdlePredictionTsRef.current;
 
     if (mean < QUIETNESS_THRESHOLD && idleElapsed >= IDLE_MS) {
-      cancelIdleTimer();
       processSentence();
     }
-  }, [processSentence, cancelIdleTimer]);
+  }, [processSentence]);
 
   const onFrameTick = useCallback(
     (frame: Frame) => {
@@ -189,23 +179,11 @@ export function useSentenceBuilder(
     [tryCloseSentence]
   );
 
-  const scheduleIdleClose = useCallback(() => {
-    cancelIdleTimer();
-    idleTimerRef.current = setTimeout(() => {
-      idleTimerRef.current = null;
-      tryCloseSentence();
-      if (!isProcessingRef.current && transcriptRef.current.trim().length > 0) {
-        scheduleIdleClose();
-      }
-    }, IDLE_MS);
-  }, [tryCloseSentence, cancelIdleTimer]);
-
   const addWord = useCallback(
     (word: string) => {
       lastNonIdlePredictionTsRef.current = performance.now();
       if (word) {
         cancelDisplayTimer();
-        cancelIdleTimer();
       }
       if (word && word !== lastWordRef.current) {
         lastWordRef.current = word;
@@ -213,12 +191,8 @@ export function useSentenceBuilder(
         setTranscript(transcriptRef.current);
       }
     },
-    [cancelDisplayTimer, cancelIdleTimer]
+    [cancelDisplayTimer]
   );
-
-  const handleIdlePrediction = useCallback(() => {
-    scheduleIdleClose();
-  }, [scheduleIdleClose]);
 
   return {
     transcript,
@@ -226,6 +200,5 @@ export function useSentenceBuilder(
     addWord,
     processSentence,
     onFrameTick,
-    handleIdlePrediction,
   };
 }

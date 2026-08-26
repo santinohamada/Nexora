@@ -77,7 +77,6 @@ export default function PacientePage() {
     addWord,
     processSentence,
     onFrameTick,
-    handleIdlePrediction,
   } = useSentenceBuilder(handleNewPatientMessage);
 
   const handleNewPrediction = useCallback(
@@ -97,18 +96,12 @@ export default function PacientePage() {
         const idleDominant = (data.top3 ?? []).some(
           (item) => item.sign === "idle" && item.confidence > 50
         );
-        if (idleDominant) {
-          handleIdlePrediction();
-          return;
-        }
-        if (data.confidence >= CONFIDENCE_THRESHOLD) {
+        if (!idleDominant && data.confidence >= CONFIDENCE_THRESHOLD) {
           addWord(data.sign);
         }
-      } else {
-        handleIdlePrediction();
       }
     },
-    [addWord, handleIdlePrediction]
+    [addWord]
   );
 
   // --- WebSocket for sign predictions ---
