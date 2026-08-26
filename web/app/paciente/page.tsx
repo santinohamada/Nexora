@@ -35,40 +35,38 @@ export default function PacientePage() {
     sendMessage(msg);
   }, [sendMessage]);
 
-  const { transcript, isProcessingSentence, addWord, processSentence } =
-    useSentenceBuilder(handleNewPatientMessage);
+  const {
+    transcript,
+    isProcessingSentence,
+    addWord,
+    processSentence,
+    onFrameTick,
+    handleIdlePrediction,
+  } = useSentenceBuilder(handleNewPatientMessage);
 
-  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const handleNewPrediction = useCallback(
+    (data: PredictionResult) => {
+      if (data.top3) {
+        data.top3.forEach((item, index) => {
+          const signEl = document.getElementById(`pred-sign-${index}`);
+          if (signEl) signEl.innerText = item.sign;
+          const confEl = document.getElementById(`pred-conf-${index}`);
+          if (confEl) confEl.innerText = `${item.confidence.toFixed(1)}%`;
+          const barEl = document.getElementById(`pred-bar-${index}`);
+          if (barEl) barEl.style.width = `${item.confidence}%`;
+        });
+      }
 
-  const handleNewPrediction = useCallback((data: PredictionResult) => {
-    if (data.top3) {
-      data.top3.forEach((item, index) => {
-        const signEl = document.getElementById(`pred-sign-${index}`);
-        if (signEl) signEl.innerText = item.sign;
-        const confEl = document.getElementById(`pred-conf-${index}`);
-        if (confEl) confEl.innerText = `${item.confidence.toFixed(1)}%`;
-        const barEl = document.getElementById(`pred-bar-${index}`);
-        if (barEl) barEl.style.width = `${item.confidence}%`;
-      });
-    }
-
-    if (data.sign !== "idle") {
-      if (idleTimerRef.current) {
-        clearTimeout(idleTimerRef.current);
-        idleTimerRef.current = null;
+      if (data.sign !== "idle") {
+        if (data.confidence >= CONFIDENCE_THRESHOLD) {
+          addWord(data.sign);
+        }
+      } else {
+        handleIdlePrediction();
       }
-      if (data.confidence >= CONFIDENCE_THRESHOLD) {
-        addWord(data.sign);
-      }
-    } else {
-      if (transcript && !isProcessingSentence && !idleTimerRef.current) {
-        idleTimerRef.current = setTimeout(() => {
-          processSentence();
-          idleTimerRef.current = null;
-        }, 1200);
-      }
-    }
-  }, [addWord, processSentence, transcript, isProcessingSentence]);
+    },
+    [addWord, handleIdlePrediction]
+  );
 
   // --- WebSocket for sign predictions ---
   const { wsStatus, sendFrames } = useSignWebSocket({ onMessage: handleNewPrediction });
@@ -96,8 +94,10 @@ export default function PacientePage() {
         sendFrames([...recordedFrames.current]);
         framesSinceLastPredictRef.current = 0;
       }
+
+      onFrameTick(frameData);
     },
-    [sendFrames]
+    [sendFrames, onFrameTick]
   );
 
   const { videoRef, canvasRef, status, setStatus, stream } = useMediaPipe({
