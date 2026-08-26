@@ -2,6 +2,18 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatMessage } from "../types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const DEFAULT_DISPLAY_WINDOW_MS = 3000;
+const DISPLAY_WINDOW_MS = (() => {
+  const raw = process.env.NEXT_PUBLIC_LATENCY_V2_DISPLAY_WINDOW_MS;
+  if (raw === undefined || raw === null || raw === "") {
+    return DEFAULT_DISPLAY_WINDOW_MS;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_DISPLAY_WINDOW_MS;
+  }
+  return parsed;
+})();
 
 export function useSentenceBuilder(
   onNewPatientMessage: (msg: ChatMessage) => void
@@ -10,25 +22,44 @@ export function useSentenceBuilder(
   const [isProcessingSentence, setIsProcessingSentence] = useState(false);
   const transcriptRef = useRef<string>("");
   const lastWordRef = useRef<string>("");
+  const displayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const addWord = useCallback((word: string) => {
-    if (word && word !== lastWordRef.current) {
-      lastWordRef.current = word;
-      transcriptRef.current += transcriptRef.current ? " " + word : word;
-      setTranscript(transcriptRef.current);
+  const cancelDisplayTimer = useCallback(() => {
+    if (displayTimerRef.current !== null) {
+      clearTimeout(displayTimerRef.current as ReturnType<typeof setTimeout>);
+      displayTimerRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      cancelDisplayTimer();
+    };
+  }, [cancelDisplayTimer]);
+
+  const addWord = useCallback(
+    (word: string) => {
+      if (word) {
+        cancelDisplayTimer();
+      }
+      if (word && word !== lastWordRef.current) {
+        lastWordRef.current = word;
+        transcriptRef.current += transcriptRef.current ? " " + word : word;
+        setTranscript(transcriptRef.current);
+      }
+    },
+    [cancelDisplayTimer]
+  );
 
   const processSentence = useCallback(async () => {
     const sentence = transcriptRef.current;
     if (sentence.trim().length === 0) return;
 
-    // Clear state immediately to prevent double submissions
     setTranscript("");
     transcriptRef.current = "";
     lastWordRef.current = "";
     setIsProcessingSentence(true);
-    
+
     try {
       const res = await fetch(`${API_URL}/process_sentence`, {
         method: "POST",
@@ -51,8 +82,16 @@ export function useSentenceBuilder(
         }
 
         if (data.audio_base64) {
-          const audio = new Audio("data:audio/wav;base64," + data.audio_base64);
-          audio.play();
+          const audioUrl = "data:audio/wav;base64," + data.audio_base64;
+          if (DISPLAY_WINDOW_MS <= 0) {
+            new Audio(audioUrl).play();
+          } else {
+            cancelDisplayTimer();
+            displayTimerRef.current = setTimeout(() => {
+              displayTimerRef.current = null;
+              new Audio(audioUrl).play();
+            }, DISPLAY_WINDOW_MS);
+          }
         }
       }
     } catch (e) {
@@ -60,7 +99,7 @@ export function useSentenceBuilder(
     } finally {
       setIsProcessingSentence(false);
     }
-  }, [onNewPatientMessage]);
+  }, [onNewPatientMessage, cancelDisplayTimer]);
 
   return { transcript, isProcessingSentence, addWord, processSentence };
 }
