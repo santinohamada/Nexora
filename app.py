@@ -196,7 +196,28 @@ MEDICAL_TEMPLATES: dict[frozenset[str], str] = {
     frozenset({"yo", "cabeza", "dolor"}): "Me duele la cabeza.",
     frozenset({"yo", "cabeza", "dolor", "respirar"}): "Me duele la cabeza y me cuesta respirar.",
     frozenset({"cabeza", "dolor", "respirar"}): "Tengo dolor de cabeza al respirar.",
+    # Trainable 5-class combinations (head, dolor, respirar, yo). idle excluded by _match_template.
+    frozenset({"cabeza"}): "Tengo algo en la cabeza.",
+    frozenset({"yo"}): "Necesito comunicar algo.",
+    frozenset({"cabeza", "respirar"}): "Me cuesta respirar, me duele la cabeza.",
+    frozenset({"cabeza", "yo"}): "Necesito hablar sobre mi cabeza.",
+    frozenset({"dolor", "yo"}): "Tengo dolor.",
+    frozenset({"respirar", "yo"}): "No puedo respirar bien.",
+    frozenset({"cabeza", "dolor", "yo"}): "Me duele la cabeza.",
+    frozenset({"cabeza", "respirar", "yo"}): "Mi cabeza y mi respiración no están bien.",
+    frozenset({"dolor", "respirar", "yo"}): "Tengo dolor y no puedo respirar bien.",
+    frozenset({"cabeza", "dolor", "respirar", "yo"}): "Me duele la cabeza, no puedo respirar bien.",
 }
+
+LATENCY_V2_UNREACHABLE_TOKENS = ("ayuda", "doctor", "revisar")
+TRAINABLE_HEAD_TOKENS = ("cabeza", "dolor", "respirar", "yo")
+TRAINABLE_NEW_TEMPLATE_COUNT = 2 ** len(TRAINABLE_HEAD_TOKENS) - 1
+
+print(
+    f"[Nexora] MEDICAL_TEMPLATES: {TRAINABLE_NEW_TEMPLATE_COUNT} trainable combos "
+    f"covered ({len(TRAINABLE_HEAD_TOKENS)} tokens); unreachable entries for "
+    f"{'/'.join(LATENCY_V2_UNREACHABLE_TOKENS)} kept for forward compatibility."
+)
 
 
 def _normalize_words(words: str) -> str:
