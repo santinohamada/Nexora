@@ -29,11 +29,11 @@ function readIntEnv(name: string, fallback: number): number {
 
 const RECORDING_MAX_FRAMES = readIntEnv(
   "NEXT_PUBLIC_RECORDING_MAX_FRAMES",
-  24
+  45
 );
 const PREDICT_STRIDE_FRAMES = readIntEnv(
   "NEXT_PUBLIC_SEND_STRIDE",
-  4
+  8
 );
 
 function detectTasksHarness(): boolean {
