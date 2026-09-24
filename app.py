@@ -18,6 +18,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from src.model.lstm import SignLanguageLSTM
+from capture_validation import validate_capture_blendshapes
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -286,7 +287,9 @@ class SkeletonPayload(BaseModel):
 
 class CapturePayload(BaseModel):
     label: str
+    mode: str = "legacy"
     frames: list[list[list[float]]]
+    blendshapes: list[list[float]] | None = None
 
 class SentencePayload(BaseModel):
     words: str
@@ -332,16 +335,32 @@ def dataset_stats():
 def capture(payload: CapturePayload):
     if len(payload.frames) < 5:
         raise HTTPException(status_code=400, detail="Too few frames (min 5)")
-    
-    label_dir = os.path.join("dataset", "custom", payload.label)
-    os.makedirs(label_dir, exist_ok=True)
-    
+
+    mode = payload.mode if payload.mode in ("legacy", "tasks") else "legacy"
+    T = len(payload.frames)
+
     data = np.array(payload.frames, dtype=np.float32)
+    if not np.isfinite(data).all():
+        raise HTTPException(status_code=400, detail="Non-finite frame value")
+
+    try:
+        blendshapes_arr = validate_capture_blendshapes(mode, T, payload.blendshapes)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     timestamp = int(time.time() * 1000)
+    landmarks_root = "dataset/custom" if mode == "legacy" else "dataset/custom_tasks"
+    label_dir = os.path.join(landmarks_root, payload.label)
+    os.makedirs(label_dir, exist_ok=True)
     filename = os.path.join(label_dir, f"{timestamp}.npy")
-    
     np.save(filename, data)
-    
+
+    if mode == "tasks":
+        blendshapes_dir = os.path.join("dataset", "custom_blendshapes", payload.label)
+        os.makedirs(blendshapes_dir, exist_ok=True)
+        blendshapes_filename = os.path.join(blendshapes_dir, f"{timestamp}.npy")
+        np.save(blendshapes_filename, blendshapes_arr)
+
     count = len(os.listdir(label_dir))
     return {"status": "ok", "saved_to": filename, "samples_for_label": count}
 

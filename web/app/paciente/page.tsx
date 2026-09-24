@@ -48,7 +48,8 @@ function resolveBackend(): MediaPipeBackend {
   }
 }
 
-const useLandmarks = resolveBackend() === "legacy" ? useMediaPipe : useMediaPipeTasks;
+const MEDIAPIPE_BACKEND = resolveBackend();
+const useLandmarks = MEDIAPIPE_BACKEND === "legacy" ? useMediaPipe : useMediaPipeTasks;
 
 export default function PacientePage() {
   console.log("[Render] PacientePage");
@@ -150,6 +151,7 @@ export default function PacientePage() {
           setStatus={setStatus}
           setMode={setMode}
           captureHandlerRef={captureHandlerRef}
+          backend={MEDIAPIPE_BACKEND}
         />
       ) : (
         <main className="min-h-screen bg-slate-50 flex flex-col">

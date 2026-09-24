@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, memo } from "react";
-import { Status } from "../../types";
+import { Status, Frame } from "../../types";
 import Image from "next/image";
 import { Plus, Tag, Search } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const RECORDING_SAMPLE_LENGTH = 45;
 
 type DatasetStats = Record<string, number>;
+type MediaPipeBackend = "legacy" | "tasks";
 
 export const CaptureMode = memo(function CaptureMode({
   videoRef,
@@ -14,13 +16,15 @@ export const CaptureMode = memo(function CaptureMode({
   setStatus,
   setMode,
   captureHandlerRef,
+  backend,
 }: {
   videoRef: (node: HTMLVideoElement | null) => void;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   status: Status;
   setStatus: React.Dispatch<React.SetStateAction<Status>>;
   setMode: (mode: "predict" | "capture") => void;
-  captureHandlerRef: React.MutableRefObject<((f: any) => void) | null>;
+  captureHandlerRef: React.MutableRefObject<((f: Frame, blendshapes?: number[]) => void) | null>;
+  backend: MediaPipeBackend;
 }) {
 
   const [captureLabel, setCaptureLabel] = useState("");
@@ -68,14 +72,18 @@ export const CaptureMode = memo(function CaptureMode({
   }, []);
 
   const isRecordingRef = useRef(false);
-  const recordedFramesRef = useRef<any[]>([]);
+  const recordedFramesRef = useRef<Frame[]>([]);
+  const recordedBlendshapesRef = useRef<number[][]>([]);
   const resolveRecordingRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    captureHandlerRef.current = (frame: any) => {
+    captureHandlerRef.current = (frame: Frame, blendshapes?: number[]) => {
       if (isRecordingRef.current) {
         recordedFramesRef.current.push(frame);
-        if (recordedFramesRef.current.length >= 45) {
+        if (backend === "tasks" && blendshapes) {
+          recordedBlendshapesRef.current.push(blendshapes);
+        }
+        if (recordedFramesRef.current.length >= RECORDING_SAMPLE_LENGTH) {
           isRecordingRef.current = false;
           if (resolveRecordingRef.current) {
             resolveRecordingRef.current();
@@ -87,7 +95,7 @@ export const CaptureMode = memo(function CaptureMode({
     return () => {
       captureHandlerRef.current = null;
     };
-  }, [captureHandlerRef]);
+  }, [captureHandlerRef, backend]);
 
   const isIdle = status === "idle" || status === "done" || status === "error";
 
@@ -102,6 +110,7 @@ export const CaptureMode = memo(function CaptureMode({
     setStatus("recording");
 
     recordedFramesRef.current = [];
+    recordedBlendshapesRef.current = [];
     isRecordingRef.current = true;
 
     await new Promise<void>((resolve) => {
@@ -115,7 +124,9 @@ export const CaptureMode = memo(function CaptureMode({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           label: captureLabel,
+          mode: backend,
           frames: recordedFramesRef.current,
+          ...(backend === "tasks" ? { blendshapes: recordedBlendshapesRef.current } : {}),
         }),
       });
     } catch (err) {
