@@ -1,0 +1,84 @@
+@startuml 09_er_conceptual
+!include _estilo.iuml
+title Modelo de Base de Datos - Diagrama Entidad-Relación Conceptual (LSA Salud)
+
+left to right direction
+skinparam linetype ortho
+
+class ClaseDeSeña {
+    etiqueta
+}
+
+class MuestraDeEntrenamiento {
+    timestamp
+    cantidadDeFrames
+    modoDeCaptura
+}
+
+class MuestraDeBlendshapes {
+    timestamp
+    cantidadDeCoeficientes
+}
+
+class VocabularioDelModelo {
+    indice
+    etiqueta
+}
+
+class ModeloDeReconocimiento {
+    nombreDeArchivo
+    framesPorMuestra
+}
+
+class ArchivoDeVoz {
+    nombreDeArchivo
+    configuracion
+}
+
+' --- Entidades diseñadas, pendientes de implementación (RF-03/04/06 oficiales) ---
+class EventoDeConsentimiento <<diseñado>> {
+    marcaTemporal
+    otorgado
+}
+
+class EventoDeAuditoría <<diseñado>> {
+    tipoOperacion
+    marcaTemporal
+    resultado
+}
+
+class ReporteDeTraducción <<diseñado>> {
+    mensajeId
+    motivo
+    marcaTemporal
+}
+
+ClaseDeSeña "1" -- "0..*" MuestraDeEntrenamiento : ejemplifica >
+MuestraDeEntrenamiento "1" -- "0..1" MuestraDeBlendshapes : se complementa con\n(solo modo Tasks) >
+ClaseDeSeña "1" -- "0..*" VocabularioDelModelo : aparece en >
+VocabularioDelModelo "0..*" -- "1" ModeloDeReconocimiento : pertenece a >
+
+note bottom of ArchivoDeVoz
+  Activo de terceros (Piper TTS),
+  pre-entrenado. No tiene
+  relacion con el resto del
+  modelo de datos de LSA Salud.
+end note
+
+note bottom of ReporteDeTraducción
+  Entidades diseñadas, pendientes
+  de implementación (RF-03/04/06
+  oficiales). Sin relacion con el
+  resto: cada una es independiente,
+  anonima, sin datos de imagen/video.
+end note
+
+note as N1
+  Alcance: solo se modelan los
+  conceptos que LSA Salud persiste
+  en disco. Conversacion, Mensaje
+  y los cachés de traducción/audio
+  se excluyen (ver Sección 1 y 5).
+end note
+
+@enduml

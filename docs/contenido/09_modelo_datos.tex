@@ -1,0 +1,464 @@
+% ============================================================================
+% 09_modelo_datos.tex — Cuerpo del entregable "Modelo de Base de Datos"
+% Sin preámbulo: se incluye tanto desde 09_Modelo_Datos.tex (standalone)
+% como, eventualmente, desde un documento maestro.
+% ============================================================================
+\section{Modelo de Base de Datos}
+
+\subsection{Justificación de la persistencia basada en archivos}
+
+LSA Salud no utiliza un motor de base de datos relacional. Toda la información
+que el sistema persiste se guarda como archivos en el sistema de archivos
+local del backend (\texttt{dataset/}, \texttt{models/}, \texttt{voices/}).
+Esta decisión de diseño responde a las siguientes razones, verificables
+contra el código y contra la ERS de Fase 1:
+
+\begin{itemize}
+    \item \textbf{Escala de despliegue.} RNF-T-02 establece que el sistema
+    opera de forma autónoma en una única PC local, con un par
+    paciente-personal por instancia de backend. No existe un escenario
+    de múltiples instancias concurrentes escribiendo sobre el mismo
+    dataset, por lo que los problemas que una base de datos relacional
+    resuelve (control de concurrencia entre muchos escritores, replicación,
+    transacciones distribuidas) no se presentan en este contexto.
+
+    \item \textbf{Formato nativo del modelo.} Las muestras de entrenamiento
+    se capturan y se consumen como arreglos \texttt{numpy}
+    (\texttt{float32}) y los pesos del modelo como \texttt{state\_dict} de
+    PyTorch. Guardarlos directamente como \texttt{.npy} y \texttt{.pth} evita
+    una capa de serialización/deserialización adicional (por ejemplo, un
+    ORM o un mapeo objeto-relacional) entre el formato de disco y el
+    formato que \texttt{train\_lstm.py} y \texttt{app.py} usan en memoria.
+
+    \item \textbf{Sin necesidad de consultas relacionales.} El acceso a los
+    datos persistidos es siempre por lectura completa de un directorio
+    (todas las muestras de una etiqueta, para \texttt{GET /dataset\_stats}
+    o para \texttt{train\_lstm.py}) o por nombre de archivo exacto (una
+    muestra puntual). No hay filtros, \emph{joins} ni agregaciones más
+    complejas que un conteo de archivos por carpeta, por lo que el costo de
+    modelar y mantener un esquema relacional no se justifica.
+
+    \item \textbf{Privacidad y localidad.} RNF-03.1 exige que todo el
+    procesamiento y almacenamiento ocurra en la máquina local, sin que el
+    dato de salud del paciente salga del equipo. Un archivo en el sistema de
+    archivos local ya cumple ese objetivo sin necesidad de un servidor de
+    base de datos adicional (con su propia superficie de configuración,
+    puertos y credenciales) que administrar.
+
+    \item \textbf{La conversación no se persiste, por decisión de
+    producto.} El historial de mensajes entre paciente y personal de
+    recepción o enfermería
+    vive únicamente como estado de React sincronizado entre pestañas por
+    \texttt{BroadcastChannel} (ver \texttt{web/hooks/useChatChannel.ts}) y
+    se pierde al cerrar o recargar la pestaña. Esto no es una limitación
+    técnica: es consistente con RNF-03.1 (no persistencia de conversaciones)
+    y evita que LSA Salud acumule un historial de conversaciones médicas del
+    paciente sin necesidad funcional de conservarlo.
+\end{itemize}
+
+En consecuencia, este entregable no presenta un esquema de base de datos
+relacional, sino un modelo de los datos que LSA Salud persiste, expresado con
+las mismas técnicas de modelado (entidad-relación) que se usarían para una
+base de datos, pero mapeado explícitamente a archivos y directorios en la
+Sección~\ref{sec:dat-mapeo-fisico}.
+
+\subsection{Modelo conceptual (Entidad-Relación)}
+
+La Figura~\ref{fig:dat-er-conceptual} presenta el modelo conceptual de la
+información persistida por LSA Salud. Se reutilizan, con el mismo nombre y
+significado, los conceptos \textit{ClaseDeSeña}, \textit{MuestraDeEntrenamiento}
+y \textit{ModeloDeReconocimiento} ya definidos en el Modelo de Dominio
+(Entregable 01); a diferencia de aquel diagrama —que modela el problema sin
+elementos de diseño—, aquí estos mismos conceptos se presentan enfocados en
+lo que efectivamente queda grabado en disco.
+
+\diagramaApaisada{09_er_conceptual}{0.95\textheight}{Diagrama Entidad-Relación conceptual de la persistencia de LSA Salud}{fig:dat-er-conceptual}
+
+Se agregan tres conceptos sin equivalente directo en el Modelo de Dominio,
+porque pertenecen al diseño de persistencia y no al problema de negocio:
+\textit{MuestraDeBlendshapes} (los coeficientes faciales que MediaPipe Tasks
+captura junto con cada muestra de landmarks), \textit{VocabularioDelModelo}
+(la lista ordenada de clases que un \textit{ModeloDeReconocimiento} concreto
+es capaz de reconocer) y \textit{ArchivoDeVoz} (el modelo de síntesis de voz
+Piper, un activo de terceros pre-entrenado, sin relación con el resto de las
+entidades). Quedan fuera de este modelo, por no persistirse, los conceptos
+\textit{Conversación}, \textit{Mensaje} y los cachés de traducción y de
+audio; se documentan igualmente en la Sección~\ref{sec:dat-mapeo-fisico}
+para dejar constancia explícita de que fueron considerados y descartados.
+
+Se agregan además tres entidades \textbf{diseñadas, pendientes de
+implementación}, que cubren los requisitos oficiales RF-03, RF-04 y RF-06
+(marcadas con relleno distinto en el diagrama):
+\textit{EventoDeConsentimiento} (RF-03.1), \textit{EventoDeAuditoría}
+(RF-04.1) y \textit{ReporteDeTraducción} (RF-06.1). Las tres son, por
+diseño, anónimas --- sin identidad del paciente ni contenido de imagen o
+video --- consistentes con RNF-03.1, y se persisten con el mismo patrón
+basado en archivos que el resto del modelo (ver
+Sección~\ref{sec:dat-mapeo-fisico}).
+
+\subsection{Modelo lógico (notación pata de gallo)}
+
+La Figura~\ref{fig:dat-modelo-logico} traduce el modelo conceptual a un
+esquema lógico con claves primarias, claves foráneas y cardinalidad en
+notación pata de gallo (\emph{crow's foot}), tal como se usaría para diseñar
+las tablas de una base de datos relacional.
+
+\diagramaApaisada{09_modelo_logico}{0.95\textheight}{Modelo lógico de la persistencia de LSA Salud (notación pata de gallo)}{fig:dat-modelo-logico}
+
+\textbf{Aclaración importante:} estas ``entidades'' no son tablas de una
+base de datos. Cada una es, en realidad, un patrón de archivo o de
+directorio del sistema de archivos local:
+
+\begin{itemize}
+    \item La clave primaria compuesta de \textit{MuestraDeEntrenamiento}
+    (\texttt{etiqueta} + \texttt{timestamp\_ms}) se materializa como la ruta
+    física \texttt{<árbol>/<etiqueta>/<timestamp\_ms>.npy}: \texttt{etiqueta}
+    es el nombre del subdirectorio y \texttt{timestamp\_ms} es el nombre del
+    archivo, sin extensión adicional.
+    \item \textit{MuestraDeBlendshapes} comparte la misma clave
+    (\texttt{etiqueta} + \texttt{timestamp\_ms}) con la muestra de landmarks
+    que complementa: ambos archivos \texttt{.npy} se emparejan por convención
+    de nombre, no por una clave foránea explícita almacenada en ningún lado.
+    \item \textit{ClaseDeSeña} no tiene un archivo propio: es un valor
+    derivado (el nombre de cada subdirectorio bajo \texttt{dataset/custom/}
+    o \texttt{dataset/custom\_tasks/}).
+    \item \textit{VocabularioDelModelo} es el arreglo JSON completo de
+    \texttt{models/custom\_classes.json}; el ``índice'' de cada fila es la
+    posición dentro del arreglo, que a su vez es el índice de salida de la
+    capa final del modelo.
+    \item \textit{ModeloDeReconocimiento} es un único archivo binario
+    (\texttt{state\_dict} de PyTorch), no una fila de una tabla.
+\end{itemize}
+
+Ningún motor de base de datos participa en la lectura o escritura de estas
+``entidades''; toda la integridad referencial (por ejemplo, que
+\texttt{VocabularioDelModelo} esté alineado con la capa de salida del
+\texttt{ModeloDeReconocimiento} cargado) se garantiza por convención en el
+código (\texttt{app.py}, \texttt{train\_lstm.py}) y no por restricciones de
+esquema.
+
+\subsection{Diccionario de datos}
+
+Las Tablas~\ref{tab:dat-dic-muestra} a~\ref{tab:dat-dic-conversacion}
+detallan, para cada entidad lógica, sus atributos, tipos, formato/forma y
+restricciones. Las restricciones de validación provienen de
+\texttt{capture\_validation.py} y de las verificaciones adicionales en el
+endpoint \texttt{POST /capture} de \texttt{app.py}.
+
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
+    \midrule
+    \endhead
+    etiqueta & \texttt{str} & directorio & Debe cumplir la expresión regular
+    \texttt{\textasciicircum{}[a-z0-9\_]\{1,32\}\$} (validado por
+    \texttt{validate\_capture\_label}). \\
+
+    timestamp\_ms & \texttt{int64} & epoch ms (nombre de archivo) &
+    Generado por el backend como \texttt{int(time.time() * 1000)}; único
+    dentro de la carpeta de la etiqueta (dos capturas en el mismo
+    milisegundo sobrescribirían el archivo previo). \\
+
+    arbol & \texttt{str} & \texttt{"legacy"} \textbar\ \texttt{"tasks"} &
+    Determina la carpeta raíz: \texttt{dataset/custom/} o
+    \texttt{dataset/custom\_tasks/}. \\
+
+    frames & \texttt{float32} & \texttt{(45, 75, 4)} & El backend exige un
+    mínimo de 5 frames por muestra (\texttt{len(frames) < 5} rechaza la
+    petición); el flujo de captura normal siempre envía 45 frames (RF-T-03),
+    por lo que en la práctica la forma es \texttt{(45, 75, 4)}. Todos los
+    valores deben ser finitos (\texttt{np.isfinite}); cada frame tiene 75
+    landmarks con 4 componentes (\texttt{x, y, z, visibility}). \\
+    \bottomrule
+    \caption{Diccionario de datos — MuestraDeEntrenamiento (landmarks)}
+    \label{tab:dat-dic-muestra}
+\end{longtable}
+
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
+    \midrule
+    \endhead
+    etiqueta & \texttt{str} & directorio &
+    Igual a la etiqueta de la muestra de landmarks que complementa; misma
+    expresión regular. \\
+
+    timestamp\_ms & \texttt{int64} & epoch ms (nombre de archivo) &
+    Debe coincidir exactamente con el \texttt{timestamp\_ms} de la muestra
+    de landmarks emparejada (mismo valor generado en la misma petición). \\
+
+    blendshapes & \texttt{float32} & \texttt{(45, 52)} & Solo existe cuando
+    \texttt{modo == "tasks"}. La cantidad de filas debe igualar la cantidad
+    de frames de landmarks (\texttt{frame\_count}); cada fila debe tener
+    exactamente 52 coeficientes (\texttt{BLENDSHAPE\_COUNT}); todos los
+    valores deben ser finitos (validado por
+    \texttt{validate\_capture\_blendshapes}). \\
+    \bottomrule
+    \caption{Diccionario de datos — MuestraDeBlendshapes (solo modo Tasks)}
+    \label{tab:dat-dic-blendshapes}
+\end{longtable}
+
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
+    \midrule
+    \endhead
+    indice & \texttt{int} & posición en el arreglo & Alineado con la capa de
+    salida del modelo cargado (índice 0 = primera clase reconocida). \\
+
+    etiqueta & \texttt{str} & string dentro de un array JSON &
+    \texttt{models/custom\_classes.json} es un arreglo JSON de strings,
+    escrito por \texttt{train\_lstm.py} antes de iniciar el entrenamiento,
+    a partir de los subdirectorios existentes en
+    \texttt{dataset/custom/}. \\
+    \bottomrule
+    \caption{Diccionario de datos — VocabularioDelModelo}
+    \label{tab:dat-dic-vocabulario}
+\end{longtable}
+
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
+    \midrule
+    \endhead
+    archivo & \texttt{str} & nombre de archivo \texttt{.pth} &
+    \texttt{lstm\_v1\_<N>frames.pth} (por defecto, N = 45),
+    \texttt{lstm\_v2\_24frames.pth} (si \texttt{LSTM\_MAX\_FRAMES=24}), o
+    \texttt{lstm.pth} (modelo legado, usado solo si no existe ninguno de
+    los anteriores). \\
+
+    contenido & binario & \texttt{state\_dict} serializado &
+    Escrito con \texttt{torch.save} al finalizar el entrenamiento, sobre el
+    checkpoint de mejor exactitud de validación; no es legible sin cargarlo
+    con PyTorch. \\
+
+    frames\-Por\-Muestra & \texttt{int} & escalar &
+    45 por defecto, o 24 si la variable de entorno
+    \texttt{LSTM\_MAX\_FRAMES=24}; determina cuántos frames espera el
+    modelo por muestra al predecir. \\
+    \bottomrule
+    \caption{Diccionario de datos — ModeloDeReconocimiento}
+    \label{tab:dat-dic-modelo}
+\end{longtable}
+
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
+    \midrule
+    \endhead
+    modelo & binario & \texttt{.onnx} &
+    \texttt{voices/es\_AR-daniela-high.onnx}; activo de terceros
+    (voz Piper TTS en español argentino), no generado por LSA Salud. \\
+
+    configuración & JSON & sidecar &
+    \texttt{voices/es\_AR-daniela-high.onnx.json}; metadata fonémica y de
+    configuración que \texttt{PiperVoice.load} requiere junto al
+    \texttt{.onnx}. \\
+    \bottomrule
+    \caption{Diccionario de datos — ArchivoDeVoz}
+    \label{tab:dat-dic-voz}
+\end{longtable}
+
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
+    \midrule
+    \endhead
+    clave (traducción) & \texttt{str} & texto normalizado &
+    Secuencia de palabras normalizada, ordenada y sin duplicados; clave de
+    \texttt{\_translation\_cache} (\texttt{OrderedDict}, máximo 200
+    entradas, política LRU). \\
+
+    valor (traducción) & \texttt{str} & oración en español &
+    Resultado de la traducción (plantilla, caché o modelo de lenguaje). \\
+
+    clave (audio) & \texttt{str} & texto de la oración &
+    Clave de \texttt{\_audio\_cache} (\texttt{OrderedDict}, máximo 50
+    entradas, política LRU). \\
+
+    valor (audio) & \texttt{str} & WAV codificado en base64 &
+    Ninguno de los dos cachés se persiste en disco: viven únicamente en la
+    memoria del proceso del backend y se pierden al reiniciarlo. \\
+    \bottomrule
+    \caption{Diccionario de datos — Cachés en memoria (traducción y audio)}
+    \label{tab:dat-dic-caches}
+\end{longtable}
+
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
+    \midrule
+    \endhead
+    id & \texttt{number} & identificador de mensaje &
+    Campo del tipo \texttt{ChatMessage} (\texttt{web/types.ts}). \\
+
+    role & \texttt{str} & \texttt{"PACIENTE"} \textbar\ \texttt{"RECEPCIONISTA"} &
+    Indica el emisor del mensaje. \\
+
+    text & \texttt{str} & texto libre & Contenido del mensaje. \\
+
+    time & \texttt{str} & hora de envío & Sin persistencia: el arreglo
+    \texttt{chatHistory} vive solo como estado de React de cada pestaña y
+    se sincroniza entre pestañas del mismo navegador mediante
+    \texttt{Broadcast\allowbreak Channel("nexora-chat")}; no hay backend ni disco
+    involucrados, y se pierde al cerrar o recargar la pestaña. \\
+    \bottomrule
+    \caption{Diccionario de datos — Conversación / Mensaje (no persistido)}
+    \label{tab:dat-dic-conversacion}
+\end{longtable}
+
+\subsubsection{Entidades diseñadas, pendientes de implementación (RF-03/04/06 oficiales)}
+
+Las Tablas~\ref{tab:dat-dic-consentimiento} a~\ref{tab:dat-dic-reporte}
+detallan las tres entidades nuevas. Ninguna existe en el código todavía;
+se especifican con el mismo nivel de detalle que el resto para que el
+diseño de persistencia quede completo.
+
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
+    \midrule
+    \endhead
+    marca\_temporal & \texttt{int64} & epoch ms (nombre de archivo) &
+    Generado por el backend al confirmar el consentimiento (CU-09); único
+    dentro del archivo de consentimientos. \\
+
+    otorgado & \texttt{bool} & \texttt{true} \textbar\ \texttt{false} &
+    Siempre \texttt{true} en el flujo principal (RF-03.1); no se persiste
+    un rechazo, porque un rechazo no activa la cámara ni genera datos que
+    auditar. \\
+    \bottomrule
+    \caption{Diccionario de datos — EventoDeConsentimiento (diseñado, pendiente de implementación)}
+    \label{tab:dat-dic-consentimiento}
+\end{longtable}
+
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
+    \midrule
+    \endhead
+    tipo\_operacion & \texttt{str} & \texttt{"prediccion"} \textbar\ \texttt{"traduccion"} \textbar\ \texttt{"sintesis"} \textbar\ \texttt{"respuesta"} \textbar\ \texttt{"captura"} &
+    Identifica la operación de sistema (SO-01 a SO-05) que originó el
+    evento. \\
+
+    marca\_temporal & \texttt{int64} & epoch ms (nombre de archivo) &
+    Generado por \texttt{audit\_log} al persistir el evento. \\
+
+    resultado & \texttt{str} & \texttt{"exito"} \textbar\ \texttt{"error"} &
+    Sin datos identificatorios del paciente ni contenido de imagen o video
+    (RNF-03.1). \\
+    \bottomrule
+    \caption{Diccionario de datos — EventoDeAuditoría (diseñado, pendiente de implementación)}
+    \label{tab:dat-dic-auditoria}
+\end{longtable}
+
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
+    \midrule
+    \endhead
+    mensaje\_id & \texttt{number} & identificador de mensaje &
+    Referencia al \texttt{id} del \texttt{ChatMessage} señalado (ver
+    Tabla~\ref{tab:dat-dic-conversacion}); como la conversación no se
+    persiste, el reporte solo conserva ese identificador y el texto del
+    mensaje en el momento del reporte, no una referencia viva. \\
+
+    motivo & \texttt{str} & texto libre o categoría & Motivo indicado por
+    el actor (CU-10); sin datos identificatorios del paciente. \\
+
+    marca\_temporal & \texttt{int64} & epoch ms (nombre de archivo) &
+    Generado por \texttt{audit\_log} al persistir el reporte. \\
+    \bottomrule
+    \caption{Diccionario de datos — ReporteDeTraducción (diseñado, pendiente de implementación)}
+    \label{tab:dat-dic-reporte}
+\end{longtable}
+
+\subsection{Mapeo físico}
+\label{sec:dat-mapeo-fisico}
+
+La Tabla~\ref{tab:dat-mapeo-fisico} resume el mapeo entre cada entidad
+lógica y su representación física en disco (o su ausencia de
+representación física, para los elementos que LSA Salud mantiene
+intencionalmente sin persistir).
+
+\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.3cm} >{\raggedright\arraybackslash}p{5.6cm} >{\raggedright\arraybackslash}p{3.9cm}}
+    \toprule
+    \textbf{Entidad lógica} & \textbf{Patrón de ruta física} & \textbf{Formato de archivo} \\
+    \midrule
+    \endhead
+    Muestra\-De\-Entrenamiento (legado) &
+    \texttt{dataset/\allowbreak custom/\allowbreak<etiqueta>/\allowbreak<timestamp\_ms>.npy} &
+    numpy \texttt{float32} \texttt{(45,75,4)} \\
+
+    Muestra\-De\-Entrenamiento (Tasks, landmarks) &
+    \texttt{dataset/\allowbreak custom\_tasks/\allowbreak<etiqueta>/\allowbreak<timestamp\_ms>.npy} &
+    numpy \texttt{float32} \texttt{(45,75,4)} \\
+
+    Muestra\-De\-Blendshapes (Tasks) &
+    \texttt{dataset/\allowbreak custom\_blendshapes/\allowbreak<etiqueta>/\allowbreak<timestamp\_ms>.npy} &
+    numpy \texttt{float32} \texttt{(45,52)} \\
+
+    Vocabulario\-Del\-Modelo &
+    \texttt{models/custom\_classes.json} &
+    JSON --- arreglo de strings \\
+
+    Modelo\-De\-Reconocimiento &
+    \texttt{models/lstm\_v1\_<N>frames.pth} \textbar\
+    \texttt{models/lstm\_v2\_24frames.pth} \textbar\
+    \texttt{models/lstm.pth} (legado) &
+    PyTorch \texttt{state\_dict} serializado \\
+
+    Archivo\-De\-Voz &
+    \texttt{voices/es\_AR-daniela-high.onnx} +
+    \texttt{voices/es\_AR-daniela-high.onnx.json} &
+    ONNX + configuración JSON (Piper) \\
+
+    Caché de traducciones &
+    en memoria (proceso del backend) &
+    no persistido en disco \\
+
+    Caché de audio TTS &
+    en memoria (proceso del backend) &
+    no persistido en disco \\
+
+    Conversación / Mensaje &
+    estado de React en el navegador, sincronizado por
+    \texttt{BroadcastChannel} &
+    no persistido \\
+
+    Evento\-De\-Consentimiento \textit{(diseñado)} &
+    \texttt{logs/consent.jsonl} &
+    JSON Lines --- un evento anónimo por línea \\
+
+    Evento\-De\-Auditoría \textit{(diseñado)} &
+    \texttt{logs/audit.jsonl} &
+    JSON Lines --- un evento anónimo por línea \\
+
+    Reporte\-De\-Traducción \textit{(diseñado)} &
+    \texttt{logs/reports.jsonl} &
+    JSON Lines --- un reporte por línea \\
+    \bottomrule
+    \caption{Mapeo entre entidades lógicas y persistencia física}
+    \label{tab:dat-mapeo-fisico}
+\end{longtable}
+
+\subsection{Migración futura a base de datos relacional (fuera de alcance)}
+
+El esquema basado en archivos descripto en este entregable cubre las
+necesidades actuales de LSA Salud (una instancia local, sin consultas
+relacionales, sin historial persistente de conversaciones). Si en el futuro
+el proyecto necesitara desplegar múltiples instancias concurrentes
+compartiendo el mismo vocabulario y dataset, ofrecer reportes o consultas
+sobre las muestras capturadas (por ejemplo, filtrar por rango de fechas o
+por desarrollador que capturó cada muestra), o conservar un historial de
+conversaciones entre sesiones, esos requisitos sí justificarían introducir
+una base de datos relacional: los metadatos de cada muestra
+(\textit{etiqueta}, \textit{timestamp}, \textit{árbol}, quién la capturó)
+y el registro de \textit{Conversación}/\textit{Mensaje} son los candidatos
+naturales para migrar a tablas, mientras que los arreglos \texttt{.npy} y
+los pesos del modelo probablemente seguirían viviendo como archivos
+referenciados desde esas tablas (un patrón híbrido común para datos
+binarios de gran tamaño). Este análisis queda explícitamente fuera del
+alcance del sistema actual y no implica ningún compromiso de
+implementación.

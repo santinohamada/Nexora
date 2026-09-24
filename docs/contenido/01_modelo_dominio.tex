@@ -1,0 +1,212 @@
+% ============================================================================
+% 01_modelo_dominio.tex — Cuerpo del entregable "Modelo de Dominio"
+% Sin preámbulo: se incluye tanto desde 01_Modelo_Dominio.tex (standalone)
+% como, eventualmente, desde un documento maestro.
+% ============================================================================
+\section{Modelo de Dominio}
+
+\subsection{Propósito y alcance}
+
+Esta sección presenta el \textbf{Modelo de Dominio} de LSA Salud siguiendo
+la técnica descripta por Craig Larman en \textit{UML y Patrones} dentro del
+Proceso Unificado. El modelo de dominio es un modelo conceptual: representa
+los conceptos, atributos y asociaciones significativas del \emph{problema}
+que LSA Salud resuelve (comunicación entre un paciente que usa Lengua de
+Señas Argentina y personal de recepción o enfermería), no las clases de
+software que lo implementan. Por esa razón, deliberadamente no aparecen aquí
+elementos de diseño como \texttt{hooks} de React, conexiones WebSocket,
+endpoints de FastAPI o archivos \texttt{.npy}: esos elementos pertenecen al
+diseño del software y se documentan en otros entregables.
+
+Las clases del diagrama no declaran métodos ni tipos de atributo —ambas
+omisiones son intencionales en un modelo de dominio— y las asociaciones
+llevan nombre y multiplicidad en ambos extremos, con una dirección de
+lectura sugerida por el nombre del rol.
+
+\subsection{Diagrama de clases conceptuales}
+
+\diagramaApaisada{01_modelo_dominio}{0.95\textheight}{Modelo de Dominio de LSA Salud}{fig:modelo-dominio}
+
+El diagrama se organiza en cuatro áreas conceptuales que se corresponden con
+los tres actores de LSA Salud (ver Entregable de Casos de Uso): la
+\textbf{comunicación} entre Paciente y Personal de Recepción o Enfermería
+(parte izquierda e inferior del diagrama), el \textbf{reconocimiento de
+señas} (parte central), la \textbf{gestión del modelo de reconocimiento} a
+cargo del Desarrollador de IA / Equipo de Proyecto (parte derecha), y los
+\textbf{conceptos diseñados y pendientes de implementación} que cubren los
+requisitos oficiales RF-03, RF-04 y RF-06 (\textit{Consentimiento},
+\textit{Auditoría} y \textit{Reporte de traducción}, ver
+Sección~\ref{sec:dom-pendientes}).
+
+\subsection{Diccionario de conceptos}
+
+La Tabla~\ref{tab:diccionario-conceptos} describe cada concepto del modelo
+de dominio, su rol en el problema y sus atributos conceptuales (sin tipo,
+como corresponde a un modelo de dominio).
+
+\begin{longtable}{p{3.6cm} p{5.4cm} p{5.4cm}}
+    \toprule
+    \textbf{Concepto} & \textbf{Descripción} & \textbf{Atributos} \\
+    \midrule
+    \endhead
+    Paciente &
+    Persona sorda o hipoacúsica que se comunica con el personal de salud
+    mediante LSA frente a la cámara de la Estación del Paciente. &
+    Sin datos persistentes: el sistema no almacena identidad ni historia
+    clínica del paciente; se lo identifica únicamente por la sesión activa
+    de su estación. \\
+
+    Personal de Recepción o Enfermería &
+    Personal de recepción o enfermería que lee la traducción del paciente
+    y le responde por texto o por voz. &
+    Sin datos persistentes (igual que Paciente). \\
+
+    Desarrollador de IA / Equipo de Proyecto &
+    Personal técnico del equipo que amplía el vocabulario de señas
+    reconocibles y reentrena el modelo de reconocimiento. &
+    Sin datos persistentes. \\
+
+    Estación\-De\-Atención &
+    Pantalla o dispositivo desde el que un actor humano interactúa con
+    LSA Salud; existen dos por sesión de atención (una por paciente, una
+    por personal de recepción o enfermería) y permanecen sincronizadas
+    entre sí. &
+    tipo (identifica si es la estación del paciente o la de recepción). \\
+
+    Conversación &
+    Intercambio de mensajes correspondiente a una sesión de atención entre
+    un paciente y el personal de recepción o enfermería. &
+    fechaInicio. \\
+
+    Mensaje &
+    Unidad de comunicación dentro de una conversación, emitida por el
+    paciente (como resultado de una traducción) o por el personal de
+    recepción o enfermería (escrito o dictado). &
+    texto, rolEmisor, horaEnvío. \\
+
+    Secuencia\-De\-Señas &
+    Secuencia de palabras que el paciente va formando con señas sueltas,
+    mientras la oración todavía está en curso (antes de traducirse a
+    lenguaje natural). &
+    estado (en curso / cerrada), marcaTemporalInicio. \\
+
+    Clase\-De\-Seña &
+    Categoría de seña que el sistema es capaz de reconocer (por ejemplo,
+    ``dolor'', ``cabeza'', ``respirar'', ``yo'' o el estado de reposo
+    ``idle''). &
+    nombre. \\
+
+    Palabra\-Reconocida &
+    Ocurrencia concreta de una clase de seña, detectada dentro de una
+    secuencia de señas, con su nivel de confianza. &
+    confianza, posición (orden dentro de la secuencia), marcaTemporal. \\
+
+    Traducción &
+    Resultado de convertir una secuencia de señas cerrada en una oración
+    en español natural. &
+    textoOriginal (palabras sueltas), textoTraducido, fuente (plantilla,
+    caché o modelo de lenguaje). \\
+
+    Plantilla\-Médica &
+    Frase médica predefinida, asociada a una combinación específica y
+    conocida de clases de seña, que permite traducir sin recurrir a un
+    modelo de lenguaje. &
+    combinaciónDeSeñas, fraseResultante. \\
+
+    Síntesis\-De\-Voz &
+    Locución sonora generada a partir del texto de un mensaje, con acento
+    argentino. &
+    voz, formatoAudio. \\
+
+    Modelo\-De\-Reconocimiento &
+    Red neuronal entrenada capaz de clasificar una secuencia de
+    movimientos en una clase de seña. &
+    versión, cantidadDeClases, exactitudDeValidación. \\
+
+    Muestra\-De\-Entrenamiento &
+    Grabación de una seña realizada por el Desarrollador de IA / Equipo de
+    Proyecto, utilizada para entrenar o reentrenar el modelo de
+    reconocimiento. &
+    cantidadDeFrames, fechaCaptura, modoDeCaptura (legado o basado en
+    MediaPipe Tasks). \\
+    \bottomrule
+    \caption{Diccionario de conceptos del dominio de LSA Salud}
+    \label{tab:diccionario-conceptos}
+\end{longtable}
+
+\subsection{Conceptos diseñados, pendientes de implementación}
+\label{sec:dom-pendientes}
+
+Los siguientes tres conceptos corresponden a los requisitos oficiales RF-03,
+RF-04 y RF-06 de la matriz de trazabilidad (RF-03.1, RF-04.1 y RF-06.1 en
+\texttt{IDS.md}), marcados como \textbf{diseñado --- pendiente de
+implementación}: hoy no existe código que los materialice, pero se modelan
+como parte del dominio para que su diseño quede completo desde esta primera
+fase. La Tabla~\ref{tab:diccionario-pendientes} los describe con el mismo
+nivel de detalle que el resto del diccionario.
+
+\begin{longtable}{p{3.6cm} p{5.4cm} p{5.4cm}}
+    \toprule
+    \textbf{Concepto} & \textbf{Descripción} & \textbf{Atributos} \\
+    \midrule
+    \endhead
+    Consentimiento\-De\-Cámara &
+    Autorización explícita que el paciente otorga antes de que la Estación
+    del Paciente active la cámara; condición obligatoria para que exista
+    cualquier Secuencia\-De\-Señas (RF-03 oficial). &
+    otorgado (booleano), marcaTemporal. \\
+
+    Evento\-De\-Auditoría &
+    Registro anónimo de una operación de sistema relevante (predicción,
+    traducción, síntesis, respuesta, captura), sin datos identificatorios
+    ni imágenes o video, generado automáticamente para auditoría operativa
+    (RF-04 oficial). &
+    tipoDeOperación, marcaTemporal, resultado (éxito o error). \\
+
+    Reporte\-De\-Traducción &
+    Señalamiento de que un mensaje de la conversación es una traducción
+    incorrecta o ambigua, hecho por el Paciente o por el Personal de
+    Recepción o Enfermería, para registrar el caso y mejorar el modelo
+    (RF-06 oficial). &
+    motivo, marcaTemporal. \\
+    \bottomrule
+    \caption{Diccionario de conceptos pendientes de implementación}
+    \label{tab:diccionario-pendientes}
+\end{longtable}
+
+\subsection{Asociaciones principales}
+
+La Tabla~\ref{tab:asociaciones-dominio} resume las asociaciones nombradas
+del diagrama, con su multiplicidad y una lectura sugerida.
+
+\begin{longtable}{p{3.4cm} p{3.6cm} p{3.4cm} p{3.6cm}}
+    \toprule
+    \textbf{Origen} & \textbf{Asociación} & \textbf{Destino} & \textbf{Lectura} \\
+    \midrule
+    \endhead
+    Paciente & utiliza & Estación\-De\-Atención & Un paciente utiliza una estación de atención. \\
+    Personal de Recepción o Enfermería & utiliza & Estación\-De\-Atención & El personal de recepción o enfermería utiliza una estación de atención. \\
+    Estación\-De\-Atención & muestra & Conversación & Las dos estaciones de una sesión muestran la misma conversación. \\
+    Paciente & otorga & Consentimiento\-De\-Cámara & Un paciente otorga el consentimiento antes de poder realizar señas (diseñado, pendiente). \\
+    Paciente & realiza & Secuencia\-De\-Señas & Un paciente realiza cero o más secuencias de señas a lo largo de la sesión, condicionado a tener un Consentimiento\-De\-Cámara otorgado. \\
+    Secuencia\-De\-Señas & compuesta por & Palabra\-Reconocida & Una secuencia de señas está compuesta por una o más palabras reconocidas. \\
+    Palabra\-Reconocida & corresponde a & Clase\-De\-Seña & Cada palabra reconocida corresponde a una clase de seña del catálogo. \\
+    Secuencia\-De\-Señas & da origen a & Traducción & Una secuencia de señas cerrada da origen, como máximo, a una traducción. \\
+    Traducción & puede basarse en & Plantilla\-Médica & Una traducción puede basarse en una plantilla médica preexistente. \\
+    Traducción & genera & Mensaje & Toda traducción genera exactamente un mensaje del paciente. \\
+    Mensaje & tiene & Síntesis\-De\-Voz & Un mensaje puede tener una síntesis de voz asociada. \\
+    Mensaje & pertenece a & Conversación & Todo mensaje pertenece a una conversación. \\
+    Mensaje & puede tener & Reporte\-De\-Traducción & Un mensaje puede tener cero o un reporte de traducción incorrecta (diseñado, pendiente). \\
+    Paciente & señala & Reporte\-De\-Traducción & Un paciente puede señalar cero o más reportes (diseñado, pendiente). \\
+    Personal de Recepción o Enfermería & señala & Reporte\-De\-Traducción & El personal puede señalar cero o más reportes (diseñado, pendiente). \\
+    Personal de Recepción o Enfermería & redacta & Mensaje & El personal de recepción o enfermería redacta cero o más mensajes. \\
+    Desarrollador de IA / Equipo de Proyecto & captura & Muestra\-De\-Entrenamiento & Un desarrollador captura cero o más muestras de entrenamiento. \\
+    Muestra\-De\-Entrenamiento & ejemplifica & Clase\-De\-Seña & Cada muestra ejemplifica una clase de seña. \\
+    Desarrollador de IA / Equipo de Proyecto & entrena & Modelo\-De\-Reconocimiento & Un desarrollador entrena cero o más versiones del modelo. \\
+    Modelo\-De\-Reconocimiento & reconoce & Clase\-De\-Seña & Un modelo reconoce una o más clases de seña. \\
+    Modelo\-De\-Reconocimiento & clasifica & Palabra\-Reconocida & Un modelo clasifica cero o más palabras reconocidas. \\
+    Estación\-De\-Atención & origina & Evento\-De\-Auditoría & Cada operación relevante de una estación origina cero o más eventos de auditoría anónimos (diseñado, pendiente). \\
+    \bottomrule
+    \caption{Asociaciones del Modelo de Dominio}
+    \label{tab:asociaciones-dominio}
+\end{longtable}

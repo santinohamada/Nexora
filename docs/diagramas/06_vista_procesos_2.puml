@@ -1,0 +1,27 @@
+@startuml 06_vista_procesos_2
+!include _estilo.iuml
+
+title Vista de Procesos (2/3) — Cierre de oración y traducción
+
+participant "Navegador\nEstación Paciente" as NavP
+participant "FastAPI\n(threadpool Starlette)" as ThreadPool
+participant "Ollama\n(proceso local :11434)" as Ollama
+participant "Piper TTS\n(embebido, ONNX)" as Piper
+
+== Cierre de oración y traducción (RF-05, RF-06) ==
+NavP -> NavP : detectar cierre\n(idle >= 800 ms + quietud)
+NavP -> ThreadPool : POST /process_sentence
+note over ThreadPool
+  def sincrónica: Starlette la ejecuta
+  en un threadpool, sin bloquear
+  el event loop.
+end note
+alt sin coincidencia de plantilla ni caché
+  ThreadPool -> Ollama : POST /api/generate\n(timeout 8 s)
+  Ollama --> ThreadPool : oración natural
+end
+ThreadPool -> Piper : sintetizar audio\n(si no está en caché)
+Piper --> ThreadPool : audio WAV
+ThreadPool --> NavP : {natural_sentence, audio_base64}
+
+@enduml

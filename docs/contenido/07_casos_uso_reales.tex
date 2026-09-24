@@ -1,0 +1,361 @@
+% ============================================================================
+% 07_casos_uso_reales.tex — Cuerpo del entregable "Casos de Uso Reales:
+% diseño de interfaz gráfica". Formato fully dressed (Larman) a nivel real
+% (concreto), apoyado en las pantallas y callouts del Entregable 04.
+% Sin preámbulo: se incluye tanto desde 07_Casos_Uso_Reales.tex (standalone)
+% como, eventualmente, desde un documento maestro.
+% ============================================================================
+\section{Casos de Uso Reales: diseño de interfaz gráfica}
+
+\subsection{Introducción}
+
+Esta sección redacta, en formato completamente vestido (\textit{fully
+dressed}) según Craig Larman, la versión \textbf{real} (concreta) de los
+casos de uso principales de LSA Salud: describe la interacción efectiva con la
+interfaz gráfica implementada, en lugar de la intención abstracta del actor.
+Cada caso de uso real toma como base su contraparte \textbf{esencial},
+documentada en el Entregable~03 (Modelos de Casos de Uso), y la especializa
+citando pantallas (P-01 a P-05) y elementos numerados (\emph{callouts})
+del Entregable~04 (Mockups); por ejemplo, ``el sistema muestra la palabra
+reconocida en el panel (6) de la Pantalla P-02''.
+
+Se desarrollan aquí CU-01 (Comunicarse mediante Lengua de Señas Argentina),
+CU-04 (Responder al Paciente) con su extensión CU-05 (Dictar Respuesta por
+Voz), CU-06 (Capturar Muestra de Seña para Entrenamiento), CU-09 (Otorgar
+Consentimiento Explícito de Cámara) y CU-10 (Reportar Traducción Incorrecta
+o Ambigua). Estos dos últimos están marcados como \textbf{diseñados,
+pendientes de implementación}: se redactan a nivel real sobre el mockup
+correspondiente (P-05 y los callouts de reporte en P-02/P-03) para dejar
+constancia del diseño de interfaz, aunque no exista código todavía. Los IDs
+de actores, casos de uso y requisitos citados son los del registro
+canónico (\texttt{IDS.md}).
+
+% ============================================================================
+\subsection{CU-01 (real): Comunicarse mediante Lengua de Señas Argentina}
+
+Especializa el caso de uso esencial \textbf{CU-01} (ver Entregable~03,
+sección 2.3) sobre la Pantalla \textbf{P-02 --- Estación del Paciente}
+(Figura~\ref{fig:cur-p02-cu01}).
+
+\diagrama{04_mockup_p02_paciente}{\textwidth}{Pantalla P-02, referenciada por CU-01 (real) y CU-04 (real)}{fig:cur-p02-cu01}
+
+\begin{longtable}{@{}p{4.1cm} >{\raggedright\arraybackslash}p{11.2cm}@{}}
+\toprule
+\textbf{Nombre} & Comunicarse mediante Lengua de Señas Argentina (real) \\
+\textbf{ID} & CU-01 (real; esencial en Entregable 03) \\
+\textbf{Actor principal} & Paciente \\
+\textbf{Personal involucrado e intereses} &
+Paciente: quiere expresar una necesidad médica sin depender de un
+intérprete humano. \newline
+Personal de Recepción o Enfermería: necesita recibir el mensaje del
+paciente en español, de forma clara y oportuna, en su propia pantalla (P-03). \\
+\textbf{Precondiciones} &
+El paciente abrió la Pantalla P-02 (\texttt{/paciente}); el navegador
+autorizó el acceso a la cámara; el indicador (3) muestra ``EN VIVO''. \\
+\textbf{Garantías de éxito} &
+El mensaje traducido aparece como una burbuja en el panel de conversación
+(7) de P-02 y en el panel (3) de P-03 (CU-04, real), y se reprodujo el
+audio si la síntesis estuvo disponible. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El paciente se ubica frente a la cámara, visible en el área de
+    video (4) de la Pantalla P-02, donde el sistema dibuja en vivo los
+    puntos de referencia (\textit{landmarks}) sobre su imagen.
+    \item El paciente hace una seña. El sistema actualiza en tiempo real
+    las tres barras del panel ``Top-3 Predicciones'' (6) con la seña
+    reconocida y su porcentaje de confianza.
+    \item Cuando la confianza de la seña ganadora supera el 70\,\% y no es
+    la seña de reposo (``idle''), el sistema agrega la palabra a la
+    ventana de oración en construcción (5), superpuesta sobre el video.
+    \item El paciente encadena varias señas; el sistema va sumando
+    palabras a la ventana (5) (por ejemplo, ``yo cabeza dolor'').
+    \item El paciente baja las manos y deja de moverse. El sistema detecta
+    la quietud, cierra la secuencia y reemplaza el contenido de la ventana
+    (5) por el indicador ``Generando respuesta de IA...''.
+    \item El sistema traduce la secuencia a una oración natural (CU-02,
+    real) y agrega automáticamente una nueva burbuja al panel de
+    conversación (7) de P-02, con el texto traducido (por ejemplo, ``Me
+    duele la cabeza.''). La ventana (5) desaparece: no hay ningún botón de
+    confirmación entre los pasos 5 y 6.
+    \item El sistema sintetiza el audio de la oración (CU-03, real) y lo
+    reproduce automáticamente, sin acción del paciente.
+    \item La misma burbuja aparece, al mismo tiempo, en el panel (3) de la
+    Pantalla P-03 del personal (ver CU-04, real).
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[2a.] Ninguna seña alcanza el 70\,\% de confianza o la seña de
+    reposo domina el top-3: las barras del panel (6) se actualizan igual,
+    pero no se agrega ninguna palabra a la ventana (5).
+    \item[6a.] El sistema no logra traducir la secuencia en una oración
+    clara: no se agrega ninguna burbuja al panel (7) y la ventana (5)
+    simplemente desaparece.
+    \item[7a.] El motor de síntesis de voz no está cargado: el paso 7 se
+    omite y la burbuja del paso 6 queda igual, sin audio asociado.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-01.1 a RF-01.7; RNF-T-01, RNF-T-05, RNF-01.1. \\
+\textbf{Frecuencia} &
+Continua durante toda la sesión; se repite cada vez que el paciente forma
+una idea completa. \\
+\bottomrule
+\caption{CU-01 (real) — Comunicarse mediante Lengua de Señas Argentina}
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-04 (real): Responder al Paciente}
+
+Especializa el caso de uso esencial \textbf{CU-04} (ver Entregable~03,
+sección 2.6) sobre la Pantalla \textbf{P-03 --- Estación de Recepción}
+(Figura~\ref{fig:cur-p03-cu04}). Incluye, como extensión, el caso de uso
+real \textbf{CU-05} (Dictar Respuesta por Voz).
+
+\diagrama{04_mockup_p03_recepcion}{\textwidth}{Pantalla P-03, referenciada por CU-04 (real) y CU-05 (real)}{fig:cur-p03-cu04}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.1cm} X@{}}
+\toprule
+\textbf{Nombre} & Responder al Paciente (real) \\
+\textbf{ID} & CU-04 (real; esencial en Entregable 03) \\
+\textbf{Actor principal} & Personal de Recepción o Enfermería \\
+\textbf{Personal involucrado e intereses} &
+Personal de Recepción o Enfermería: quiere responder rápido, escribiendo o dictando, sin pasos
+adicionales. \newline
+Paciente: necesita ver la respuesta en su propia pantalla (P-02) sin
+demora perceptible. \\
+\textbf{Precondiciones} &
+El personal abrió la Pantalla P-03 (\texttt{/recepcion}); el panel
+(3) muestra el historial compartido (posiblemente vacío). \\
+\textbf{Garantías de éxito} &
+La respuesta aparece como una nueva burbuja en el panel (3) de P-03 y en
+el panel (7) de P-02, casi de inmediato. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El personal lee la última burbuja del panel (3) (mensaje
+    del paciente).
+    \item El personal escribe una respuesta en el área de texto (4).
+    \item El personal hace clic en el botón ``Enviar'' (5); el
+    sistema lo habilita solo cuando el texto no está vacío.
+    \item El sistema agrega la respuesta como una nueva burbuja al final
+    del panel (3), alineada a la derecha, y vacía el área de texto (4).
+    \item La misma burbuja aparece, al mismo tiempo, en el panel (7) de la
+    Pantalla P-02 del paciente.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[2a.] El personal prefiere dictar en lugar de escribir:
+    continúa en el punto 1 de CU-05 (real), a continuación, y vuelve al
+    paso 3 de este caso de uso con el texto ya cargado en (4).
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-01.7, RF-02.1; RNF-T-05. \\
+\textbf{Frecuencia} &
+Cada vez que el personal necesita responder durante la atención. \\
+\bottomrule
+\end{tabularx}
+\caption{CU-04 (real) — Responder al Paciente}
+\end{table}
+
+\subsubsection*{CU-05 (real): Dictar Respuesta por Voz --- extensión de CU-04}
+
+Especializa el caso de uso esencial \textbf{CU-05} (ver Entregable~03,
+sección 2.7), en el punto de extensión ``ingreso de texto'' de CU-04, sobre
+la misma Pantalla P-03 (Figura~\ref{fig:cur-p03-cu04}).
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.1cm} X@{}}
+\toprule
+\textbf{Nombre} & Dictar Respuesta por Voz (real) \\
+\textbf{ID} & CU-05 (real; esencial en Entregable 03) \\
+\textbf{Actor principal} & Personal de Recepción o Enfermería \\
+\textbf{Precondiciones} &
+El navegador soporta \texttt{SpeechRecognition} (Web Speech API); el botón
+de micrófono (6) está habilitado. \\
+\textbf{Garantías de éxito} &
+El texto dictado queda cargado en el área de texto (4), listo para
+enviarse por el paso 3 de CU-04 (real). \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El personal hace clic en el botón de micrófono (6). El
+    botón cambia a su estado ``escuchando'' y el indicador (7) muestra
+    ``Escuchando... click para detener''.
+    \item El personal habla; el sistema va transcribiendo el habla y
+    sumando el texto reconocido al área de texto (4), a continuación de
+    cualquier texto ya escrito.
+    \item El personal hace clic nuevamente en el botón (6) para
+    detener el dictado. El indicador (7) vuelve a ``Click para hablar''.
+    \item El flujo continúa en el paso 3 de CU-04 (real): el personal
+    revisa el texto en (4) y hace clic en ``Enviar'' (5).
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[1a.] El navegador no soporta reconocimiento de voz: el botón (6)
+    aparece deshabilitado y el indicador (7) muestra el aviso ``El
+    navegador no soporta reconocimiento de voz''; el personal
+    continúa escribiendo directamente en (4).
+    \item[2a.] Ocurre un error de micrófono: el indicador (7) muestra
+    ``Error de micrófono: ...'' y el sistema deja de escuchar.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-02.2; restricción de navegador (Google
+Chrome). \\
+\bottomrule
+\end{tabularx}
+\caption{CU-05 (real) — Dictar Respuesta por Voz}
+\end{table}
+
+% ============================================================================
+\subsection{CU-06 (real): Capturar Muestra de Seña para Entrenamiento}
+
+Especializa el caso de uso esencial \textbf{CU-06} (ver Entregable~03,
+sección 2.9) sobre la Pantalla \textbf{P-04 --- Modo Captura}
+(Figura~\ref{fig:cur-p04-cu06}).
+
+\diagrama{04_mockup_p04_captura}{0.9\textwidth}{Pantalla P-04, referenciada por CU-06 (real)}{fig:cur-p04-cu06}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.1cm} X@{}}
+\toprule
+\textbf{Nombre} & Capturar Muestra de Seña para Entrenamiento (real) \\
+\textbf{ID} & CU-06 (real; esencial en Entregable 03) \\
+\textbf{Actor principal} & Desarrollador de IA / Equipo de Proyecto \\
+\textbf{Precondiciones} &
+El desarrollador hizo clic en ``Ajustes (Modo Captura)'' (callout (9) de
+la Pantalla P-02), abriendo la Pantalla P-04. \\
+\textbf{Garantías de éxito} &
+Una o más muestras quedaron grabadas; el contador entre paréntesis junto a
+la etiqueta, en el selector (2), se actualizó. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El desarrollador elige una etiqueta existente haciendo clic en
+    uno de los chips del selector (2) (o la busca primero con el filtro
+    (4), si hay más de seis etiquetas).
+    \item El desarrollador ajusta el control ``Repeticiones'' (9) según
+    cuántas muestras seguidas quiere grabar.
+    \item El desarrollador hace clic en ``Empezar'' (10).
+    \item El sistema muestra una cuenta regresiva (6) de 3 a 1 sobre el
+    área de video (5).
+    \item El sistema activa el indicador ``GRABANDO'' (7) y captura 45
+    frames de landmarks (y, en modo Tasks, blendshapes faciales) desde el
+    área de video (5).
+    \item El sistema envía la muestra al backend y la guarda; si se
+    configuraron varias repeticiones, el indicador ``MUESTRA \emph{n} /
+    \emph{N}'' (8) avanza y el sistema repite los pasos 4 a 6.
+    \item Al completar todas las repeticiones, el sistema confirma el
+    guardado y actualiza el contador de muestras junto a la etiqueta
+    activa, visible bajo el video (``Grabando para: ... (N muestras)'') y
+    en el chip correspondiente del selector (2).
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[1a.] La seña todavía no existe: el desarrollador hace clic en
+    ``+ Nueva seña'' (3), escribe el nombre (validado contra
+    \texttt{\^{}[a-z0-9\_]\{1,32\}\$}) y lo confirma; el sistema la agrega
+    al selector (2) y la deja seleccionada como etiqueta activa. La
+    carpeta de datos recién se crea al guardar la primera muestra.
+    \item[5a.] El desarrollador hace clic en ``Detener'' (el botón (10)
+    cambia de rótulo mientras hay una grabación o cuenta regresiva en
+    curso): el sistema cancela la repetición actual, no la guarda, y
+    vuelve al estado inicial de la Pantalla P-04.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-T-01 a RF-T-04. \\
+\textbf{Frecuencia} &
+Bajo demanda, cuando se necesita ampliar o reforzar el vocabulario. \\
+\bottomrule
+\end{tabularx}
+\caption{CU-06 (real) — Capturar Muestra de Seña para Entrenamiento}
+\end{table}
+
+% ============================================================================
+\subsection{CU-09 (real): Otorgar Consentimiento Explícito de Cámara}
+\textit{Diseñado --- pendiente de implementación.}
+
+Especializa el caso de uso esencial \textbf{CU-09} (ver Entregable~03,
+sección 2.10) sobre la Pantalla \textbf{P-05 --- Pantalla de
+Consentimiento} (Figura~\ref{fig:cur-p05-cu09}), diseño nuevo sin
+componente real todavía.
+
+\diagrama{04_mockup_p05_consentimiento}{0.75\textwidth}{Pantalla P-05, referenciada por CU-09 (real)}{fig:cur-p05-cu09}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.1cm} X@{}}
+\toprule
+\textbf{Nombre} & Otorgar Consentimiento Explícito de Cámara (real) \\
+\textbf{ID} & CU-09 (real; esencial en Entregable 03) \\
+\textbf{Actor principal} & Paciente \\
+\textbf{Precondiciones} &
+El paciente abrió la Estación del Paciente; el sistema muestra la
+Pantalla P-05 antes de solicitar el permiso de cámara al navegador. \\
+\textbf{Garantías de éxito} &
+La cámara se activa solo si el botón (4) fue presionado; en caso
+contrario, permanece inactiva. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El paciente lee el texto explicativo (3) sobre el uso de la
+    cámara.
+    \item El paciente hace clic en ``Acepto y continúo'' (4).
+    \item El sistema registra el consentimiento (sin datos
+    identificatorios) y recién entonces solicita el permiso de cámara al
+    navegador.
+    \item El sistema cierra la Pantalla P-05 y muestra la Pantalla P-02,
+    con el indicador (3) en ``EN VIVO''.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[2a.] El paciente hace clic en ``No acepto'' (5): la Pantalla
+    P-05 permanece visible y la cámara no se activa.
+    \item[3a.] El navegador deniega el permiso de cámara: el sistema
+    informa el error y la Pantalla P-02 no llega a mostrar video.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-03.1. \\
+\textbf{Frecuencia} & Una vez por sesión de la Estación del Paciente. \\
+\bottomrule
+\end{tabularx}
+\caption{CU-09 (real) — Otorgar Consentimiento Explícito de Cámara}
+\end{table}
+
+% ============================================================================
+\subsection{CU-10 (real): Reportar Traducción Incorrecta o Ambigua}
+\textit{Diseñado --- pendiente de implementación.}
+
+Especializa el caso de uso esencial \textbf{CU-10} (ver Entregable~03,
+sección 2.11) sobre las Pantallas P-02 y P-03, mediante el callout de
+reporte agregado a cada burbuja de conversación (callout (10) en P-02,
+Figura~\ref{fig:cur-p02-cu01}; callout (8) en P-03,
+Figura~\ref{fig:cur-p03-cu04}).
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.1cm} X@{}}
+\toprule
+\textbf{Nombre} & Reportar Traducción Incorrecta o Ambigua (real) \\
+\textbf{ID} & CU-10 (real; esencial en Entregable 03) \\
+\textbf{Actor principal} & Paciente, Personal de Recepción o Enfermería \\
+\textbf{Precondiciones} &
+Existe al menos una burbuja en el panel de conversación de P-02 (7) o de
+P-03 (3). \\
+\textbf{Garantías de éxito} &
+El reporte queda asociado al mensaje señalado, con el motivo indicado. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El actor hace clic en el ícono de reporte de una burbuja
+    (callout (10) en P-02 o (8) en P-03).
+    \item El sistema despliega un campo breve para el motivo del reporte.
+    \item El actor escribe o selecciona el motivo y confirma.
+    \item El sistema muestra una confirmación breve (``Caso registrado'')
+    y cierra el campo.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[3a.] El actor cierra el campo sin confirmar: el sistema no
+    registra ningún reporte.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-06.1. \\
+\textbf{Frecuencia} &
+Bajo demanda, cada vez que se detecta una traducción incorrecta o
+ambigua. \\
+\bottomrule
+\end{tabularx}
+\caption{CU-10 (real) — Reportar Traducción Incorrecta o Ambigua}
+\end{table}

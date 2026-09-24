@@ -1,0 +1,57 @@
+' ============================================================================
+' _estilo.iuml — skinparams compartidos para todos los diagramas de LSA Salud.
+' Se incluye con !include _estilo.iuml al inicio de cada .puml.
+' Sin Graphviz instalado: layout con el motor interno smetana.
+' ============================================================================
+!pragma layout smetana
+
+skinparam monochrome false
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 14
+skinparam roundCorner 6
+skinparam ArrowColor #333333
+skinparam ArrowFontSize 13
+
+skinparam class {
+    BackgroundColor #F5F7FA
+    BorderColor #1E448A
+    FontColor #1A1A1A
+    AttributeFontSize 13
+    FontStyle bold
+    ArrowColor #333333
+}
+
+skinparam package {
+    BackgroundColor #FFFFFF
+    BorderColor #6B7280
+    FontColor #1E448A
+    FontStyle bold
+}
+
+skinparam usecase {
+    BackgroundColor #F5F7FA
+    BorderColor #1E448A
+    FontColor #1A1A1A
+    ArrowColor #333333
+}
+
+skinparam actor {
+    BackgroundColor #F5F7FA
+    BorderColor #1E448A
+    FontColor #1A1A1A
+}
+
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #1E448A
+    FontColor #1E448A
+    FontStyle bold
+}
+
+skinparam note {
+    BackgroundColor #FFF8DC
+    BorderColor #B8860B
+    FontSize 12
+}

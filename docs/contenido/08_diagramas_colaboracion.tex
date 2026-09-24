@@ -1,0 +1,597 @@
+% ============================================================================
+% 08_diagramas_colaboracion.tex — Cuerpo del entregable "Diagramas de
+% Colaboración". Sin preámbulo: se incluye tanto desde
+% 08_Diagramas_Colaboracion.tex (standalone) como, eventualmente, desde un
+% documento maestro.
+% ============================================================================
+\section{Diagramas de Colaboración}
+
+\subsection{Propósito y alcance}
+
+Esta sección documenta, siguiendo la técnica descripta por Craig Larman en
+\textit{UML y Patrones}, los \textbf{contratos de operación de sistema} y los
+\textbf{diagramas de colaboración} (\textit{communication diagrams} en UML
+2.5) correspondientes a las ocho operaciones de sistema identificadas en
+\texttt{docs/IDS.md}: SO-01 a SO-05 (implementadas) y SO-06 a SO-08
+(\textbf{diseñadas, pendientes de implementación}, cubren RF-03, RF-04 y
+RF-06 oficiales). Cada operación de sistema es un mensaje
+que un actor le envía al sistema considerado como una caja negra durante el
+diseño de la interacción; el diagrama de colaboración muestra cómo el
+sistema, ya descompuesto en sus objetos de diseño reales (\textit{hooks} de
+React, componentes, \textit{handlers} de FastAPI y el modelo de
+reconocimiento), coopera para cumplir esa operación.
+
+A diferencia de un diagrama de secuencia, un diagrama de colaboración no
+tiene eje temporal ni líneas de vida: prioriza la topología de
+colaboración entre objetos. Cada par de objetos que colabora está unido por
+un único enlace estructural, dibujado como una línea recta \textbf{sin
+punta de flecha}. Cada mensaje que viaja por ese enlace se dibuja como una
+flechita corta y propia, paralela al enlace, apuntando siempre hacia el
+objeto receptor, con su número jerárquico junto al texto del mensaje (1,
+1.1, 1.2, 2, 2.1\ldots); cuando varios mensajes recorren el mismo enlace se
+apilan sobre él, y los mensajes de sentido opuesto (por ejemplo, un mensaje
+de vuelta genuino, como el evento asíncrono de un WebSocket) se dibujan del
+lado contrario del enlace. Los valores de retorno de una llamada síncrona
+simple no se dibujan como una flecha aparte: se integran en el propio
+mensaje con la notación \texttt{resultado := operación(args)}, siguiendo la
+convención de Larman de omitir flechas de retorno triviales. Un
+automensaje (un objeto que se invoca a sí mismo) se dibuja como un pequeño
+bucle sobre el propio objeto. Cada objeto se identifica como
+\texttt{instancia~:~Clase} (o \texttt{:Clase} cuando no hace falta nombrar
+la instancia), con el nombre subrayado, cuando corresponde a una instancia
+real (por ejemplo, un componente de React o el modelo LSTM cargado en
+memoria), o simplemente por su nombre cuando representa un módulo o una
+colección de funciones del backend sin una clase propia (por ejemplo,
+\texttt{capture\_validation} o \texttt{MEDICAL\_TEMPLATES}), ya que el
+backend de LSA Salud (\texttt{app.py}) no está organizado en clases salvo por el
+modelo \texttt{SignLanguageLSTM}. Los cinco diagramas se dibujan en
+draw.io (formato \texttt{.drawio} editable, generado desde
+\texttt{docs/diagramas/colaboracion/gen\_drawio.py}) para poder expresar
+esta notación de forma exacta; ver \texttt{docs/README.md} para el flujo de
+edición y reexportación.
+
+Para cada operación se presenta: el contrato de la operación (con sus
+referencias cruzadas a caso de uso y requisito funcional), el diagrama de
+colaboración, los patrones GRASP aplicados y una tabla que traza cada objeto
+del diagrama a su archivo fuente real.
+
+\subsection{SO-01: reconocerSeña(frame) --- DC-01}
+
+\subsubsection{Contrato de operación}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
+\toprule
+\textbf{Operación} & \texttt{reconocerSeña(frame)} \\
+\textbf{Referencias cruzadas} & Realiza CU-01 (pasos de captura, reconocimiento
+y armado de la secuencia); RF-01.1, RF-01.2, RF-01.3, RF-01.4. \\
+\textbf{Precondiciones} & La cámara está autorizada y el \textit{hook} de
+MediaPipe está emitiendo \textit{frames}; el backend tiene el modelo
+\texttt{SignLanguageLSTM} cargado; existe una conexión WebSocket activa hacia
+\texttt{/ws/predict}. \\
+\textbf{Postcondiciones} & El \textit{frame} quedó agregado al búfer
+deslizante de la Estación del Paciente. Si el búfer alcanzó el múltiplo de
+\texttt{PREDICT\_STRIDE\_FRAMES} configurado, se envió una predicción al
+backend y, si la seña reconocida superó el umbral de confianza y no fue
+``idle'', la palabra reconocida quedó agregada a la secuencia en curso
+(\texttt{transcript}) de \texttt{useSentenceBuilder}. \\
+\bottomrule
+\end{tabularx}
+\caption{Contrato de la operación SO-01 --- reconocerSeña(frame)}
+\label{tab:col-contrato-so01}
+\end{table}
+
+\subsubsection{Diagrama de colaboración DC-01}
+
+\diagrama{08_colaboracion_dc01}{\textwidth}{DC-01 --- Colaboración para reconocerSeña(frame)}{fig:col-dc01}
+
+\subsubsection{Patrones GRASP aplicados}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Controlador:} \texttt{handleFrame} en \texttt{PacientePage}
+    actúa como controlador de la operación de sistema: recibe el evento de
+    captura desde el \textit{hook} de MediaPipe y coordina al búfer, al
+    constructor de oraciones y al \textit{hook} de WebSocket, sin contener
+    él mismo la lógica de reconocimiento.
+    \item \textbf{Experto en información:} el modelo \texttt{SignLanguageLSTM}
+    es quien tiene el conocimiento (los pesos entrenados) para clasificar el
+    tensor de entrada, por lo que es el responsable de producir la
+    predicción; ningún otro objeto duplica esa responsabilidad.
+    \item \textbf{Bajo acoplamiento:} \texttt{useSignWebSocket} aísla a
+    \texttt{PacientePage} del protocolo de transporte (JSON o binario) y de
+    los detalles de reconexión del WebSocket; \texttt{PacientePage} solo
+    conoce \texttt{sendFrames} y un \textit{callback} \texttt{onMessage}.
+    \item \textbf{Indirección:} el \textit{handler}
+    \texttt{websocket\_predict} media entre el frontend y el modelo
+    \texttt{SignLanguageLSTM}: el frontend nunca invoca al modelo
+    directamente, sino a través de este intermediario, lo que permite
+    cambiar el modelo o el preprocesamiento sin afectar al cliente.
+\end{itemize}
+
+\subsubsection{Objetos del diagrama y su ubicación en el código}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+\textbf{Objeto} & \textbf{Ubicación real} \\
+\midrule
+\texttt{useMediaPipe} & Hook (pipeline por defecto) $\rightarrow$ \texttt{web/hooks/useMediaPipe.ts}; intercambiable por \texttt{useMediaPipeTasks} ($\rightarrow$ \texttt{web/hooks/useMediaPipeTasks.ts}) activando \texttt{?mp=tasks} en \texttt{web/app/paciente/page.tsx} --- ambos exponen el mismo contrato \texttt{onFrame} \\
+\texttt{handleFrame : PacientePage} & Componente $\rightarrow$ \texttt{web/app/paciente/page.tsx} \\
+\texttt{recordedFrames} & Ref (búfer) $\rightarrow$ \texttt{web/app/paciente/page.tsx} \\
+\texttt{useSignWebSocket} & Hook $\rightarrow$ \texttt{web/hooks/useSignWebSocket.ts} \\
+\texttt{websocket\_predict} & Handler FastAPI $\rightarrow$ \texttt{app.py} \\
+\texttt{model : SignLanguageLSTM} & Instancia del modelo $\rightarrow$ \texttt{src/model/lstm.py} \\
+\texttt{TopPredictions} & Componente $\rightarrow$ \texttt{web/components/*/TopPredictions.tsx} \\
+\texttt{useSentenceBuilder} & Hook $\rightarrow$ \texttt{web/hooks/useSentenceBuilder.ts} \\
+\bottomrule
+\end{tabularx}
+\caption{Trazabilidad de objetos --- DC-01}
+\label{tab:col-objetos-dc01}
+\end{table}
+
+\subsection{SO-02: cerrarOracionYTraducir(secuencia) --- DC-02}
+
+\subsubsection{Contrato de operación}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
+\toprule
+\textbf{Operación} & \texttt{cerrarOracionYTraducir(secuencia)} \\
+\textbf{Referencias cruzadas} & Realiza CU-01 (cierre de secuencia) y CU-02
+completo; RF-01.4, RF-01.5. \\
+\textbf{Precondiciones} & La secuencia de palabras reconocidas
+(\texttt{transcript}) no está vacía; transcurrieron al menos 800~ms de
+inactividad y la magnitud de movimiento promedio está por debajo del umbral
+de quietud. \\
+\textbf{Postcondiciones} & La secuencia en curso quedó cerrada y vaciada
+(\texttt{transcriptRef} vuelve a estar vacío). Se obtuvo una oración natural
+en español --- por plantilla médica, por caché de traducciones o por el
+modelo de lenguaje local --- y, si se obtuvo una oración válida, el mensaje
+del paciente quedó agregado a la conversación compartida a través de
+\texttt{useChatChannel}. \\
+\bottomrule
+\end{tabularx}
+\caption{Contrato de la operación SO-02 --- cerrarOracionYTraducir(secuencia)}
+\label{tab:col-contrato-so02}
+\end{table}
+
+\subsubsection{Diagrama de colaboración DC-02}
+
+\diagrama{08_colaboracion_dc02}{\textwidth}{DC-02 --- Colaboración para cerrarOracionYTraducir(secuencia)}{fig:col-dc02}
+
+\subsubsection{Patrones GRASP aplicados}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Experto en información:} \texttt{useSentenceBuilder} decide
+    cuándo cerrar la oración porque es quien tiene el estado de quietud
+    (ventana de magnitudes de movimiento) y el \textit{transcript} en curso;
+    ningún otro objeto podría tomar esa decisión sin duplicar ese estado.
+    \item \textbf{Controlador:} \texttt{process\_sentence} en \texttt{app.py}
+    coordina la resolución de la traducción (plantilla, caché, modelo de
+    lenguaje) como punto único de entrada del backend para esta operación.
+    \item \textbf{Indirección:} \texttt{MEDICAL\_TEMPLATES} y
+    \texttt{\_translation\_cache} median entre la secuencia de palabras y el
+    modelo de lenguaje externo, evitando invocar a Ollama cuando ya existe
+    una traducción conocida o reciente.
+    \item \textbf{Bajo acoplamiento:} \texttt{useSentenceBuilder} no conoce
+    cómo se traduce la secuencia (plantilla, caché o LLM); solo conoce el
+    contrato HTTP de \texttt{/process\_sentence}, lo que permite cambiar la
+    estrategia de traducción en el backend sin tocar el frontend.
+\end{itemize}
+
+\subsubsection{Objetos del diagrama y su ubicación en el código}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+\textbf{Objeto} & \textbf{Ubicación real} \\
+\midrule
+\texttt{useSentenceBuilder} & Hook $\rightarrow$ \texttt{web/hooks/useSentenceBuilder.ts} \\
+\texttt{process\_sentence} & Handler FastAPI $\rightarrow$ \texttt{app.py} \\
+\texttt{MEDICAL\_TEMPLATES} & Diccionario de módulo $\rightarrow$ \texttt{app.py} \\
+\texttt{\_translation\_cache} & Caché LRU en memoria $\rightarrow$ \texttt{app.py} \\
+\texttt{Ollama (qwen2:1.5b)} & Proceso local externo $\rightarrow$ API HTTP en \texttt{localhost:11434} \\
+\texttt{useChatChannel (Paciente)} & Hook $\rightarrow$ \texttt{web/hooks/useChatChannel.ts} \\
+\bottomrule
+\end{tabularx}
+\caption{Trazabilidad de objetos --- DC-02}
+\label{tab:col-objetos-dc02}
+\end{table}
+
+\subsection{SO-03: sintetizarVoz(oracion) --- DC-03}
+
+\subsubsection{Contrato de operación}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
+\toprule
+\textbf{Operación} & \texttt{sintetizarVoz(oracion)} \\
+\textbf{Referencias cruzadas} & Realiza CU-03 completo; RF-01.6. \\
+\textbf{Precondiciones} & Existe una oración traducida no vacía
+(resultado de SO-02); el motor Piper TTS (\texttt{piper\_voice}) puede estar
+cargado o no. \\
+\textbf{Postcondiciones} & Si el motor de síntesis está disponible, el audio
+de la oración quedó disponible en formato \textit{base64} --- reutilizado
+desde \texttt{\_audio\_cache} si ya existía, o generado y agregado a la
+caché en caso contrario --- y se programó su reproducción en el navegador
+tras la ventana de exhibición previa. Si el motor no está disponible, el
+mensaje queda entregado sin audio, sin interrumpir el flujo de la
+conversación. \\
+\bottomrule
+\end{tabularx}
+\caption{Contrato de la operación SO-03 --- sintetizarVoz(oracion)}
+\label{tab:col-contrato-so03}
+\end{table}
+
+\subsubsection{Diagrama de colaboración DC-03}
+
+\diagrama{08_colaboracion_dc03}{\textwidth}{DC-03 --- Colaboración para sintetizarVoz(oracion)}{fig:col-dc03}
+
+\subsubsection{Patrones GRASP aplicados}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Experto en información:} \texttt{piper\_voice} es el único
+    objeto con el conocimiento (modelo de voz \texttt{es\_AR-daniela-high})
+    necesario para sintetizar el audio, por lo que es el responsable de
+    generarlo.
+    \item \textbf{Indirección:} \texttt{\_audio\_cache} media entre
+    \texttt{process\_sentence} y \texttt{piper\_voice}, evitando resintetizar
+    audio ya generado para la misma oración.
+    \item \textbf{Bajo acoplamiento:} \texttt{useSentenceBuilder} no conoce
+    el motor de síntesis ni el formato interno del audio; solo recibe
+    \texttt{audio\_base64} y decide cuándo reproducirlo, tras la ventana de
+    exhibición configurada por \texttt{DISPLAY\_WINDOW\_MS}.
+    \item \textbf{Alta cohesión:} toda la responsabilidad de obtener el
+    audio (consultar caché, sintetizar, cachear) queda concentrada en
+    \texttt{process\_sentence}, sin dispersarse hacia el frontend.
+\end{itemize}
+
+\subsubsection{Objetos del diagrama y su ubicación en el código}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+\textbf{Objeto} & \textbf{Ubicación real} \\
+\midrule
+\texttt{process\_sentence} & Handler FastAPI $\rightarrow$ \texttt{app.py} \\
+\texttt{\_audio\_cache} & Caché LRU en memoria (hasta 50 oraciones) $\rightarrow$ \texttt{app.py} \\
+\texttt{piper\_voice : PiperVoice} & Instancia del motor TTS $\rightarrow$ \texttt{app.py} \\
+\texttt{useSentenceBuilder} & Hook $\rightarrow$ \texttt{web/hooks/useSentenceBuilder.ts} \\
+\texttt{Audio} & API nativa del navegador, invocada desde \texttt{web/hooks/useSentenceBuilder.ts} \\
+\bottomrule
+\end{tabularx}
+\caption{Trazabilidad de objetos --- DC-03}
+\label{tab:col-objetos-dc03}
+\end{table}
+
+\subsection{SO-04: enviarRespuesta(mensaje) --- DC-04}
+
+\subsubsection{Contrato de operación}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
+\toprule
+\textbf{Operación} & \texttt{enviarRespuesta(mensaje)} \\
+\textbf{Referencias cruzadas} & Realiza CU-04 (sincronización por
+BroadcastChannel); RF-01.7, RF-02.1. \\
+\textbf{Precondiciones} & La Estación de Recepción está abierta; el
+personal de recepción o enfermería redactó un texto no vacío. \\
+\textbf{Postcondiciones} & El mensaje del personal quedó agregado a
+\texttt{chatHistory} en ambas estaciones (Recepción y Paciente), de forma
+sincronizada a través del canal \texttt{nexora-chat}, y visible para el
+paciente en su propia pantalla. \\
+\bottomrule
+\end{tabularx}
+\caption{Contrato de la operación SO-04 --- enviarRespuesta(mensaje)}
+\label{tab:col-contrato-so04}
+\end{table}
+
+\subsubsection{Diagrama de colaboración DC-04}
+
+\diagrama{08_colaboracion_dc04}{0.85\textwidth}{DC-04 --- Colaboración para enviarRespuesta(mensaje)}{fig:col-dc04}
+
+\subsubsection{Patrones GRASP aplicados}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Controlador:} \texttt{RecepcionPage} recibe el evento de
+    envío desde \texttt{ReceptionControls} y lo delega a
+    \texttt{useChatChannel}, sin conocer los detalles de sincronización
+    entre estaciones.
+    \item \textbf{Indirección:} la \texttt{BroadcastChannel} nativa del
+    navegador media entre las dos instancias de \texttt{useChatChannel}
+    (Recepción y Paciente), que nunca se referencian directamente entre sí.
+    \item \textbf{Bajo acoplamiento:} \texttt{ReceptionControls} solo conoce
+    un \textit{callback} \texttt{onSend(texto)}; no sabe nada sobre el canal
+    de sincronización ni sobre la estación del paciente.
+    \item \textbf{Alta cohesión:} \texttt{useChatChannel} concentra toda la
+    responsabilidad de publicar y recibir mensajes por el canal, tanto del
+    lado de Recepción como del lado del Paciente (misma implementación,
+    instanciada en cada estación).
+\end{itemize}
+
+\subsubsection{Objetos del diagrama y su ubicación en el código}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+\textbf{Objeto} & \textbf{Ubicación real} \\
+\midrule
+\texttt{ReceptionControls} & Componente $\rightarrow$ \texttt{web/components/reception/ReceptionControls.tsx} \\
+\texttt{RecepcionPage} & Componente $\rightarrow$ \texttt{web/app/recepcion/page.tsx} \\
+\texttt{useChatChannel (Recepción)} & Hook $\rightarrow$ \texttt{web/hooks/useChatChannel.ts} \\
+\texttt{BroadcastChannel} & API nativa del navegador (canal \texttt{nexora-chat}) \\
+\texttt{useChatChannel (Paciente)} & Hook $\rightarrow$ \texttt{web/hooks/useChatChannel.ts} \\
+\texttt{ChatBubble (Paciente)} & Componente $\rightarrow$ \texttt{web/components/chat/ChatBubble.tsx} \\
+\bottomrule
+\end{tabularx}
+\caption{Trazabilidad de objetos --- DC-04}
+\label{tab:col-objetos-dc04}
+\end{table}
+
+\subsection{SO-05: capturarMuestra(frames, etiqueta) --- DC-05}
+
+\subsubsection{Contrato de operación}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
+\toprule
+\textbf{Operación} & \texttt{capturarMuestra(frames, etiqueta)} \\
+\textbf{Referencias cruzadas} & Realiza CU-06 (grabación de una repetición);
+RF-T-03, RF-T-04. \\
+\textbf{Precondiciones} & La Estación del Paciente está en Modo Captura; se
+seleccionó o creó una etiqueta de seña; la cuenta regresiva de la repetición
+ya finalizó. \\
+\textbf{Postcondiciones} & Si los datos son válidos (etiqueta bien formada,
+cantidad de \textit{frames} y de \textit{blendshapes} consistente con el
+modo activo), la muestra quedó persistida como archivo \texttt{.npy} en el
+árbol de datos correspondiente al modo (legado o Tasks), asociada a la
+etiqueta, y el conteo de muestras por etiqueta quedó actualizado. Si los
+datos no son válidos, no se guardó ningún archivo y el error quedó
+informado al Modo Captura. \\
+\bottomrule
+\end{tabularx}
+\caption{Contrato de la operación SO-05 --- capturarMuestra(frames, etiqueta)}
+\label{tab:col-contrato-so05}
+\end{table}
+
+\subsubsection{Diagrama de colaboración DC-05}
+
+\diagrama{08_colaboracion_dc05}{\textwidth}{DC-05 --- Colaboración para capturarMuestra(frames, etiqueta)}{fig:col-dc05}
+
+\subsubsection{Patrones GRASP aplicados}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Controlador:} \texttt{CaptureMode} coordina la secuencia de
+    grabación (cuenta regresiva, acumulación de \textit{frames}, envío) como
+    punto único de entrada de la operación en el frontend.
+    \item \textbf{Experto en información:} \texttt{capture\_validation}
+    concentra el conocimiento de las reglas de validación (formato de
+    etiqueta, consistencia de \textit{blendshapes} según el modo) y es quien
+    debe decidir si los datos son aceptables, no el \textit{handler}
+    \texttt{capture}.
+    \item \textbf{Creador:} el \textit{handler} \texttt{capture} es
+    responsable de crear el archivo \texttt{.npy} persistido, porque es
+    quien contiene los datos ya validados y quien conoce la ruta de destino
+    según el modo (legado o Tasks).
+    \item \textbf{Bajo acoplamiento:} \texttt{CaptureMode} no conoce las
+    reglas de validación ni el formato de persistencia en disco; solo conoce
+    el contrato HTTP de \texttt{/capture} y su respuesta.
+\end{itemize}
+
+\subsubsection{Objetos del diagrama y su ubicación en el código}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+\textbf{Objeto} & \textbf{Ubicación real} \\
+\midrule
+\texttt{CaptureMode} & Componente $\rightarrow$ \texttt{web/components/capture/CaptureMode.tsx} \\
+\texttt{captureHandlerRef} & Ref (manejador de \textit{frames} en modo captura) $\rightarrow$ \texttt{web/components/capture/CaptureMode.tsx} \\
+\texttt{capture} & Handler FastAPI $\rightarrow$ \texttt{app.py} \\
+\texttt{capture\_validation} & Módulo de funciones de validación $\rightarrow$ \texttt{capture\_validation.py} \\
+\texttt{dataset/custom/<etiqueta>/*.npy} & Archivo persistido en disco $\rightarrow$ \texttt{dataset/custom/} (o \texttt{dataset/custom\_tasks/} + \texttt{dataset/custom\_blendshapes/} en Modo Tasks) \\
+\bottomrule
+\end{tabularx}
+\caption{Trazabilidad de objetos --- DC-05}
+\label{tab:col-objetos-dc05}
+\end{table}
+
+\subsection{SO-06: otorgarConsentimiento(paciente) --- DC-06}
+\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-03.}
+
+\subsubsection{Contrato de operación}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
+\toprule
+\textbf{Operación} & \texttt{otorgarConsentimiento(paciente)} \\
+\textbf{Referencias cruzadas} & Realiza CU-09 completo; RF-03.1. \\
+\textbf{Precondiciones} & La Estación del Paciente muestra la Pantalla
+P-05; la cámara todavía no fue activada. \\
+\textbf{Postcondiciones} & El consentimiento quedó registrado (sin datos
+identificatorios) en el registro de auditoría, y \texttt{ConsentGate}
+autorizó el montaje de los \textit{hooks} de captura (\texttt{useMediaPipe}
+/ \texttt{useMediaPipeTasks}), habilitando la Pantalla P-02. \\
+\bottomrule
+\end{tabularx}
+\caption{Contrato de la operación SO-06 --- otorgarConsentimiento(paciente)}
+\label{tab:col-contrato-so06}
+\end{table}
+
+\subsubsection{Diagrama de colaboración DC-06}
+
+\diagrama{08_colaboracion_dc06}{0.9\textwidth}{DC-06 --- Colaboración para otorgarConsentimiento(paciente) --- diseñado, pendiente de implementación}{fig:col-dc06}
+
+\subsubsection{Patrones GRASP aplicados}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Controlador:} \texttt{ConsentGate} recibe la confirmación
+    desde la Pantalla de Consentimiento y coordina el registro del evento
+    y la habilitación de la cámara, como único punto de entrada de la
+    operación en el frontend.
+    \item \textbf{Experto en información:} \texttt{audit\_log} es quien
+    conoce el formato de persistencia de los eventos anónimos, por lo que
+    es el responsable de escribirlos, en vez de que cada componente sepa
+    escribir su propio archivo.
+    \item \textbf{Indirección:} \texttt{audit\_log} media entre el
+    \textit{handler} \texttt{consent} y el archivo físico
+    \texttt{logs/consent.jsonl}, igual que \texttt{capture\_validation}
+    media entre \texttt{capture} y el sistema de archivos en DC-05.
+    \item \textbf{Bajo acoplamiento:} la Pantalla de Consentimiento no
+    conoce el contrato HTTP ni el formato de persistencia; solo invoca a
+    \texttt{ConsentGate} con la decisión del paciente.
+\end{itemize}
+
+\subsubsection{Objetos del diagrama y su ubicación en el código}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+\textbf{Objeto} & \textbf{Ubicación real (diseñada)} \\
+\midrule
+\texttt{PantallaConsentimiento (P-05)} & Componente nuevo $\rightarrow$ previsto en \texttt{web/components/consent/} \\
+\texttt{ConsentGate} & Componente de guardia nuevo $\rightarrow$ previsto antepuesto a \texttt{web/app/paciente/page.tsx} \\
+\texttt{consent} & Handler FastAPI nuevo $\rightarrow$ previsto en \texttt{app.py} (\texttt{POST /consent}) \\
+\texttt{audit\_log} & Módulo de persistencia de eventos nuevo $\rightarrow$ previsto en \texttt{audit\_log.py} \\
+\texttt{logs/consent.jsonl} & Archivo persistido en disco $\rightarrow$ previsto en \texttt{logs/} \\
+\bottomrule
+\end{tabularx}
+\caption{Trazabilidad de objetos --- DC-06 (diseñado, pendiente de implementación)}
+\label{tab:col-objetos-dc06}
+\end{table}
+
+\subsection{SO-07: registrarEventoAuditoria(operacion) --- DC-07}
+\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-04.}
+
+\subsubsection{Contrato de operación}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
+\toprule
+\textbf{Operación} & \texttt{registrarEventoAuditoria(operacion)} \\
+\textbf{Referencias cruzadas} & Realiza CU-11, incluido por CU-01 y CU-04; RF-04.1. \\
+\textbf{Precondiciones} & Un \textit{handler} del backend (\texttt{websocket\_predict},
+\texttt{process\_sentence} o \texttt{capture}) completó una operación de
+sistema. \\
+\textbf{Postcondiciones} & Un evento anónimo (tipo de operación, marca
+temporal, resultado) quedó persistido en el registro de auditoría, sin
+datos identificatorios ni imágenes o video. \\
+\bottomrule
+\end{tabularx}
+\caption{Contrato de la operación SO-07 --- registrarEventoAuditoria(operacion)}
+\label{tab:col-contrato-so07}
+\end{table}
+
+\subsubsection{Diagrama de colaboración DC-07}
+
+\diagrama{08_colaboracion_dc07}{0.9\textwidth}{DC-07 --- Colaboración para registrarEventoAuditoria(operacion) --- diseñado, pendiente de implementación}{fig:col-dc07}
+
+\subsubsection{Patrones GRASP aplicados}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Experto en información:} \texttt{audit\_log} concentra el
+    conocimiento del formato del evento anónimo, por lo que es el único
+    responsable de armarlo y persistirlo.
+    \item \textbf{Bajo acoplamiento:} ningún \textit{handler} existente
+    (\texttt{websocket\_predict}, \texttt{process\_sentence},
+    \texttt{capture}) necesita conocer el formato de persistencia de
+    auditoría: cada uno invoca a \texttt{audit\_log} con el tipo de
+    operación y el resultado, igual para los tres.
+    \item \textbf{Alta cohesión:} toda la responsabilidad de anonimizar,
+    formatear y persistir el evento queda concentrada en
+    \texttt{audit\_log}, sin dispersarse entre los \textit{handlers}.
+\end{itemize}
+
+\subsubsection{Objetos del diagrama y su ubicación en el código}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+\textbf{Objeto} & \textbf{Ubicación real (diseñada)} \\
+\midrule
+\texttt{handler (websocket\_predict / process\_sentence / capture)} & Handlers FastAPI existentes $\rightarrow$ \texttt{app.py} (cada uno invocaría a \texttt{audit\_log} al finalizar) \\
+\texttt{audit\_log} & Módulo de persistencia de eventos nuevo $\rightarrow$ previsto en \texttt{audit\_log.py} \\
+\texttt{logs/audit.jsonl} & Archivo persistido en disco $\rightarrow$ previsto en \texttt{logs/} \\
+\bottomrule
+\end{tabularx}
+\caption{Trazabilidad de objetos --- DC-07 (diseñado, pendiente de implementación)}
+\label{tab:col-objetos-dc07}
+\end{table}
+
+\subsection{SO-08: reportarTraduccion(mensaje, motivo) --- DC-08}
+\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-06.}
+
+\subsubsection{Contrato de operación}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
+\toprule
+\textbf{Operación} & \texttt{reportarTraduccion(mensaje, motivo)} \\
+\textbf{Referencias cruzadas} & Realiza CU-10, extiende a CU-01 y CU-04; RF-06.1. \\
+\textbf{Precondiciones} & Existe un mensaje visible en el panel de
+conversación de P-02 o P-03; el actor hizo clic en su ícono de reporte. \\
+\textbf{Postcondiciones} & El reporte (mensaje señalado y motivo) quedó
+persistido, sin datos identificatorios del paciente, y el actor recibió
+confirmación. \\
+\bottomrule
+\end{tabularx}
+\caption{Contrato de la operación SO-08 --- reportarTraduccion(mensaje, motivo)}
+\label{tab:col-contrato-so08}
+\end{table}
+
+\subsubsection{Diagrama de colaboración DC-08}
+
+\diagrama{08_colaboracion_dc08}{0.9\textwidth}{DC-08 --- Colaboración para reportarTraduccion(mensaje, motivo) --- diseñado, pendiente de implementación}{fig:col-dc08}
+
+\subsubsection{Patrones GRASP aplicados}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Controlador:} la página de estación (\texttt{PacientePage}
+    o \texttt{RecepcionPage}) recibe el evento de reporte desde
+    \texttt{ChatBubble} y lo delega al backend, sin conocer el formato de
+    persistencia.
+    \item \textbf{Creador:} el \textit{handler} \texttt{report} es
+    responsable de crear el registro persistido, porque es quien recibe el
+    mensaje señalado y el motivo ya validados.
+    \item \textbf{Bajo acoplamiento:} \texttt{ChatBubble} solo conoce un
+    \textit{callback} \texttt{onReport(mensaje, motivo)}; no sabe nada del
+    contrato HTTP ni de la persistencia.
+    \item \textbf{Indirección:} \texttt{audit\_log} media entre el
+    \textit{handler} \texttt{report} y el archivo
+    \texttt{logs/reports.jsonl}, reutilizando el mismo módulo de
+    persistencia que SO-06 y SO-07.
+\end{itemize}
+
+\subsubsection{Objetos del diagrama y su ubicación en el código}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+\textbf{Objeto} & \textbf{Ubicación real (diseñada)} \\
+\midrule
+\texttt{ChatBubble} & Componente existente, con ícono de reporte nuevo $\rightarrow$ \texttt{web/components/chat/ChatBubble.tsx} \\
+\texttt{PacientePage / RecepcionPage} & Componentes existentes $\rightarrow$ \texttt{web/app/paciente/page.tsx}, \texttt{web/app/recepcion/page.tsx} \\
+\texttt{report} & Handler FastAPI nuevo $\rightarrow$ previsto en \texttt{app.py} (\texttt{POST /report}) \\
+\texttt{audit\_log} & Módulo de persistencia de eventos nuevo $\rightarrow$ previsto en \texttt{audit\_log.py} \\
+\texttt{logs/reports.jsonl} & Archivo persistido en disco $\rightarrow$ previsto en \texttt{logs/} \\
+\bottomrule
+\end{tabularx}
+\caption{Trazabilidad de objetos --- DC-08 (diseñado, pendiente de implementación)}
+\label{tab:col-objetos-dc08}
+\end{table}

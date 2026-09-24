@@ -1,0 +1,39 @@
+@startsalt 04_mockup_p02_paciente
+{+
+  { <b>LSA SALUD</b>  (1) | . | . | [Vista Paciente] | [Vista Recepción] }
+  ==
+  <b>Estación del Paciente</b>  (2)
+  El sistema traduce las señas del paciente a texto en tiempo real.
+  .
+  {
+    {^"Captando señas"
+      <&media-record> EN VIVO · Visión por computadora  (3)
+      {+
+        .
+        .
+        <&camera-slr>  Video de cámara con landmarks superpuestos  (4)
+        .
+        .
+      }
+      Oración en construcción: <i>yo  dolor  cabeza</i>  (5)
+      .
+      Top-3 predicciones  (6)
+      {#
+        dolor  | 88,5 %
+        cabeza | 8,2 %
+        idle   | 3,3 %
+      }
+    } | {^"Conversación  (7)"
+      {SI
+        <b>Paciente:</b> Me duele la cabeza.    | 10:32 | [<&flag>]
+        <b>Recepción:</b> ¿Desde cuándo?        | 10:33 | [<&flag>]
+        .                                       | .     | .
+        .                                       | .     | .
+      }
+      <i>Ícono de reporte por mensaje --- diseñado, pendiente</i>  (10)
+      .
+      { [Limpiar historial] | (8) | [Ajustes (Modo Captura)] | (9) }
+    }
+  }
+}
+@endsalt

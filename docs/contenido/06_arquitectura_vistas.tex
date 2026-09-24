@@ -1,0 +1,448 @@
+% ============================================================================
+% 06_arquitectura_vistas.tex — Cuerpo del entregable "Documento de
+% Arquitectura de Software: Vistas"
+% Sin preámbulo: se incluye tanto desde 06_Arquitectura_Vistas.tex
+% (standalone) como, eventualmente, desde un documento maestro.
+% ============================================================================
+\section{Introducción}
+
+\subsection{Propósito y alcance}
+
+Este documento describe la arquitectura de software de \textbf{LSA Salud}
+mediante el modelo de vistas \textbf{4+1} de Kruchten, aplicando la
+metodología de diseño usada en el resto de los entregables (Larman / Proceso
+Unificado, notación UML 2.5 --- ver Referencias de la ERS, Entregable 05).
+Incluye, marcados explícitamente, los componentes \textbf{diseñados pero
+pendientes de implementación} que cubren los requisitos oficiales RF-03,
+RF-04 y RF-06 (consentimiento, auditoría y reporte de traducción).
+Mientras que el Modelo de Dominio (Entregable 01) describe los conceptos del
+\emph{problema}, este documento describe las decisiones de \emph{diseño} del
+software que lo resuelve: módulos, procesos concurrentes, organización del
+código fuente y despliegue físico.
+
+Se presentan cuatro vistas independientes más una vista de escenarios que
+las integra:
+\begin{itemize}
+    \item \textbf{Vista Lógica} (\ref{sec:vista-logica}): módulos de diseño
+    del frontend y del backend, y sus dependencias.
+    \item \textbf{Vista de Procesos} (\ref{sec:vista-procesos}): concurrencia
+    en tiempo de ejecución entre el navegador, el backend y los procesos
+    locales invocados.
+    \item \textbf{Vista de Desarrollo} (\ref{sec:vista-desarrollo}):
+    organización del repositorio y dependencias entre sus paquetes.
+    \item \textbf{Vista Física} (\ref{sec:vista-fisica}): nodos de despliegue,
+    procesos en ejecución, puertos y protocolos.
+    \item \textbf{Vista de Escenarios} (\ref{sec:vista-escenarios}): traza
+    CU-01 y CU-04 a través de las cuatro vistas anteriores.
+\end{itemize}
+
+Este documento no repite contenido de otros entregables: el detalle de la
+persistencia basada en archivos se documenta en el Entregable 09; los IDs de
+actores, casos de uso, RF y RNF se reutilizan tal como están definidos en
+\texttt{IDS.md} y en la ERS (Entregable 05).
+
+\subsection{Convenciones}
+
+Los diagramas de este documento son de \textbf{diseño}, no de dominio: a
+diferencia del Entregable 01, sí aparecen aquí \texttt{hooks} de React,
+endpoints de FastAPI, procesos del sistema operativo y puertos de red, porque
+son precisamente el objeto de estudio de una vista arquitectónica. Las
+etiquetas de figuras y tablas de este entregable usan el prefijo
+\texttt{arq-} para no colisionar con las de otros entregables.
+
+% ============================================================================
+\section{Vista Lógica}
+\label{sec:vista-logica}
+
+La Vista Lógica muestra los módulos de diseño de LSA Salud y sus
+dependencias: en el frontend, las páginas de \texttt{app/}, los
+\texttt{hooks} de React y los \texttt{components}; en el backend, el
+módulo de endpoints (\texttt{app.py}), el modelo LSTM
+(\texttt{src.model.lstm}) y el módulo de validación de capturas
+(\texttt{capture\_validation}). Los módulos \textbf{diseñados y pendientes
+de implementación} llevan el estereotipo «diseñado»: el componente de
+consentimiento \texttt{ConsentGate} (P-05, RF-03.1) y el módulo de auditoría
+\texttt{audit\_log} (RF-04.1). El reporte de traducción (RF-06.1) se inicia
+desde \texttt{ChatBubble} y viaja por la dependencia HTTP de
+\texttt{components} hacia \texttt{app.py}.
+
+\diagrama{06_vista_logica}{\textwidth}{Vista Lógica de LSA Salud: módulos de diseño y dependencias}{fig:arq-vista-logica}
+
+Puntos relevantes del diagrama:
+\begin{itemize}
+    \item Las páginas \texttt{paciente/page} (P-02) y \texttt{recepcion/page}
+    (P-03) son los únicos consumidores directos de los \texttt{hooks} y de
+    los \texttt{components}; \texttt{page} (P-01) solo navega hacia ellas.
+    \item \texttt{useMediaPipe} y \texttt{useMediaPipeTasks} son
+    implementaciones alternativas del mismo rol (captura de landmarks):
+    ambas dependen de las funciones puras de \texttt{lib/mediapipe.ts}, pero
+    solo una está activa por sesión, según el parámetro \texttt{?mp=tasks}
+    (ver decisión arquitectónica en la sección~\ref{sec:decisiones}).
+    \item Solo tres \texttt{hooks} cruzan la frontera hacia el backend:
+    \texttt{useSignWebSocket} (WebSocket de predicción),
+    \texttt{useSentenceBuilder} (traducción de oraciones) y
+    \texttt{CaptureMode} (captura de muestras de entrenamiento y consulta de
+    clases/estadísticas). El resto de los \texttt{hooks} y \texttt{components}
+    es puramente de interfaz de usuario o de sincronización intra-navegador
+    (\texttt{useChatChannel}, ver Vista de Procesos).
+    \item En el backend, \texttt{app.py} concentra todos los endpoints y
+    delega la clasificación en el módulo del modelo LSTM y la validación de
+    capturas en \texttt{capture\_validation}, ambos desacoplados como
+    módulos propios (RNF-T-03).
+    \item \textbf{Diseñado, pendiente de implementación:} el componente
+    \texttt{ConsentGate} (frontend, antepuesto a \texttt{paciente/page}) y el
+    módulo \texttt{audit\_log} (backend, invocado desde cada
+    \textit{handler} de \texttt{app.py} que realiza una operación de
+    sistema) siguen el mismo patrón de desacoplamiento que
+    \texttt{capture\_validation}: ninguno de los \textit{handlers}
+    existentes necesitaría conocer el formato interno del registro de
+    auditoría, solo invocar una función del módulo.
+\end{itemize}
+
+% ============================================================================
+\section{Vista de Procesos}
+\label{sec:vista-procesos}
+
+La Vista de Procesos muestra la concurrencia en tiempo de ejecución del
+sistema: el bucle de captura del navegador, la comunicación asincrónica por
+WebSocket, el manejo diferenciado de solicitudes en el backend FastAPI, y la
+sincronización entre estaciones por \texttt{BroadcastChannel}, que es
+completamente independiente del backend.
+
+\diagramaApaisada{06_vista_procesos_1}{0.95\textheight}{Vista de Procesos de LSA Salud (1/3): captura y predicción}{fig:arq-vista-procesos-1}
+
+\diagramaApaisada{06_vista_procesos_2}{0.95\textheight}{Vista de Procesos de LSA Salud (2/3): cierre de oración y traducción}{fig:arq-vista-procesos-2}
+
+\diagramaApaisada{06_vista_procesos_3}{0.95\textheight}{Vista de Procesos de LSA Salud (3/3): sincronización entre estaciones y respuesta}{fig:arq-vista-procesos-3}
+
+Puntos relevantes de la concurrencia representada:
+\begin{itemize}
+    \item \textbf{Bucle de captura (hilo principal del navegador):} corre de
+    forma continua mientras la cámara está activa, independientemente de si
+    hay una predicción pendiente; el \texttt{hook} \texttt{useSignWebSocket}
+    descarta envíos mientras una predicción anterior sigue en curso, salvo
+    que esté obsoleta (más de 2000 ms), para no saturar el WebSocket.
+    \item \textbf{\texttt{/ws/predict} en el \emph{event loop}:} el
+    \textit{handler} es \texttt{async def}, pero la inferencia del modelo
+    LSTM (\texttt{model(input\_tensor)}) es una operación de CPU/GPU que se
+    ejecuta de forma sincrónica dentro de ese \textit{handler}: mientras dura
+    la predicción, bloquea el único hilo del \textit{event loop} de FastAPI.
+    \item \textbf{\texttt{/process\_sentence} en el \textit{threadpool} de
+    Starlette:} al ser un \textit{handler} sincrónico (\texttt{def}, no
+    \texttt{async def}), FastAPI lo ejecuta automáticamente en el
+    \textit{threadpool} interno de Starlette; por eso las llamadas
+    bloqueantes a Ollama (HTTP, hasta 8 s de espera) y a Piper TTS
+    \textbf{no} bloquean el \textit{event loop}, a diferencia de
+    \texttt{/ws/predict}.
+    \item \textbf{Ollama como proceso local independiente:} se invoca por
+    HTTP a \texttt{localhost:11434}; su disponibilidad no está garantizada,
+    y su ausencia se degrada según RNF-T-01 (texto original sin reconstruir),
+    sin interrumpir el flujo.
+    \item \textbf{\texttt{BroadcastChannel} como canal sin red:} la
+    propagación de un mensaje entre la Estación del Paciente y la Estación
+    de Recepción no pasa por el backend ni por ninguna red: es un mecanismo
+    del navegador entre pestañas del mismo origen. Por eso se representa como
+    una rama concurrente (\texttt{par}) independiente de la exhibición y
+    reproducción de audio en la propia estación de origen.
+\end{itemize}
+
+% ============================================================================
+\section{Vista de Desarrollo}
+\label{sec:vista-desarrollo}
+
+La Vista de Desarrollo mapea la organización física del código fuente en el
+repositorio y las dependencias entre sus paquetes, relevante para la
+compilación, el empaquetado y la asignación de responsabilidades de
+mantenimiento (RNF-T-03).
+
+\diagramaApaisada{06_vista_desarrollo}{0.95\textheight}{Vista de Desarrollo de LSA Salud: paquetes del repositorio y sus dependencias}{fig:arq-vista-desarrollo}
+
+Puntos relevantes:
+\begin{itemize}
+    \item El frontend (\texttt{web/}) y el backend (\texttt{app.py},
+    \texttt{src/}) son unidades de despliegue independientes, sin
+    dependencia de compilación entre sí: se comunican únicamente en tiempo
+    de ejecución, por HTTP y WebSocket.
+    \item \texttt{train\_lstm.py} es un script de reentrenamiento
+    \textbf{offline}, fuera del proceso del backend: lee \texttt{dataset/} y
+    escribe en \texttt{models/}, sin invocación síncrona desde \texttt{app.py}
+    (ver CU-08 en \texttt{IDS.md}).
+    \item \texttt{dataset/}, \texttt{models/} y \texttt{voices/} son
+    carpetas de datos, no paquetes de código: representan la persistencia
+    basada en archivos del sistema (sin base de datos, ver
+    Entregable 09 para el detalle del modelo de datos).
+    \item \texttt{docs/} (esta documentación) no tiene dependencias de
+    código y no participa en el flujo de ejecución.
+    \item \textbf{Diseñado, pendiente de implementación:} \texttt{logs/}
+    sería la carpeta de datos que recibe los eventos de auditoría
+    (RF-04.1) y los reportes de traducción (RF-06.1) escritos por el
+    módulo \texttt{audit\_log}, con el mismo patrón de persistencia basada
+    en archivos que \texttt{dataset/} (ver Entregable 09).
+\end{itemize}
+
+% ============================================================================
+\section{Vista Física}
+\label{sec:vista-fisica}
+
+La Vista Física muestra los nodos de despliegue, los procesos en ejecución
+y los protocolos y puertos entre ellos, sobre la arquitectura de
+\textbf{doble estación} descripta en la ERS (2.1 y 3.3): un único par
+paciente--personal por instancia del backend, típicamente sobre una
+misma PC con dos pantallas (o dos dispositivos en la misma red local). Esa
+doble estación es, por diseño, la materialización de las dos caras de la
+estación fija de guardia/triaje exigida por RNF-04/RNF-07 oficiales (ver
+ERS, Sección~3.4.2); su ensamblaje físico sobre hardware comercial
+corresponde al entregable E07 (EDT), fuera de alcance de software.
+
+\diagrama{06_vista_fisica}{\textwidth}{Vista Física de LSA Salud: nodos, procesos y protocolos de despliegue}{fig:arq-vista-fisica}
+
+Puntos relevantes:
+\begin{itemize}
+    \item Todos los procesos corren en la misma PC (o red local): el
+    servidor de desarrollo Next.js en el puerto 3000, el backend FastAPI
+    sobre Uvicorn en el puerto 8000, y Ollama en el puerto 11434. No hay
+    ningún nodo ni proceso externo a la máquina local (RNF-T-02, RNF-03.1).
+    \item Piper TTS \textbf{no} es un proceso separado con puerto propio: se
+    carga como modelo ONNX embebido dentro del mismo proceso Python que
+    corre \texttt{app.py}, a diferencia de Ollama, que sí es un servicio
+    HTTP independiente.
+    \item Las dos pestañas del navegador (Estación Paciente y Estación
+    Recepción) se comunican entre sí exclusivamente por
+    \texttt{BroadcastChannel}, sin cruzar ningún límite de nodo ni de
+    proceso: es tráfico intra-navegador, no tráfico de red.
+    \item El sistema de archivos local (\texttt{dataset/}, \texttt{models/},
+    \texttt{voices/}) es leído y escrito únicamente por el proceso del
+    backend; no hay motor de base de datos en ningún nodo. La carpeta
+    \texttt{logs/} (eventos de auditoría, consentimiento y reportes de
+    traducción) está diseñada y pendiente de implementación (RF-03, RF-04,
+    RF-06).
+    \item La Estación Paciente usa WebSocket (\texttt{/ws/predict}) y HTTP
+    REST contra el backend; la Estación Recepción solo HTTP REST. El backend
+    invoca a Ollama por HTTP (\texttt{POST /api/generate}).
+\end{itemize}
+
+% ============================================================================
+\section{Vista de Escenarios (+1)}
+\label{sec:vista-escenarios}
+
+Esta vista integra las cuatro anteriores mediante dos escenarios de
+ejecución concretos: \textbf{CU-01} (Comunicarse mediante Lengua de Señas
+Argentina) y \textbf{CU-04} (Responder al Paciente). La Tabla~\ref{tab:arq-escenarios}
+indica, para cada paso del escenario, qué elemento de cada vista participa.
+
+\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{2.15cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}p{2.15cm} >{\raggedright\arraybackslash}p{2.55cm} >{\raggedright\arraybackslash}p{1.75cm}}
+    \toprule
+    \textbf{Paso del escenario} & \textbf{Vista Lógica} & \textbf{Vista de Procesos} & \textbf{Vista de Desarrollo} & \textbf{Vista Física} & \textbf{RF / CU} \\
+    \midrule
+    \endhead
+    Captura de landmarks &
+    \texttt{useMediaPipe} / \texttt{useMediaPipe\allowbreak Tasks}, \texttt{lib/\allowbreak mediapipe.ts} &
+    Bucle de captura (hilo principal del navegador) &
+    \texttt{web/hooks}, \texttt{web/lib} &
+    Pestaña Estación Paciente (nodo navegador) &
+    RF-01.1, CU-01 \\
+
+    Envío y predicción por WebSocket &
+    \texttt{useSign\allowbreak Web\allowbreak Socket} $\to$ \texttt{app.py} &
+    WS \texttt{/ws/predict} en el \textit{event loop} de FastAPI &
+    \texttt{web/hooks} $\to$ \texttt{app.py} (HTTP/WS) &
+    Pestaña Paciente $\leftrightarrow$ proceso Uvicorn (\texttt{:8000}) &
+    RF-01.2, RF-01.3, CU-01, CU-02 \\
+
+    Cierre de oración y traducción &
+    \texttt{useSentence\allowbreak Builder} $\to$ \texttt{app.py} &
+    POST \texttt{/process\_sentence} en el \textit{threadpool} de Starlette; llamada a Ollama &
+    \texttt{app.py} $\to$ \texttt{dataset/}, \texttt{models/} (indirectamente vía LSTM) &
+    Proceso Uvicorn $\to$ proceso Ollama (\texttt{:11434}) &
+    RF-01.4, RF-01.5, CU-02 \\
+
+    Síntesis de voz &
+    \texttt{app.py} (Piper embebido) &
+    Llamada sincrónica a Piper dentro del \textit{threadpool} &
+    \texttt{app.py} $\to$ \texttt{voices/} &
+    Piper TTS embebido en el proceso Uvicorn &
+    RF-01.6, CU-03 \\
+
+    Publicación del mensaje del paciente &
+    \texttt{useChat\allowbreak Channel} &
+    Rama \texttt{par}: exhibición local + propagación por \texttt{Broadcast\allowbreak Channel} &
+    \texttt{web/hooks} (sin dependencia de \texttt{app.py}) &
+    Pestaña Paciente $\leftrightarrow$ Pestaña Recepción (intra-navegador) &
+    RF-01.7, CU-01, CU-04 \\
+
+    Respuesta del personal &
+    \texttt{Reception\allowbreak Controls}, \texttt{useSpeech\allowbreak To\allowbreak Text}, \texttt{useChat\allowbreak Channel} &
+    Evento \texttt{MESSAGE} propagado de vuelta a la Estación Paciente &
+    \texttt{web/\allowbreak components}, \texttt{web/hooks} &
+    Pestaña Recepción $\leftrightarrow$ Pestaña Paciente (intra-navegador) &
+    RF-02.1, RF-02.2, CU-04, CU-05 \\
+    \bottomrule
+    \caption{Escenario CU-01 / CU-04 trazado a través de las cuatro vistas}
+    \label{tab:arq-escenarios}
+\end{longtable}
+
+Este recorrido confirma que ningún paso del escenario requiere un nodo,
+proceso o dependencia fuera de la PC local descripta en la Vista Física, lo
+que sostiene la decisión de procesamiento local por privacidad (RNF-03).
+
+% ============================================================================
+\section{Decisiones arquitectónicas}
+\label{sec:decisiones}
+
+La Tabla~\ref{tab:arq-decisiones} resume las decisiones arquitectónicas más
+relevantes de LSA Salud, su justificación y sus consecuencias sobre las
+vistas anteriores.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.25cm} >{\raggedright\arraybackslash}p{5.2cm} >{\raggedright\arraybackslash}p{5.2cm}}
+    \toprule
+    \textbf{Decisión} & \textbf{Justificación} & \textbf{Consecuencias} \\
+    \midrule
+    \endhead
+    Procesamiento y persistencia 100\% locales (sin llamadas a servicios en
+    la nube) &
+    Los datos de salud del paciente no deben salir de la máquina local
+    (RNF-03.1); evita depender de conectividad externa para el flujo crítico
+    (RNF-T-02). &
+    Ollama y el motor de síntesis de voz deben estar instalados de antemano
+    en la máquina (ver ERS 2.7, Suposiciones); no hay escalado horizontal
+    posible sin rediseño. \\
+
+    \textit{Diseñado, pendiente de implementación:} módulo
+    \texttt{audit\_log} de auditoría basado en archivos
+    (\texttt{logs/audit.jsonl}), invocado por cada \textit{handler} de
+    \texttt{app.py} al completar una operación de sistema &
+    RF-04.1 oficial exige registrar logs de uso y métricas operativas
+    anónimas para auditoría, sin agregar un servicio ni una base de datos
+    nueva (coherente con la decisión de persistencia basada en archivos). &
+    Cada \textit{handler} existente necesita una línea adicional de
+    invocación al módulo; el formato de línea (JSON Lines) permite anexar
+    sin reescribir el archivo completo. \\
+
+    \textit{Diseñado, pendiente de implementación:} \texttt{ConsentGate}
+    como componente de guardia en el frontend, antepuesto a toda la lógica
+    de \texttt{paciente/page} &
+    RF-03.1 oficial exige bloquear la cámara hasta el consentimiento
+    explícito; ubicarlo como guardia (en vez de una validación dispersa en
+    cada \texttt{hook}) concentra la responsabilidad en un único punto de
+    entrada. &
+    \texttt{useMediaPipe} y \texttt{useMediaPipe\-Tasks} solo se montan después
+    de que \texttt{ConsentGate} confirma el consentimiento; ningún otro
+    \texttt{hook} necesita conocer el estado de consentimiento. \\
+
+    Protocolo binario v2 opcional en el WebSocket de predicción, además del
+    JSON v1 &
+    Reducir el tamaño de los mensajes y la latencia de serialización en el
+    canal más sensible al rendimiento (RNF-01.1). &
+    \texttt{useSignWebSocket} y \texttt{/ws/predict} deben soportar ambos
+    formatos; el binario redondea coordenadas, priorizando latencia sobre
+    precisión decimal. \\
+
+    MediaPipe Holistic como backend de captura por defecto, con MediaPipe
+    Tasks como alternativa explícita (\texttt{?mp=tasks}) &
+    Mantener el flujo probado (Holistic) como opción estable, mientras se
+    evalúa Tasks (landmarkers independientes, con \textit{blendshapes}
+    faciales) sin obligar la migración de todos los usuarios. &
+    Duplica el \texttt{hook} de captura (\texttt{useMediaPipe} /
+    \texttt{useMediaPipeTasks}) y el árbol de datos de entrenamiento
+    (\texttt{dataset/custom} vs.\ \texttt{dataset/custom\_tasks} +
+    \texttt{dataset/custom\_blendshapes}). \\
+
+    Persistencia basada en archivos (\texttt{.npy}, \texttt{.pth},
+    \texttt{.onnx}) en lugar de una base de datos &
+    El dominio no requiere consultas relacionales ni concurrencia de
+    escritura alta: las muestras de entrenamiento y los modelos son
+    artefactos versionables por archivo; simplifica el despliegue
+    \textit{standalone} (ver Entregable 09). &
+    Sin transacciones ni consultas indexadas; la consistencia de
+    \texttt{dataset\_stats} depende de recorrer el árbol de carpetas en
+    cada consulta. \\
+
+    Backend de un solo archivo (\texttt{app.py}) para todos los endpoints &
+    Simplicidad de despliegue en un entorno de consultorio, sin
+    infraestructura de orquestación entre servicios. &
+    Todos los endpoints comparten el mismo proceso, el mismo \textit{event
+    loop} y el mismo \textit{threadpool}: una carga alta en un endpoint
+    puede afectar la latencia de los demás (ver Vista de Procesos). \\
+
+    Cachés LRU en memoria para traducción (\texttt{\_translation\_cache},
+    200 entradas) y para audio sintetizado (\texttt{\_audio\_cache}, 50
+    entradas) &
+    Evitar repetir llamadas costosas al modelo de lenguaje o a la síntesis
+    de voz ante oraciones ya traducidas o sintetizadas antes (RNF-01.1). &
+    Las cachés son volátiles (en memoria del proceso): se pierden al
+    reiniciar el backend; no hay invalidación explícita más allá del límite
+    de tamaño (política LRU). \\
+    \bottomrule
+    \caption{Decisiones arquitectónicas de LSA Salud}
+    \label{tab:arq-decisiones}
+\end{longtable}
+
+% ============================================================================
+\section{Trazabilidad con atributos de calidad}
+\label{sec:trazabilidad-rnf}
+
+La Tabla~\ref{tab:arq-rnf} vincula cada requisito no funcional --- oficial o
+técnico, ver \texttt{IDS.md} Sección~4 --- con la vista o el mecanismo
+arquitectónico que lo atiende.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}p{8.6cm}}
+    \toprule
+    \textbf{RNF} & \textbf{Atributo} & \textbf{Vista / mecanismo que lo atiende} \\
+    \midrule
+    \endhead
+    RNF-T-01 & Fiabilidad &
+    Vista de Procesos: reconexión automática del WebSocket cada 2 s,
+    degradación sin interrupción si falla Ollama o Piper (ver
+    sección~\ref{sec:vista-procesos}). \\
+
+    RNF-T-02 & Disponibilidad &
+    Vista Física: todos los procesos críticos corren en la PC local, sin
+    dependencia de conectividad externa (sección~\ref{sec:vista-fisica}). \\
+
+    RNF-03.1 (RNF-03 oficial) & Seguridad / privacidad &
+    Vista Física y decisión arquitectónica de procesamiento local
+    (sección~\ref{sec:decisiones}): ningún dato de la conversación sale de
+    la máquina; persistencia basada en archivos sin base de datos externa;
+    diseño de auditoría y reporte (RF-04.1, RF-06.1) sin imágenes ni video. \\
+
+    RNF-T-03 & Mantenibilidad &
+    Vista Lógica: separación de responsabilidades en \texttt{hooks}
+    independientes y módulo LSTM desacoplado del backend
+    (sección~\ref{sec:vista-logica}). \\
+
+    RNF-T-04 & Portabilidad &
+    Vista Física: stack multiplataforma (Python/Uvicorn, Node.js/Next.js);
+    probado en Windows (sección~\ref{sec:vista-fisica}). \\
+
+    RNF-T-05 & Usabilidad / accesibilidad &
+    Vista de Procesos: la ventana de exhibición previa a la reproducción de
+    audio actúa como confirmación automática, sin botón manual
+    (sección~\ref{sec:vista-procesos}). \\
+
+    RNF-01.1 (RNF-01 oficial) & Rendimiento &
+    Vista de Procesos: separación event loop / \textit{threadpool}, y
+    decisiones arquitectónicas de protocolo binario v2 y cachés LRU
+    (secciones~\ref{sec:vista-procesos} y~\ref{sec:decisiones}). \\
+
+    RNF-02.1 (RNF-02 oficial) & Precisión &
+    Sin mecanismo arquitectónico dedicado todavía: la exactitud de
+    validación se calcula en \texttt{train\_lstm.py} (fuera del proceso del
+    backend, ver Vista de Desarrollo), sin un componente de monitoreo en
+    producción (ver ERS, Sección~3.3). \\
+
+    RNF-04.1 / RNF-07.1 (RNF-04 / RNF-07 oficiales) & Hardware / estación fija &
+    Vista Física: las dos estaciones sincronizadas materializan las dos
+    caras de la estación fija (sección~\ref{sec:vista-fisica}); el
+    ensamblaje físico queda fuera de esta arquitectura de software (E07,
+    EDT). \\
+
+    RNF-05.1 / RNF-06.1 (RNF-05 / RNF-06 oficiales) & Dataset clínico &
+    Vista de Desarrollo: árboles \texttt{dataset/custom(\_tasks/\_blendshapes)}
+    (sección~\ref{sec:vista-desarrollo}); la validación lingüística es un
+    proceso organizacional sin componente de software (ver ERS,
+    Sección~2.6, riesgo \#1). \\
+    \bottomrule
+    \caption{Trazabilidad entre requisitos no funcionales y vistas arquitectónicas}
+    \label{tab:arq-rnf}
+\end{longtable}
