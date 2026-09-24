@@ -10,6 +10,11 @@ REPORT_STATIONS = {"paciente", "recepcion"}
 REPORT_WORDS_MAX_COUNT = 20
 REPORT_WORD_MAX_LEN = 32
 
+AUDIT_TYPES = {"consent", "translation_displayed"}
+AUDIT_STATIONS = {"paciente", "recepcion"}
+AUDIT_CONSENT_VALUES = {"accepted", "declined"}
+AUDIT_E2E_MS_MAX = 60000
+
 
 def validate_capture_label(label: str) -> None:
     if not LABEL_PATTERN.fullmatch(label):
@@ -43,3 +48,20 @@ def validate_report_payload(text: str, station: str, words: list[str] | None) ->
             raise ValueError("Too many words")
         if any(not w or len(w) > REPORT_WORD_MAX_LEN for w in words):
             raise ValueError("Invalid word")
+
+
+def validate_audit_payload(
+    event_type: str, station: str, consent: str | None, e2e_ms: float | None
+) -> None:
+    if event_type not in AUDIT_TYPES:
+        raise ValueError("Invalid audit type")
+    if station not in AUDIT_STATIONS:
+        raise ValueError("Invalid station")
+    if event_type == "consent":
+        if consent not in AUDIT_CONSENT_VALUES:
+            raise ValueError("Invalid consent value")
+    if event_type == "translation_displayed":
+        if not isinstance(e2e_ms, (int, float)) or isinstance(e2e_ms, bool):
+            raise ValueError("Invalid e2e_ms")
+        if e2e_ms < 0 or e2e_ms > AUDIT_E2E_MS_MAX:
+            raise ValueError("Invalid e2e_ms")

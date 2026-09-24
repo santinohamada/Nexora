@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import math
 import atexit
 import asyncio
 import threading
@@ -21,6 +22,7 @@ from pydantic import BaseModel
 
 from src.model.lstm import SignLanguageLSTM
 from capture_validation import (
+    validate_audit_payload,
     validate_capture_blendshapes,
     validate_capture_label,
     validate_report_payload,
@@ -323,7 +325,36 @@ def _prepare_input(data: np.ndarray) -> np.ndarray:
 os.makedirs("dataset/custom", exist_ok=True)
 os.makedirs("logs", exist_ok=True)
 REPORTS_LOG_PATH = os.path.join("logs", "reports.jsonl")
-REPORTS_LOCK = threading.Lock()
+AUDIT_LOG_PATH = os.path.join("logs", "audit.jsonl")
+JSONL_LOCK = threading.Lock()
+AUDIT_LATENCY_FIELDS = ("lstm_ms", "translation_ms", "tts_ms", "total_ms", "e2e_ms")
+
+
+def _append_jsonl(path: str, record: dict) -> None:
+    with JSONL_LOCK, open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record) + "\n")
+
+
+def _log_audit(event_type: str, **fields) -> None:
+    record = {"type": event_type, "timestamp": datetime.now(timezone.utc).isoformat()}
+    record.update(fields)
+    _append_jsonl(AUDIT_LOG_PATH, record)
+
+
+def _percentile(sorted_values: list[float], pct: float) -> float:
+    n = len(sorted_values)
+    idx = min(n - 1, max(0, math.ceil(pct / 100 * n) - 1))
+    return sorted_values[idx]
+
+
+def _latency_summary(values: list[float]) -> dict:
+    ordered = sorted(values)
+    return {
+        "p50": round(_percentile(ordered, 50), 2),
+        "p95": round(_percentile(ordered, 95), 2),
+        "max": round(ordered[-1], 2),
+        "count": len(ordered),
+    }
 
 @app.get("/")
 def health():
@@ -398,10 +429,100 @@ def report_translation(payload: ReportPayload):
         "words": payload.words,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    with REPORTS_LOCK, open(REPORTS_LOG_PATH, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record) + "\n")
+    _append_jsonl(REPORTS_LOG_PATH, record)
+    _log_audit("report", station=payload.station)
 
     return {"status": "ok"}
+
+
+class AuditPayload(BaseModel):
+    type: str
+    station: str
+    consent: str | None = None
+    e2e_ms: float | None = None
+
+
+@app.post("/audit")
+def audit_event(payload: AuditPayload):
+    try:
+        validate_audit_payload(payload.type, payload.station, payload.consent, payload.e2e_ms)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    fields = {"station": payload.station}
+    if payload.type == "consent":
+        fields["consent"] = payload.consent
+    else:
+        fields["e2e_ms"] = round(payload.e2e_ms, 2)
+    _log_audit(payload.type, **fields)
+
+    return {"status": "ok"}
+
+
+@app.get("/metrics")
+def metrics(since: str | None = None):
+    since_dt = None
+    if since:
+        try:
+            since_dt = datetime.fromisoformat(since)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid since timestamp")
+        if since_dt.tzinfo is None:
+            since_dt = since_dt.replace(tzinfo=timezone.utc)
+
+    counts: dict[str, int] = {}
+    consent_counts = {"accepted": 0, "declined": 0}
+    source_counts: dict[str, int] = {}
+    latency_samples: dict[str, list[float]] = {k: [] for k in AUDIT_LATENCY_FIELDS}
+
+    if os.path.exists(AUDIT_LOG_PATH):
+        with open(AUDIT_LOG_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                if since_dt is not None:
+                    record_ts = record.get("timestamp")
+                    try:
+                        record_dt = datetime.fromisoformat(record_ts) if record_ts else None
+                    except ValueError:
+                        record_dt = None
+                    if record_dt is None or record_dt < since_dt:
+                        continue
+
+                event_type = record.get("type")
+                if not event_type:
+                    continue
+                counts[event_type] = counts.get(event_type, 0) + 1
+
+                if event_type == "consent" and record.get("consent") in consent_counts:
+                    consent_counts[record["consent"]] += 1
+                if event_type == "sentence" and record.get("source"):
+                    source = record["source"]
+                    source_counts[source] = source_counts.get(source, 0) + 1
+                for field in AUDIT_LATENCY_FIELDS:
+                    value = record.get(field)
+                    if isinstance(value, (int, float)) and not isinstance(value, bool):
+                        latency_samples[field].append(value)
+
+    latency_stats = {
+        field: _latency_summary(values)
+        for field, values in latency_samples.items()
+        if values
+    }
+
+    return {
+        "counts": counts,
+        "consent": consent_counts,
+        "reports": counts.get("report", 0),
+        "translation_source": source_counts,
+        "latency_ms": latency_stats,
+    }
 
 
 @app.post("/predict")
@@ -418,8 +539,7 @@ def predict(payload: SkeletonPayload):
     data = _prepare_input(data)
     input_tensor = torch.tensor(data, dtype=torch.float32).unsqueeze(0).to(device)
 
-    if TIMING_MODE != "off":
-        lstm_t0 = time.perf_counter()
+    lstm_t0 = time.perf_counter()
 
     with torch.no_grad():
         outputs = model(input_tensor)
@@ -433,8 +553,11 @@ def predict(payload: SkeletonPayload):
         for p, i in zip(top3_probs[0], top3_idx[0])
     ]
 
+    lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
+    confidence_pct = round(confidence.item() * 100, 2)
+    _log_audit("prediction", lstm_ms=round(lstm_ms, 2), confidence=confidence_pct)
+
     if TIMING_MODE != "off":
-        lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
         cycle_id = _timing_next_cycle_id()
         _timing_emit_cycle({
             "cycle_id": cycle_id,
@@ -446,7 +569,7 @@ def predict(payload: SkeletonPayload):
 
     return {
         "sign": CLASSES[predicted_idx.item()],
-        "confidence": round(confidence.item() * 100, 2),
+        "confidence": confidence_pct,
         "top3": top3,
     }
 
@@ -520,8 +643,7 @@ async def websocket_predict(websocket: WebSocket):
                 data_np = _prepare_input(data_np)
                 input_tensor = torch.tensor(data_np, dtype=torch.float32).unsqueeze(0).to(device)
 
-                if TIMING_MODE != "off":
-                    lstm_t0 = time.perf_counter()
+                lstm_t0 = time.perf_counter()
 
                 with torch.no_grad():
                     outputs = model(input_tensor)
@@ -534,15 +656,18 @@ async def websocket_predict(websocket: WebSocket):
                     for p, i in zip(top3_probs[0], top3_idx[0])
                 ]
 
+                confidence_pct = round(confidence.item() * 100, 2)
                 result = {
                     "sign": CLASSES[predicted_idx.item()],
-                    "confidence": round(confidence.item() * 100, 2),
+                    "confidence": confidence_pct,
                     "top3": top3,
                 }
                 await websocket.send_json(result)
 
+                lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
+                _log_audit("prediction", lstm_ms=round(lstm_ms, 2), confidence=confidence_pct)
+
                 if TIMING_MODE != "off":
-                    lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
                     cycle_id = _timing_next_cycle_id()
                     _timing_emit_cycle({
                         "cycle_id": cycle_id,
@@ -667,6 +792,15 @@ Traducción:"""
 
     elapsed_ms = (time.perf_counter() - t0) * 1000
     print(f"[Nexora] process_sentence: {elapsed_ms:.0f}ms (source={source}) '{words}' -> '{natural_sentence}'")
+
+    _log_audit(
+        "sentence",
+        translation_ms=round(translation_ms, 2),
+        tts_ms=round(tts_ms, 2),
+        total_ms=round(elapsed_ms, 2),
+        source=source,
+        word_count=len(words.split()),
+    )
 
     if TIMING_MODE != "off":
         cycle_id = _timing_next_cycle_id()

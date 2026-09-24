@@ -11,6 +11,7 @@ import { useMediaPipeTasks } from "../../hooks/useMediaPipeTasks";
 import { useSignWebSocket } from "../../hooks/useSignWebSocket";
 import { useSentenceBuilder } from "../../hooks/useSentenceBuilder";
 import { useChatChannel } from "../../hooks/useChatChannel";
+import { sendAudit } from "../../lib/audit";
 import { ChatMessage, Frame, PredictionResult } from "../../types";
 
 const CONFIDENCE_THRESHOLD = 70;
@@ -193,14 +194,20 @@ export default function PacientePage() {
                 <>
                   <button
                     type="button"
-                    onClick={() => setConsentState("declined")}
+                    onClick={() => {
+                      setConsentState("declined");
+                      sendAudit({ type: "consent", station: "paciente", consent: "declined" });
+                    }}
                     className="px-6 py-3 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl font-semibold transition-colors"
                   >
                     No acepto
                   </button>
                   <button
                     type="button"
-                    onClick={() => setConsentState("accepted")}
+                    onClick={() => {
+                      setConsentState("accepted");
+                      sendAudit({ type: "consent", station: "paciente", consent: "accepted" });
+                    }}
                     className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
                   >
                     Acepto y continúo
