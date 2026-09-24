@@ -288,6 +288,10 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
           /* holistic may already be closed */
         }
       }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
     };
   }, []);
 

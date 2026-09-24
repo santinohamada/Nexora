@@ -11,15 +11,16 @@ const USE_BINARY_V2 = WS_PROTOCOL_VERSION === "v2";
 
 const POSE_LANDMARKS = 33;
 const HAND_LANDMARKS = 21;
-const POSE_FLOATS = POSE_LANDMARKS * 3;
+const POSE_FLOATS = POSE_LANDMARKS * 4;
 const HAND_FLOATS = HAND_LANDMARKS * 3;
 const HEADER_BYTES = 4;
 const FLAG_LEFT_OMIT = 0x01;
 const FLAG_RIGHT_OMIT = 0x02;
 const COORDINATE_DECIMALS = 10000;
+const WS_STALE_REQUEST_MS = 2000;
 
 function isHandEmpty(hand: Landmark[]): boolean {
-  return hand.every((lm) => lm[3] === 0);
+  return hand.every((lm) => lm[0] === hand[0][0] && lm[1] === hand[0][1]);
 }
 
 function roundCoord(value: number): number {
@@ -59,6 +60,7 @@ function packFramesBinary(frames: Frame[]): ArrayBuffer {
       arr[offset++] = roundCoord(f[j][0]);
       arr[offset++] = roundCoord(f[j][1]);
       arr[offset++] = roundCoord(f[j][2]);
+      arr[offset++] = roundCoord(f[j][3]);
     }
     if (!anyLeftEmpty) {
       const leftStart = POSE_LANDMARKS;
@@ -88,6 +90,7 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
   >("connecting");
   const wsRef = useRef<WebSocket | null>(null);
   const isPredictingRef = useRef(false);
+  const inFlightSinceRef = useRef<number | null>(null);
   const sendTimestampRef = useRef<number | null>(null);
   const onMessageRef = useRef(onMessage);
 
@@ -109,7 +112,11 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
       }
       wsRef.current = ws;
 
-      ws.onopen = () => setWsStatus("connected");
+      ws.onopen = () => {
+        isPredictingRef.current = false;
+        inFlightSinceRef.current = null;
+        setWsStatus("connected");
+      };
 
       ws.onmessage = (event) => {
         try {
@@ -130,6 +137,7 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
             return;
           }
           isPredictingRef.current = false;
+          inFlightSinceRef.current = null;
           if (LATENCY_TIMING_ENABLED && sendTimestampRef.current !== null) {
             const wsRoundtripMs = performance.now() - sendTimestampRef.current;
             sendTimestampRef.current = null;
@@ -142,17 +150,21 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
           }
         } catch {
           isPredictingRef.current = false;
+          inFlightSinceRef.current = null;
         }
       };
 
       ws.onclose = () => {
         wsRef.current = null;
+        isPredictingRef.current = false;
+        inFlightSinceRef.current = null;
         setWsStatus("disconnected");
         reconnectTimeout = setTimeout(connect, 2000);
       };
 
       ws.onerror = () => {
         isPredictingRef.current = false;
+        inFlightSinceRef.current = null;
       };
     };
 
@@ -165,13 +177,18 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
   }, []);
 
   const sendFrames = useCallback((frames: Frame[]) => {
+    const isStale =
+      isPredictingRef.current &&
+      inFlightSinceRef.current !== null &&
+      performance.now() - inFlightSinceRef.current > WS_STALE_REQUEST_MS;
     if (
-      isPredictingRef.current ||
+      (isPredictingRef.current && !isStale) ||
       !wsRef.current ||
       wsRef.current.readyState !== WebSocket.OPEN
     )
       return;
     isPredictingRef.current = true;
+    inFlightSinceRef.current = performance.now();
     if (LATENCY_TIMING_ENABLED) {
       sendTimestampRef.current = performance.now();
     }

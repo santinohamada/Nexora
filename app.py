@@ -2,6 +2,7 @@ import os
 import time
 import json
 import atexit
+import asyncio
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -120,6 +121,7 @@ atexit.register(_timing_close_sink)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 LSTM_MAX_FRAMES = int(os.environ.get("LSTM_MAX_FRAMES", "45"))
+WS_RECEIVE_TIMEOUT_MS = int(os.environ.get("WS_RECEIVE_TIMEOUT_MS", "5000"))
 LSTM_VERSIONED_MODEL_PATH = (
     "models/lstm_v2_24frames.pth"
     if LSTM_MAX_FRAMES == 24
@@ -290,6 +292,17 @@ class SentencePayload(BaseModel):
     words: str
 
 
+def _prepare_input(data: np.ndarray) -> np.ndarray:
+    T = data.shape[0]
+    if T > MAX_FRAMES:
+        data = data[-MAX_FRAMES:]
+    elif T < MAX_FRAMES:
+        pad_len = MAX_FRAMES - T
+        pad_arr = np.zeros((pad_len, 75, 4), dtype=data.dtype)
+        data = np.concatenate((data, pad_arr), axis=0)
+    return data.reshape(MAX_FRAMES, -1)
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -344,15 +357,7 @@ def predict(payload: SkeletonPayload):
         raise HTTPException(status_code=500, detail="Modelo no entrenado. Por favor entrena el LSTM primero.")
 
     # LSTM Preprocessing
-    T = data.shape[0]
-    if T > MAX_FRAMES:
-        data = data[:MAX_FRAMES]
-    elif T < MAX_FRAMES:
-        pad_len = MAX_FRAMES - T
-        pad_arr = np.zeros((pad_len, 75, 4), dtype=data.dtype)
-        data = np.concatenate((data, pad_arr), axis=0)
-        
-    data = data.reshape(MAX_FRAMES, -1)
+    data = _prepare_input(data)
     input_tensor = torch.tensor(data, dtype=torch.float32).unsqueeze(0).to(device)
 
     if TIMING_MODE != "off":
@@ -404,105 +409,115 @@ async def websocket_predict(websocket: WebSocket):
 
     try:
         while True:
-            data_np = None
-            if proto_version == "2":
-                payload = await websocket.receive_bytes()
-                if len(payload) < 4:
-                    await websocket.send_json({"error": "binary header too short"})
-                    continue
-                if payload[0] != 0x02:
-                    await websocket.send_json({"error": "unsupported binary version"})
-                    continue
-                flags = payload[1]
-                left_omit = bool(flags & 0x01)
-                right_omit = bool(flags & 0x02)
-                pose_floats = 33 * 3
-                hand_floats = 21 * 3
-                floats_per_frame = pose_floats + (0 if left_omit else hand_floats) + (0 if right_omit else hand_floats)
-                body_bytes = len(payload) - 4
-                if floats_per_frame <= 0 or body_bytes % (floats_per_frame * 4) != 0:
-                    await websocket.send_json({"error": "binary payload misaligned"})
-                    continue
-                T = body_bytes // (floats_per_frame * 4)
-                if T < 5 or T > 64:
-                    await websocket.send_json({"error": "frame count out of range"})
-                    continue
-                arr = np.frombuffer(payload, dtype=np.float32, offset=4)
-                arr = arr.reshape(T, floats_per_frame)
-                pose = arr[:, :pose_floats].reshape(T, 33, 3)
-                offset = pose_floats
-                if left_omit:
-                    left = np.zeros((T, 21, 3), dtype=np.float32)
+            try:
+                data_np = None
+                if proto_version == "2":
+                    try:
+                        payload = await asyncio.wait_for(
+                            websocket.receive_bytes(),
+                            timeout=WS_RECEIVE_TIMEOUT_MS / 1000,
+                        )
+                    except asyncio.TimeoutError:
+                        await websocket.send_json({"error": "receive timeout"})
+                        continue
+                    if len(payload) < 4:
+                        await websocket.send_json({"error": "binary header too short"})
+                        continue
+                    if payload[0] != 0x02:
+                        await websocket.send_json({"error": "unsupported binary version"})
+                        continue
+                    flags = payload[1]
+                    left_omit = bool(flags & 0x01)
+                    right_omit = bool(flags & 0x02)
+                    pose_floats = 33 * 4
+                    hand_floats = 21 * 3
+                    floats_per_frame = pose_floats + (0 if left_omit else hand_floats) + (0 if right_omit else hand_floats)
+                    body_bytes = len(payload) - 4
+                    if floats_per_frame <= 0 or body_bytes % (floats_per_frame * 4) != 0:
+                        await websocket.send_json({"error": "binary payload misaligned"})
+                        continue
+                    T = body_bytes // (floats_per_frame * 4)
+                    if T < 5 or T > 64:
+                        await websocket.send_json({"error": "frame count out of range"})
+                        continue
+                    arr = np.frombuffer(payload, dtype=np.float32, offset=4)
+                    arr = arr.reshape(T, floats_per_frame)
+                    pose = arr[:, :pose_floats].reshape(T, 33, 4)
+                    offset = pose_floats
+                    if left_omit:
+                        left = np.zeros((T, 21, 4), dtype=np.float32)
+                    else:
+                        left_xyz = arr[:, offset:offset + hand_floats].reshape(T, 21, 3)
+                        left_vis = np.zeros((T, 21, 1), dtype=np.float32)
+                        left = np.concatenate([left_xyz, left_vis], axis=2)
+                        offset += hand_floats
+                    if right_omit:
+                        right = np.zeros((T, 21, 4), dtype=np.float32)
+                    else:
+                        right_xyz = arr[:, offset:offset + hand_floats].reshape(T, 21, 3)
+                        right_vis = np.zeros((T, 21, 1), dtype=np.float32)
+                        right = np.concatenate([right_xyz, right_vis], axis=2)
+                    data_np = np.concatenate([pose, left, right], axis=1)
                 else:
-                    left = arr[:, offset:offset + hand_floats].reshape(T, 21, 3)
-                    offset += hand_floats
-                if right_omit:
-                    right = np.zeros((T, 21, 3), dtype=np.float32)
-                else:
-                    right = arr[:, offset:offset + hand_floats].reshape(T, 21, 3)
-                frame_xyz = np.concatenate([pose, left, right], axis=1)
-                vis = np.zeros((T, 75, 1), dtype=np.float32)
-                data_np = np.concatenate([frame_xyz, vis], axis=2)
-            else:
-                data_json = await websocket.receive_json()
-                frames = data_json.get("frames", [])
-                if len(frames) < 5:
-                    await websocket.send_json({"error": "Too few frames (min 5)"})
-                    continue
-                data_np = np.array(frames, dtype=np.float32)
+                    try:
+                        data_json = await asyncio.wait_for(
+                            websocket.receive_json(),
+                            timeout=WS_RECEIVE_TIMEOUT_MS / 1000,
+                        )
+                    except asyncio.TimeoutError:
+                        await websocket.send_json({"error": "receive timeout"})
+                        continue
+                    frames = data_json.get("frames", [])
+                    if len(frames) < 5:
+                        await websocket.send_json({"error": "Too few frames (min 5)"})
+                        continue
+                    data_np = np.array(frames, dtype=np.float32)
 
-            if data_np is None:
+                if data_np is None:
+                    continue
+
+                data_np = _prepare_input(data_np)
+                input_tensor = torch.tensor(data_np, dtype=torch.float32).unsqueeze(0).to(device)
+
+                if TIMING_MODE != "off":
+                    lstm_t0 = time.perf_counter()
+
+                with torch.no_grad():
+                    outputs = model(input_tensor)
+                    probs = F.softmax(outputs, dim=1)
+                    confidence, predicted_idx = torch.max(probs, 1)
+
+                top3_probs, top3_idx = torch.topk(probs, 3, dim=1)
+                top3 = [
+                    {"sign": CLASSES[i.item()], "confidence": round(p.item() * 100, 2)}
+                    for p, i in zip(top3_probs[0], top3_idx[0])
+                ]
+
+                result = {
+                    "sign": CLASSES[predicted_idx.item()],
+                    "confidence": round(confidence.item() * 100, 2),
+                    "top3": top3,
+                }
+                await websocket.send_json(result)
+
+                if TIMING_MODE != "off":
+                    lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
+                    cycle_id = _timing_next_cycle_id()
+                    _timing_emit_cycle({
+                        "cycle_id": cycle_id,
+                        "lstm_ms": round(lstm_ms, 2),
+                        "total_ms": round(lstm_ms, 2),
+                        "top3_count": len(top3),
+                        "source": "ws_predict",
+                    })
+            except WebSocketDisconnect:
+                raise
+            except Exception as e:
+                await websocket.send_json({"error": str(e)})
                 continue
-
-            T = data_np.shape[0]
-            if T > MAX_FRAMES:
-                data_np = data_np[:MAX_FRAMES]
-            elif T < MAX_FRAMES:
-                pad_len = MAX_FRAMES - T
-                pad_arr = np.zeros((pad_len, 75, 4), dtype=data_np.dtype)
-                data_np = np.concatenate((data_np, pad_arr), axis=0)
-
-            data_np = data_np.reshape(MAX_FRAMES, -1)
-            input_tensor = torch.tensor(data_np, dtype=torch.float32).unsqueeze(0).to(device)
-
-            if TIMING_MODE != "off":
-                lstm_t0 = time.perf_counter()
-
-            with torch.no_grad():
-                outputs = model(input_tensor)
-                probs = F.softmax(outputs, dim=1)
-                confidence, predicted_idx = torch.max(probs, 1)
-
-            top3_probs, top3_idx = torch.topk(probs, 3, dim=1)
-            top3 = [
-                {"sign": CLASSES[i.item()], "confidence": round(p.item() * 100, 2)}
-                for p, i in zip(top3_probs[0], top3_idx[0])
-            ]
-
-            result = {
-                "sign": CLASSES[predicted_idx.item()],
-                "confidence": round(confidence.item() * 100, 2),
-                "top3": top3,
-            }
-            await websocket.send_json(result)
-
-            if TIMING_MODE != "off":
-                lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
-                cycle_id = _timing_next_cycle_id()
-                _timing_emit_cycle({
-                    "cycle_id": cycle_id,
-                    "lstm_ms": round(lstm_ms, 2),
-                    "total_ms": round(lstm_ms, 2),
-                    "top3_count": len(top3),
-                    "source": "ws_predict",
-                })
 
     except WebSocketDisconnect:
         print("[Nexora] Client disconnected from WebSocket")
-    except Exception as e:
-        import traceback
-        print(f"[Nexora] WebSocket error: {e}")
-        traceback.print_exc()
 
 @app.post("/process_sentence")
 def process_sentence(payload: SentencePayload):
