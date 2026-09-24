@@ -2,8 +2,6 @@
 !include _estilo.iuml
 title Modelo de Base de Datos - Modelo Lógico (notación pata de gallo)\nNota: cada "entidad" es un patrón de archivo/directorio, no una tabla de una base de datos relacional
 
-left to right direction
-
 entity "MuestraDeEntrenamiento" as MDE {
     * etiqueta : varchar(32) <<PK, FK>>
     * timestamp_ms : bigint <<PK>>
@@ -60,7 +58,15 @@ MDE ||--o| MBS : "etiqueta + timestamp_ms"
 CDS ||--o{ VOC : etiqueta
 MOD ||--|{ VOC : "vocabulario de"
 
-note bottom of MDE
+' --- Enlaces ocultos: fuerzan dos columnas verticales angostas (layout, no semántica) ---
+MBS -[hidden]-> MDE
+MDE -[hidden]-> CDS
+CDS -[hidden]-> VOC
+VOC -[hidden]-> MOD
+EDC -[hidden]-> EDA
+EDA -[hidden]-> RDT
+
+note top of MDE
   PK compuesta = ruta fisica
   (directorio <etiqueta> +
   archivo <timestamp_ms>.npy)

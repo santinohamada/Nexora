@@ -2,6 +2,7 @@
 !include _estilo.iuml
 
 title Vista de Procesos (2/3) — Cierre de oración y traducción
+skinparam maxMessageSize 130
 
 participant "Navegador\nEstación Paciente" as NavP
 participant "FastAPI\n(threadpool Starlette)" as ThreadPool

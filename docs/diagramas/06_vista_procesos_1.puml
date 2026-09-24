@@ -2,23 +2,23 @@
 !include _estilo.iuml
 
 title Vista de Procesos (1/3) — Captura y predicción
+skinparam maxMessageSize 150
 
 actor Paciente
 participant "Navegador\nEstación Paciente" as NavP
 participant "FastAPI\n(event loop)" as EventLoop
-participant "LSTM\n(src.model.lstm)" as LSTM
+participant "LSTM" as LSTM
 
 == Captura y predicción (RF-01 a RF-04) ==
 Paciente -> NavP : realiza una seña
-loop mientras la cámara está activa (~30 fps, hilo principal)
+loop mientras la cámara está activa
   NavP -> NavP : captura frame\n(MediaPipe Holistic / Tasks)
   NavP -> NavP : acumula en buffer (hasta 45)
 end
-NavP -> EventLoop : WS /ws/predict\n(cada 8 frames, JSON v1 o binario v2)
+NavP -> EventLoop : WS /ws/predict\n(cada 8 frames)
 note over EventLoop
-  async def: corre en el hilo del event loop.
-  La inferencia LSTM lo bloquea
-  mientras dura la predicción.
+  async def: bloquea el event loop
+  durante la inferencia.
 end note
 EventLoop -> LSTM : clasificar ventana (45 frames)
 LSTM --> EventLoop : seña, confianza, top-3

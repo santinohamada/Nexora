@@ -34,7 +34,6 @@
 \RequirePackage{multirow}
 \RequirePackage{tocloft}
 \RequirePackage{listings}
-\RequirePackage{rotating} % figuras muy anchas (p. ej. mockups P-02/P-03) en sidewaysfigure
 \RequirePackage[expansion=false]{microtype}
 \RequirePackage[htt]{hyphenat}
 \RequirePackage{xurl}
@@ -211,19 +210,6 @@
         \caption{#3}
         \label{#4}
     \end{figure}
-}
-
-% Variante apaisada (landscape) para diagramas demasiado anchos para caber
-% legibles en una figura vertical: rota la página con \sidewaysfigure
-% (paquete rotating). El ancho #2 se mide contra \textheight, no \textwidth.
-% \diagramaApaisada{archivo-sin-extension}{ancho}{caption}{label}
-\newcommand{\diagramaApaisada}[4]{%
-    \begin{sidewaysfigure}
-        \centering
-        \includegraphics[width=#2]{img/#1.pdf}
-        \caption{#3}
-        \label{#4}
-    \end{sidewaysfigure}
 }
 
 \endinput

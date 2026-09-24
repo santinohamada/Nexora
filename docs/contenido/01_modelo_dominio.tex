@@ -25,18 +25,24 @@ lectura sugerida por el nombre del rol.
 
 \subsection{Diagrama de clases conceptuales}
 
-\diagramaApaisada{01_modelo_dominio}{0.95\textheight}{Modelo de Dominio de LSA Salud}{fig:modelo-dominio}
+\diagrama{01_modelo_dominio}{\textwidth}{Modelo de Dominio de LSA Salud}{fig:modelo-dominio}
 
-El diagrama se organiza en cuatro áreas conceptuales que se corresponden con
-los tres actores de LSA Salud (ver Entregable de Casos de Uso): la
-\textbf{comunicación} entre Paciente y Personal de Recepción o Enfermería
-(parte izquierda e inferior del diagrama), el \textbf{reconocimiento de
-señas} (parte central), la \textbf{gestión del modelo de reconocimiento} a
-cargo del Desarrollador de IA / Equipo de Proyecto (parte derecha), y los
-\textbf{conceptos diseñados y pendientes de implementación} que cubren los
-requisitos oficiales RF-03, RF-04 y RF-06 (\textit{Consentimiento},
-\textit{Auditoría} y \textit{Reporte de traducción}, ver
-Sección~\ref{sec:dom-pendientes}).
+El diagrama agrupa los conceptos en tres columnas que se leen de izquierda a
+derecha y de arriba hacia abajo: la izquierda concentra a los dos actores
+humanos (Paciente, Personal de Recepción o Enfermería), la Estación de
+Atención y los conceptos que dependen directamente de ellos (Mensaje y los
+tres conceptos \textbf{diseñados, pendientes de implementación} vinculados a
+Paciente/Personal); la columna central cubre el \textbf{reconocimiento de
+señas} y la traducción a partir de una secuencia cerrada; la derecha cubre
+la \textbf{gestión del modelo de reconocimiento} a cargo del Desarrollador
+de IA / Equipo de Proyecto, junto con Conversación y el evento de auditoría
+que origina la Estación de Atención. Los tres conceptos \textbf{diseñados y
+pendientes de implementación} cubren los requisitos oficiales RF-03, RF-04 y
+RF-06 (\textit{Consentimiento}, \textit{Auditoría} y \textit{Reporte de
+traducción}, ver Sección~\ref{sec:dom-pendientes}); en el diagrama, el
+concepto \textit{EventoDeAuditoría} lleva el estereotipo
+\textit{«diseñado»} y las asociaciones que involucran a los otros dos se
+señalan en la Tabla~\ref{tab:asociaciones-dominio}.
 
 \subsection{Diccionario de conceptos}
 

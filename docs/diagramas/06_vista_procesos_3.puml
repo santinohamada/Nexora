@@ -2,6 +2,7 @@
 !include _estilo.iuml
 
 title Vista de Procesos (3/3) — Sincronización entre estaciones y respuesta
+skinparam maxMessageSize 130
 
 participant "Navegador\nEstación Paciente" as NavP
 participant "BroadcastChannel\nnexora-chat" as BC
