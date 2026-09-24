@@ -3,6 +3,7 @@ export type ChatMessage = {
   role: "PACIENTE" | "RECEPCIONISTA";
   text: string;
   time: string;
+  words?: string[];
 };
 
 export type PredictionItem = {

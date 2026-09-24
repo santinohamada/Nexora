@@ -27,3 +27,6 @@ Thumbs.db
 voices/
 web/public/models/
 web/public/mediapipe/
+
+# Runtime logs
+logs/

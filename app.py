@@ -11,6 +11,7 @@ import io
 import wave
 import requests
 from collections import OrderedDict
+from datetime import datetime, timezone
 from piper.voice import PiperVoice
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,7 +19,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from src.model.lstm import SignLanguageLSTM
-from capture_validation import validate_capture_blendshapes, validate_capture_label
+from capture_validation import (
+    validate_capture_blendshapes,
+    validate_capture_label,
+    validate_report_payload,
+)
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -294,6 +299,11 @@ class CapturePayload(BaseModel):
 class SentencePayload(BaseModel):
     words: str
 
+class ReportPayload(BaseModel):
+    text: str
+    station: str
+    words: list[str] | None = None
+
 
 def _prepare_input(data: np.ndarray) -> np.ndarray:
     T = data.shape[0]
@@ -310,6 +320,9 @@ def _prepare_input(data: np.ndarray) -> np.ndarray:
 # Endpoints
 # ---------------------------------------------------------------------------
 os.makedirs("dataset/custom", exist_ok=True)
+os.makedirs("logs", exist_ok=True)
+REPORTS_LOG_PATH = os.path.join("logs", "reports.jsonl")
+
 @app.get("/")
 def health():
     return {"status": "ok", "device": str(device), "classes": len(CLASSES)}
@@ -368,6 +381,25 @@ def capture(payload: CapturePayload):
 
     count = len(os.listdir(label_dir))
     return {"status": "ok", "saved_to": filename, "samples_for_label": count}
+
+
+@app.post("/report")
+def report_translation(payload: ReportPayload):
+    try:
+        validate_report_payload(payload.text, payload.station, payload.words)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    record = {
+        "text": payload.text,
+        "station": payload.station,
+        "words": payload.words,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    with open(REPORTS_LOG_PATH, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record) + "\n")
+
+    return {"status": "ok"}
 
 
 @app.post("/predict")
