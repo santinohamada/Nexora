@@ -36,31 +36,30 @@ const PREDICT_STRIDE_FRAMES = readIntEnv(
   8
 );
 
-function detectTasksHarness(): boolean {
-  if (typeof window === "undefined") return false;
+type MediaPipeBackend = "legacy" | "tasks";
+
+function resolveBackend(): MediaPipeBackend {
+  if (typeof window === "undefined") return "tasks";
   try {
     const params = new URLSearchParams(window.location.search);
-    return params.get("mp") === "tasks";
+    return params.get("mp") === "legacy" ? "legacy" : "tasks";
   } catch (e) {
-    return false;
+    return "tasks";
   }
 }
+
+const useLandmarks = resolveBackend() === "legacy" ? useMediaPipe : useMediaPipeTasks;
 
 export default function PacientePage() {
   console.log("[Render] PacientePage");
   const [mode, setMode] = useState<"predict" | "capture">("predict");
   const modeRef = useRef(mode);
-  const [useTasksHarness, setUseTasksHarness] = useState(false);
-
-  useEffect(() => {
-    setUseTasksHarness(detectTasksHarness());
-  }, []);
 
   const { chatHistory, sendMessage, clearHistory } = useChatChannel();
 
   const recordedFrames = useRef<Frame[]>([]);
   const framesSinceLastPredictRef = useRef(0);
-  const captureHandlerRef = useRef<((f: Frame) => void) | null>(null);
+  const captureHandlerRef = useRef<((f: Frame, blendshapes?: number[]) => void) | null>(null);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -109,10 +108,10 @@ export default function PacientePage() {
 
   // --- MediaPipe frame handling ---
   const handleFrame = useCallback(
-    (frameData: Frame) => {
+    (frameData: Frame, blendshapes?: number[]) => {
       if (modeRef.current === "capture") {
         if (captureHandlerRef.current) {
-          captureHandlerRef.current(frameData);
+          captureHandlerRef.current(frameData, blendshapes);
         }
         return;
       }
@@ -136,15 +135,10 @@ export default function PacientePage() {
     [sendFrames, onFrameTick]
   );
 
-  const { videoRef, canvasRef, status, setStatus, stream } = useTasksHarness
-    ? useMediaPipeTasks({
-        onFrame: handleFrame,
-        drawLandmarksOnCanvas: true,
-      })
-    : useMediaPipe({
-        onFrame: handleFrame,
-        drawLandmarksOnCanvas: true,
-      });
+  const { videoRef, canvasRef, status, setStatus, stream } = useLandmarks({
+    onFrame: handleFrame,
+    drawLandmarksOnCanvas: true,
+  });
 
   return (
     <>

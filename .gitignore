@@ -25,3 +25,5 @@ Thumbs.db
 
 # Large models
 voices/
+web/public/models/
+web/public/mediapipe/

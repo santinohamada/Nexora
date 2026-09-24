@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Status, Frame, Landmark } from "../types";
+import { loadScript } from "../lib/mediapipe";
 
 declare global {
   interface Window {
-    Camera: any;
     Holistic: any;
     drawConnectors: any;
     drawLandmarks: any;
@@ -11,6 +11,9 @@ declare global {
     HAND_CONNECTIONS: any;
   }
 }
+
+const HOLISTIC_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js";
+const DRAWING_UTILS_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js";
 
 type UseMediaPipeOptions = {
   onFrame?: (frame: Frame) => void;
@@ -58,6 +61,12 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
   useEffect(() => {
     let isComponentMounted = true;
     let retryTimeout: NodeJS.Timeout;
+
+    Promise.all([loadScript(HOLISTIC_SCRIPT_URL), loadScript(DRAWING_UTILS_SCRIPT_URL)]).catch(
+      (err) => {
+        console.warn("[Nexora] Failed to load MediaPipe Holistic scripts", err);
+      }
+    );
 
     const init = () => {
       if (typeof window === "undefined") return;

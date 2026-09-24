@@ -3,11 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/fetch-mediapipe-assets.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/fetch-mediapipe-assets.mjs",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "1.0.1",
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
     "react": "19.2.4",
