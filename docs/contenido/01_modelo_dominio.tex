@@ -25,18 +25,27 @@ lectura sugerida por el nombre del rol.
 
 \subsection{Diagrama de clases conceptuales}
 
-\diagrama{01_modelo_dominio}{\textwidth}{Modelo de Dominio de LSA Salud}{fig:modelo-dominio}
+Para que cada figura se lea sin cruces de líneas, el modelo se presenta en
+dos vistas parciales, como admite la técnica de Larman: un mismo concepto
+puede aparecer en más de una vista, pero sus atributos y asociaciones son
+los mismos en ambas.
 
-El diagrama agrupa los conceptos en tres columnas que se leen de izquierda a
-derecha y de arriba hacia abajo: la izquierda concentra a los dos actores
-humanos (Paciente, Personal de Recepción o Enfermería), la Estación de
-Atención y los conceptos que dependen directamente de ellos (Mensaje y los
-tres conceptos \textbf{diseñados, pendientes de implementación} vinculados a
-Paciente/Personal); la columna central cubre el \textbf{reconocimiento de
-señas} y la traducción a partir de una secuencia cerrada; la derecha cubre
-la \textbf{gestión del modelo de reconocimiento} a cargo del Desarrollador
-de IA / Equipo de Proyecto, junto con Conversación y el evento de auditoría
-que origina la Estación de Atención. Los tres conceptos \textbf{diseñados y
+La \textbf{vista A} (Figura~\ref{fig:modelo-dominio}) cubre la
+\textbf{comunicación y atención}: los actores humanos, la Estación de
+Atención, la Conversación, los Mensajes y su traducción y síntesis de voz, y
+los conceptos de consentimiento, reporte de traducción y auditoría.
+
+\diagrama{01_modelo_dominio_a}{\textwidth}{Modelo de Dominio de LSA Salud, vista A: comunicación y atención}{fig:modelo-dominio}
+
+La \textbf{vista B} (Figura~\ref{fig:modelo-dominio-b}) cubre el
+\textbf{reconocimiento de señas y la gestión del modelo}: la secuencia de
+señas que realiza el Paciente, las palabras reconocidas y sus clases, y el
+modelo de reconocimiento con las muestras de entrenamiento a cargo del
+Desarrollador de IA / Equipo de Proyecto.
+
+\diagrama{01_modelo_dominio_b}{\textwidth}{Modelo de Dominio de LSA Salud, vista B: reconocimiento y gestión del modelo}{fig:modelo-dominio-b}
+
+Los tres conceptos \textbf{diseñados y
 pendientes de implementación} cubren los requisitos oficiales RF-03, RF-04 y
 RF-06 (\textit{Consentimiento}, \textit{Auditoría} y \textit{Reporte de
 traducción}, ver Sección~\ref{sec:dom-pendientes}); en el diagrama, el

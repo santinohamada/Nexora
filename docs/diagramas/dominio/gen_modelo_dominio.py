@@ -1,250 +1,204 @@
-"""Genera 01_modelo_dominio.drawio: Modelo de Dominio de LSA Salud (Larman),
-en una cuadricula angosta de 3 columnas para que el PDF exportado quede en
-formato retrato/portrait (en vez del layout ancho que producia PlantUML/smetana
-para este grafo muy interconectado; ver docs/render.sh y la guia de figuras).
-
-Mismos elementos, atributos, asociaciones (con nombre y multiplicidad en
-ambos extremos) y reglas de Larman (sin metodos, sin tipos) que el .puml
-original que reemplaza. Cada asociación se enruta explícitamente por un
-"carril" propio dentro del corredor entre columnas para que las líneas y
-las etiquetas no se superpongan (layout, no semántica).
-"""
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-OUT = Path(__file__).with_name("01_modelo_dominio.drawio")
+HERE = Path(__file__).parent
 
 FILL = "#F5F7FA"
 STROKE = "#1E448A"
 CLS = (
     "rounded=0;whiteSpace=wrap;html=1;fillColor=" + FILL + ";strokeColor=" + STROKE + ";"
-    "fontFamily=Helvetica;fontSize=13;verticalAlign=top;align=center;spacing=6;"
+    "fontFamily=Helvetica;fontSize=14;verticalAlign=top;align=center;spacing=6;"
 )
 TITLE = "text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=15;fontFamily=Helvetica;"
-ASSOC = (
-    "endArrow=none;startArrow=none;html=1;strokeColor=#333333;fontFamily=Helvetica;"
-    "fontSize=12;labelBackgroundColor=#FFFFFF;edgeStyle=orthogonalEdgeStyle;rounded=0;"
+EDGE = (
+    "endArrow=none;html=1;strokeColor=#333333;fontFamily=Helvetica;fontSize=13;"
+    "labelBackgroundColor=#FFFFFF;rounded=0;"
 )
-COMPOSITION = (
-    "endArrow=none;startArrow=diamondThin;startFill=1;startSize=14;html=1;"
-    "strokeColor=#333333;fontFamily=Helvetica;fontSize=12;labelBackgroundColor=#FFFFFF;"
-    "edgeStyle=orthogonalEdgeStyle;rounded=0;"
-)
-MULT_STYLE = (
+COMPOSITION = EDGE + "startArrow=diamondThin;startFill=1;startSize=14;"
+MULT = (
     "edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];"
-    "fontSize=11;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;"
+    "fontSize=13;fontFamily=Helvetica;labelBackgroundColor=#FFFFFF;"
 )
 
-GAP_X = 130
-GAP_Y = 24
-TOP = 44
-COL_W = {1: 200, 2: 200, 3: 230}
-COL_X = {1: 0, 2: COL_W[1] + GAP_X, 3: COL_W[1] + GAP_X + COL_W[2] + GAP_X}
-GUTTER1 = (COL_X[1] + COL_W[1], COL_X[2])  # entre columna 1 y 2
-GUTTER2 = (COL_X[2] + COL_W[2], COL_X[3])  # entre columna 2 y 3
-
-# (id, columna, header (lista de lineas), atributos, alto, estereotipo?)
-CLASSES = [
-    ("Paciente", 1, ["Paciente"], [], 34, False),
-    ("Personal", 1, ["Personal de Recepción", "o Enfermería"], [], 50, False),
-    ("EstaciónDeAtención", 1, ["EstaciónDeAtención"], ["tipo"], 54, False),
-    ("ConsentimientoDeCámara", 1, ["ConsentimientoDeCámara"], ["otorgado", "marcaTemporal"], 68, False),
-    ("ReporteDeTraducción", 1, ["ReporteDeTraducción"], ["motivo", "marcaTemporal"], 68, False),
-    ("Mensaje", 1, ["Mensaje"], ["texto", "rolEmisor", "horaEnvío"], 84, False),
-
-    ("SecuenciaDeSeñas", 2, ["SecuenciaDeSeñas"], ["estado", "marcaTemporalInicio"], 68, False),
-    ("PalabraReconocida", 2, ["PalabraReconocida"], ["confianza", "posición", "marcaTemporal"], 84, False),
-    ("ClaseDeSeña", 2, ["ClaseDeSeña"], ["nombre"], 54, False),
-    ("Traducción", 2, ["Traducción"], ["textoOriginal", "textoTraducido", "fuente"], 84, False),
-    ("PlantillaMedica", 2, ["PlantillaMédica"], ["combinaciónDeSeñas", "fraseResultante"], 68, False),
-    ("SíntesisDeVoz", 2, ["SíntesisDeVoz"], ["voz", "formatoAudio"], 68, False),
-
-    ("DevIA", 3, ["Desarrollador de IA /", "Equipo de Proyecto"], [], 50, False),
-    ("ModeloDeReconocimiento", 3, ["ModeloDeReconocimiento"], ["versión", "cantidadDeClases", "exactitudDeValidación"], 100, False),
-    ("MuestraDeEntrenamiento", 3, ["MuestraDeEntrenamiento"], ["cantidadDeFrames", "fechaCaptura", "modoDeCaptura"], 100, False),
-    ("EventoDeAuditoría", 3, ["EventoDeAuditoría"], ["tipoDeOperación", "marcaTemporal", "resultado"], 100, True),
-    ("Conversación", 3, ["Conversación"], ["fechaInicio"], 54, False),
-]
-
-# (source, target, label, mult_src, mult_tgt, composition?, ruta)
-# ruta: "straight" (misma columna, sin caja entre medio) | "loop1"/"loop2L" (misma
-# columna con caja entre medio: rodea por el corredor 1 o 2) | "lane1"/"lane2"
-# (columnas adyacentes: cruza por el corredor 1 o 2) | "detour" (columna 1<->3:
-# rodea por debajo de toda la cuadrícula, ver DETOUR_Y).
-ASSOCIATIONS = [
-    ("Paciente", "EstaciónDeAtención", "utiliza >", "1", "1", False, "loop1"),
-    ("Personal", "EstaciónDeAtención", "utiliza >", "1", "1", False, "straight"),
-    ("EstaciónDeAtención", "Conversación", "muestra >", "2", "1", False, "detour"),
-    ("EstaciónDeAtención", "EventoDeAuditoría", "origina >", "1", "0..*", False, "detour"),
-    ("Paciente", "ConsentimientoDeCámara", "otorga >", "1", "0..1", False, "loop1"),
-    ("Paciente", "SecuenciaDeSeñas", "realiza >", "1", "0..*", False, "lane1"),
-    ("SecuenciaDeSeñas", "PalabraReconocida", "compuesta por >", "1", "1..*", True, "straight"),
-    ("PalabraReconocida", "ClaseDeSeña", "corresponde a >", "0..*", "1", False, "straight"),
-    ("SecuenciaDeSeñas", "Traducción", "da origen a >", "1", "0..1", False, "loop2"),
-    ("Traducción", "PlantillaMedica", "puede basarse en >", "0..*", "0..1", False, "straight"),
-    ("Traducción", "Mensaje", "genera >", "1", "1", False, "lane1"),
-    ("Mensaje", "SíntesisDeVoz", "tiene >", "1", "0..1", False, "lane1"),
-    ("Mensaje", "Conversación", "pertenece a >", "0..*", "1", False, "detour"),
-    ("Mensaje", "ReporteDeTraducción", "puede tener >", "1", "0..1", False, "straight"),
-    ("Paciente", "ReporteDeTraducción", "señala >", "1", "0..*", False, "loop1"),
-    ("Personal", "ReporteDeTraducción", "señala >", "1", "0..*", False, "loop1"),
-    ("Personal", "Mensaje", "redacta >", "1", "0..*", False, "loop1"),
-    ("DevIA", "MuestraDeEntrenamiento", "captura >", "1", "0..*", False, "loop2L"),
-    ("MuestraDeEntrenamiento", "ClaseDeSeña", "ejemplifica >", "0..*", "1", False, "lane2"),
-    ("DevIA", "ModeloDeReconocimiento", "entrena >", "1", "0..*", False, "straight"),
-    ("ModeloDeReconocimiento", "ClaseDeSeña", "reconoce >", "1", "1..*", False, "lane2"),
-    ("ModeloDeReconocimiento", "PalabraReconocida", "clasifica >", "1", "0..*", False, "lane2"),
-]
-
-# Índices (0-based) de asociaciones columna1<->columna3: se desvían por
-# debajo de toda la cuadrícula para no atravesar cajas de la columna 2.
-DETOUR_Y = {2: 700, 3: 685, 12: 715}
-
-COL_OF = {cid: col for (cid, col, *_rest) in CLASSES}
+W = {"L": 195, "C": 175, "R": 195}
+X = {"L": 0, "C": 300, "R": 580}
+ROW = {0: 60, 1: 200, 2: 320, 3: 450, 4: 600}
+LINE = 19
 
 
-def vertex(cid, value, style, x, y, w, h, parent="1"):
-    return (f'<mxCell id="{cid}" value="{escape(value)}" style="{style}" vertex="1" parent="{parent}">'
-            f'<mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/></mxCell>')
+def box_h(header, attrs, stereo):
+    return 14 + LINE * len(header) + (LINE * len(attrs) + 10 if attrs else 0) + (LINE if stereo else 0)
 
 
-def edge(cid, s, t, style, value, points=None, parent="1"):
-    pts = ""
-    if points:
-        pts = "<Array as=\"points\">" + "".join(f'<mxPoint x="{x}" y="{y}"/>' for x, y in points) + "</Array>"
-    return (f'<mxCell id="{cid}" value="{escape(value)}" style="{style}" edge="1" parent="{parent}" source="{s}" target="{t}">'
-            f'<mxGeometry relative="1" as="geometry">{pts}</mxGeometry></mxCell>')
-
-
-def edge_label(cid, parent_edge, value, x):
-    return (f'<mxCell id="{cid}" value="{escape(value)}" style="{MULT_STYLE}" vertex="1" connectable="0" parent="{parent_edge}">'
-            f'<mxGeometry x="{x}" y="0" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry></mxCell>')
-
-
-def class_html(header_lines, attrs, stereotype):
+def class_html(header, attrs, stereo):
     parts = []
-    if stereotype:
-        parts.append("<font style='font-style:italic'>&#171;diseñado&#187;</font><br>")
-    parts.append("<b>" + "<br>".join(escape(h) for h in header_lines) + "</b>")
+    if stereo:
+        parts.append("<i>&#171;diseñado&#187;</i><br>")
+    parts.append("<b>" + "<br>".join(escape(h) for h in header) + "</b>")
     if attrs:
-        parts.append("<hr size='1' style='margin:3px 0'/>")
+        parts.append("<hr size='1' style='margin:4px 0'/>")
         parts.append("<div align='left'>" + "<br>".join(escape(a) for a in attrs) + "</div>")
     return "".join(parts)
 
 
-def build():
-    cells = ['<mxCell id="0"/>', '<mxCell id="1" parent="0"/>']
-    cells.append(vertex("title", "Modelo de Dominio — LSA Salud", TITLE, 0, 0, 500, 30))
+def xml_vertex(cid, value, style, x, y, w, h, parent="1"):
+    return (f'<mxCell id="{cid}" value="{escape(value)}" style="{style}" vertex="1" parent="{parent}">'
+            f'<mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/></mxCell>')
 
-    col_y = {1: TOP, 2: TOP, 3: TOP}
-    positions = {}
-    for cid, col, header, attrs, h, stereo in CLASSES:
-        w = COL_W[col]
-        x = COL_X[col]
-        y = col_y[col]
-        value = class_html(header, attrs, stereo)
-        cells.append(vertex(cid, value, CLS, x, y, w, h))
-        positions[cid] = (x, y, w, h)
-        col_y[col] = y + h + GAP_Y
 
-    def mid(cid):
-        x, y, w, h = positions[cid]
-        return x + w / 2, y + h / 2, x, y, w, h
+def xml_edge(cid, label, style, points):
+    (sx, sy), (tx, ty) = points[0], points[-1]
+    mids = "".join(f'<mxPoint x="{px}" y="{py}"/>' for px, py in points[1:-1])
+    arr = f'<Array as="points">{mids}</Array>' if mids else ""
+    return (f'<mxCell id="{cid}" value="{escape(label)}" style="{style}" edge="1" parent="1">'
+            f'<mxGeometry relative="1" as="geometry"><mxPoint x="{sx}" y="{sy}" as="sourcePoint"/>'
+            f'<mxPoint x="{tx}" y="{ty}" as="targetPoint"/>{arr}</mxGeometry></mxCell>')
 
-    # --- Paso 1: para cada asociación, decidir qué lado de cada caja usa ---
-    # (R=derecha, L=izquierda, T=arriba, B=abajo), para poder repartir varias
-    # aristas que tocan el mismo lado de la misma caja en puntos distintos
-    # (si no, todas saldrían del mismo pixel y las etiquetas se superpondrían).
-    side_of = {}  # eid -> (source_side, target_side)
-    for i, (s, t, label, ms, mt, comp, route) in enumerate(ASSOCIATIONS):
-        if route == "straight":
-            sy0, ty0 = positions[s][1], positions[t][1]
-            side_of[i] = ("B", "T") if sy0 < ty0 else ("T", "B")
-        elif route in ("loop1",):
-            side_of[i] = ("R", "R")
-        elif route in ("loop2", "loop2L"):
-            side_of[i] = ("L", "L") if route == "loop2L" else ("R", "R")
-        elif route in ("lane1", "lane2"):
-            side_of[i] = ("R", "L") if COL_OF[s] < COL_OF[t] else ("L", "R")
-        elif route == "detour":
-            side_of[i] = ("B", "B")
 
-    slot_count = {}
-    for i, (s, t, *_r) in enumerate(ASSOCIATIONS):
-        ss, ts = side_of[i]
-        slot_count[(s, ss)] = slot_count.get((s, ss), 0) + 1
-        slot_count[(t, ts)] = slot_count.get((t, ts), 0) + 1
-    slot_seen = {}
+def xml_mult(cid, value, edge_id, pos, offset):
+    return (f'<mxCell id="{cid}" value="{escape(value)}" style="{MULT}" vertex="1" connectable="0" parent="{edge_id}">'
+            f'<mxGeometry x="{pos}" y="0" relative="1" as="geometry"><mxPoint x="{offset[0]}" y="{offset[1]}" as="offset"/></mxGeometry></mxCell>')
 
-    def frac(box, side):
-        n = slot_count[(box, side)]
-        k = slot_seen.get((box, side), 0)
-        slot_seen[(box, side)] = k + 1
-        if n == 1:
-            return 0.5
-        return round(0.22 + 0.56 * k / (n - 1), 3)
 
-    lane_n = {"lane1": 0, "loop1": 0, "lane2": 0, "loop2": 0, "loop2L": 0}
-    LANE_STEP = 16
-    g1_lo, _ = GUTTER1
-    g2_lo, _ = GUTTER2
-    XY = {"R": (1, None), "L": (0, None), "T": (None, 0), "B": (None, 1)}
+class Diagram:
+    def __init__(self, title):
+        self.title = title
+        self.boxes = {}
+        self.cells = ['<mxCell id="0"/>', '<mxCell id="1" parent="0"/>',
+                      xml_vertex("title", title, TITLE, 0, 0, 780, 30)]
+        self.n = 0
 
-    for i, (s, t, label, ms, mt, comp, route) in enumerate(ASSOCIATIONS):
-        eid = f"e{i}"
-        base_style = COMPOSITION if comp else ASSOC
-        ss, ts = side_of[i]
-        sfx, sfy = XY[ss]
-        tfx, tfy = XY[ts]
-        sFrac = frac(s, ss)
-        tFrac = frac(t, ts)
-        ex = sfx if sfx is not None else sFrac
-        ey = sfy if sfy is not None else sFrac
-        en = tfx if tfx is not None else tFrac
-        ev = tfy if tfy is not None else tFrac
-        sx0, sy0, sw, sh = positions[s]
-        tx0, ty0, tw, th = positions[t]
-        s_pt = (sx0 + (sw if ss == "R" else 0 if ss == "L" else sw * sFrac),
-                sy0 + (sh if ss == "B" else 0 if ss == "T" else sh * sFrac))
-        t_pt = (tx0 + (tw if ts == "R" else 0 if ts == "L" else tw * tFrac),
-                ty0 + (th if ts == "B" else 0 if ts == "T" else th * tFrac))
+    def cls(self, cid, col, row, header, attrs=(), stereo=False, dy=0, h=None):
+        h = h or box_h(header, attrs, stereo)
+        x, y, w = X[col], ROW[row] + dy, W[col]
+        self.boxes[cid] = (x, y, w, h)
+        self.cells.append(xml_vertex(cid, class_html(header, attrs, stereo), CLS, x, y, w, h))
 
-        style = base_style + f"exitX={ex};exitY={ey};entryX={en};entryY={ev};"
-        points = None
+    def at(self, cid, fx, fy):
+        x, y, w, h = self.boxes[cid]
+        return (x + w * fx, y + h * fy)
 
-        if route == "straight":
-            pass
-        elif route in ("loop1", "loop2", "loop2L"):
-            key = route
-            gutter_lo = g1_lo if route == "loop1" else g2_lo
-            lane_x = gutter_lo + 20 + lane_n[key] * LANE_STEP
-            lane_n[key] += 1
-            points = [(lane_x, s_pt[1]), (lane_x, t_pt[1])]
-        elif route in ("lane1", "lane2"):
-            key = route
-            gutter_lo = g1_lo if route == "lane1" else g2_lo
-            lane_x = gutter_lo + 20 + lane_n[key] * LANE_STEP
-            lane_n[key] += 1
-            points = [(lane_x, s_pt[1]), (lane_x, t_pt[1])]
-        elif route == "detour":
-            y_lane = DETOUR_Y[i]
-            points = [(s_pt[0], y_lane), (t_pt[0], y_lane)]
+    def link(self, points, label, m_start, m_end, style=EDGE, m_off=(0, -11)):
+        self.n += 1
+        eid = f"e{self.n}"
+        self.cells.append(xml_edge(eid, label, style, points))
+        self.cells.append(xml_mult(f"{eid}s", m_start, eid, -0.8, m_off))
+        self.cells.append(xml_mult(f"{eid}t", m_end, eid, 0.8, m_off))
+
+    def h(self, a, b, label, ma, mb, y=None, style=EDGE):
+        ax, ay, aw, ah = self.boxes[a]
+        bx, by, bw, bh = self.boxes[b]
+        y = y if y is not None else max(ay, by) + 16
+        if ax < bx:
+            pts = [(ax + aw, y), (bx, y)]
         else:
-            raise ValueError(route)
+            pts = [(ax, y), (bx + bw, y)]
+        self.link(pts, label, ma, mb, style)
 
-        cells.append(edge(eid, s, t, style, label, points))
-        cells.append(edge_label(f"{eid}ms", eid, ms, -0.88))
-        cells.append(edge_label(f"{eid}mt", eid, mt, 0.88))
+    def v(self, a, b, label, ma, mb, x=None, style=EDGE):
+        ax, ay, aw, ah = self.boxes[a]
+        bx, by, bw, bh = self.boxes[b]
+        x = x if x is not None else ax + aw / 2
+        if ay < by:
+            pts = [(x, ay + ah), (x, by)]
+        else:
+            pts = [(x, ay), (x, by + bh)]
+        self.link(pts, label, ma, mb, style, m_off=(-14, 0))
 
-    max_y = max([y + h for (x, y, w, h) in positions.values()] + list(DETOUR_Y.values()))
-    width = COL_X[3] + COL_W[3]
-    height = max_y + 15
-    print(f"estimated canvas: {width} x {height} (AR={height/width:.3f})")
+    def write(self, name):
+        body = "".join(self.cells)
+        out = HERE / f"{name}.drawio"
+        out.write_text(f'<mxfile><diagram name="{escape(self.title)}"><mxGraphModel><root>{body}</root>'
+                       f'</mxGraphModel></diagram></mxfile>', encoding="utf-8")
+        print(f"wrote {out}")
 
-    xml = f'<mxfile><diagram name="Modelo de Dominio"><mxGraphModel><root>{"".join(cells)}</root></mxGraphModel></diagram></mxfile>'
-    OUT.write_text(xml, encoding="utf-8")
-    print(f"wrote {OUT}")
+
+def vista_comunicacion():
+    d = Diagram("Modelo de Dominio — LSA Salud (vista A: comunicación y atención)")
+    d.cls("consent", "L", 0, ["ConsentimientoDeCámara"], ["otorgado", "marcaTemporal"])
+    d.cls("paciente", "L", 1, ["Paciente"], h=56)
+    d.cls("secuencia", "L", 2, ["SecuenciaDeSeñas"], ["estado", "marcaTemporalInicio"])
+    d.cls("traduccion", "L", 3, ["Traducción"], ["textoOriginal", "textoTraducido", "fuente"])
+    d.cls("plantilla", "L", 4, ["PlantillaMédica"], ["combinaciónDeSeñas", "fraseResultante"])
+    d.cls("estacion", "C", 1, ["EstaciónDeAtención"], ["tipo"])
+    d.cls("reporte", "C", 2, ["ReporteDeTraducción"], ["motivo", "marcaTemporal"])
+    d.cls("mensaje", "C", 3, ["Mensaje"], ["texto", "rolEmisor", "horaEnvío"])
+    d.cls("sintesis", "C", 4, ["SíntesisDeVoz"], ["voz", "formatoAudio"])
+    d.cls("auditoria", "R", 0, ["EventoDeAuditoría"], ["tipoDeOperación", "marcaTemporal", "resultado"], stereo=True, dy=-10)
+    d.cls("personal", "R", 1, ["Personal de Recepción", "o Enfermería"])
+    d.cls("conversacion", "R", 3, ["Conversación"], ["fechaInicio"])
+
+    px, py, pw, ph = d.boxes["paciente"]
+    ex, ey, ew, eh = d.boxes["estacion"]
+    rx, ry, rw, rh = d.boxes["reporte"]
+    mx, my, mw, mh = d.boxes["mensaje"]
+    sx, sy, sw, sh = d.boxes["personal"]
+    ax, ay, aw, ah = d.boxes["auditoria"]
+    cx, cy, cw, ch = d.boxes["conversacion"]
+
+    d.v("paciente", "consent", "otorga", "1", "0..1")
+    d.h("paciente", "estacion", "utiliza", "1", "1", y=py + 16)
+    d.h("personal", "estacion", "utiliza", "1", "1", y=py + 16)
+    d.v("paciente", "secuencia", "realiza", "1", "0..*")
+    d.v("secuencia", "traduccion", "da origen a", "1", "0..1")
+    d.v("traduccion", "plantilla", "puede basarse en", "0..*", "0..1")
+    d.h("traduccion", "mensaje", "genera", "1", "1", y=my + 30)
+    d.v("mensaje", "sintesis", "tiene", "1", "0..1")
+    d.h("mensaje", "conversacion", "pertenece a", "0..*", "1", y=cy + 26)
+    d.v("mensaje", "reporte", "puede tener", "1", "0..1")
+
+    d.link([(ex + ew * 0.8, ey), (ex + ew * 0.8, ay + ah / 2), (ax, ay + ah / 2)],
+           "origina", "1", "0..*")
+
+    lane_top = 42
+    lane_x = X["R"] + W["R"] + 30
+    d.link([(ex + ew * 0.25, ey), (ex + ew * 0.25, lane_top), (lane_x, lane_top),
+            (lane_x, cy + ch / 2), (cx + cw, cy + ch / 2)],
+           "muestra", "2", "1")
+
+    gap_lc = X["L"] + W["L"] + 50
+    d.link([(px + pw, py + ph - 6), (gap_lc, py + ph - 6), (gap_lc, ry + rh / 2), (rx, ry + rh / 2)],
+           "señala", "1", "0..*")
+
+    gap_cr = X["C"] + W["C"] + 55
+    d.link([(sx, sy + sh - 8), (gap_cr, sy + sh - 8), (gap_cr, ry + rh / 2), (rx + rw, ry + rh / 2)],
+           "señala", "1", "0..*")
+
+    y_gap = (ry + rh + my) / 2
+    d.link([(sx + sw / 2, sy + sh), (sx + sw / 2, y_gap), (mx + mw * 0.85, y_gap), (mx + mw * 0.85, my)],
+           "redacta", "1", "0..*")
+
+    d.write("01_modelo_dominio_a")
+
+
+def vista_reconocimiento():
+    d = Diagram("Modelo de Dominio — LSA Salud (vista B: reconocimiento y gestión del modelo)")
+    d.cls("paciente", "L", 0, ["Paciente"])
+    d.cls("secuencia", "L", 1, ["SecuenciaDeSeñas"], ["estado", "marcaTemporalInicio"])
+    d.cls("palabra", "L", 2, ["PalabraReconocida"], ["confianza", "posición", "marcaTemporal"], dy=50)
+    d.cls("clase", "L", 4, ["ClaseDeSeña"], ["nombre"], dy=40)
+    d.cls("modelo", "C", 2, ["ModeloDe", "Reconocimiento"], ["versión", "cantidadDeClases", "exactitudDeValidación"], dy=50)
+    d.cls("dev", "R", 2, ["Desarrollador de IA /", "Equipo de Proyecto"], dy=50)
+    d.cls("muestra", "R", 4, ["MuestraDe", "Entrenamiento"], ["cantidadDeFrames", "fechaCaptura", "modoDeCaptura"], dy=40)
+
+    wx, wy, ww, wh = d.boxes["palabra"]
+    ox, oy, ow, oh = d.boxes["modelo"]
+    kx, ky, kw, kh = d.boxes["clase"]
+
+    d.v("paciente", "secuencia", "realiza", "1", "0..*")
+    d.v("secuencia", "palabra", "compuesta por", "1", "1..*", style=COMPOSITION)
+    d.v("palabra", "clase", "corresponde a", "0..*", "1")
+    d.h("modelo", "palabra", "clasifica", "1", "0..*", y=wy + 30)
+    d.h("dev", "modelo", "entrena", "1", "0..*", y=wy + 30)
+    d.v("dev", "muestra", "captura", "1", "0..*")
+    d.h("muestra", "clase", "ejemplifica", "0..*", "1", y=ky + 26)
+    y_gap = oy + oh + 40
+    d.link([(ox + ow * 0.5, oy + oh), (ox + ow * 0.5, y_gap), (kx + kw * 0.8, y_gap), (kx + kw * 0.8, ky)],
+           "reconoce", "1", "1..*")
+
+    d.write("01_modelo_dominio_b")
 
 
 if __name__ == "__main__":
-    build()
+    vista_comunicacion()
+    vista_reconocimiento()

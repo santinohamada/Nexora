@@ -257,7 +257,7 @@ en `docs/referencias/RESUMEN_REFERENCIAS.md`, secciones 1 y 2.
 | EventoDeAuditoría | Registro anónimo de una operación de sistema relevante, sin datos identificatorios ni imágenes/video (RF-04 oficial). |
 | ReporteDeTraducción | Señalamiento de un mensaje como traducción incorrecta o ambigua, con motivo, hecho por el paciente o el personal (RF-06 oficial). |
 
-Diagrama de clases: `docs/diagramas/01_modelo_dominio.puml` → `docs/img/01_modelo_dominio.pdf`.
+Diagramas de clases (dos vistas): `docs/diagramas/dominio/gen_modelo_dominio.py` → `docs/img/01_modelo_dominio_a.pdf` y `01_modelo_dominio_b.pdf`.
 Diagrama de casos de uso: `docs/diagramas/02_casos_uso.puml` → `docs/img/02_casos_uso.pdf`.
 
 ---
