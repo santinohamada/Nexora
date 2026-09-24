@@ -7,19 +7,55 @@ import { TopPredictions } from "../../components/camera/TopPredictions";
 import { ChatBubble } from "../../components/chat/ChatBubble";
 import { CaptureMode } from "../../components/capture/CaptureMode";
 import { useMediaPipe } from "../../hooks/useMediaPipe";
+import { useMediaPipeTasks } from "../../hooks/useMediaPipeTasks";
 import { useSignWebSocket } from "../../hooks/useSignWebSocket";
 import { useSentenceBuilder } from "../../hooks/useSentenceBuilder";
 import { useChatChannel } from "../../hooks/useChatChannel";
 import { ChatMessage, Frame, PredictionResult } from "../../types";
 
-const RECORDING_MAX_FRAMES = 45;
 const CONFIDENCE_THRESHOLD = 70;
+
+function readIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === null || raw === "") {
+    return fallback;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return fallback;
+  }
+  return parsed;
+}
+
+const RECORDING_MAX_FRAMES = readIntEnv(
+  "NEXT_PUBLIC_RECORDING_MAX_FRAMES",
+  45
+);
+const PREDICT_STRIDE_FRAMES = readIntEnv(
+  "NEXT_PUBLIC_SEND_STRIDE",
+  8
+);
+
+function detectTasksHarness(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("mp") === "tasks";
+  } catch (e) {
+    return false;
+  }
+}
 
 export default function PacientePage() {
   console.log("[Render] PacientePage");
   const [mode, setMode] = useState<"predict" | "capture">("predict");
   const modeRef = useRef(mode);
-  
+  const [useTasksHarness, setUseTasksHarness] = useState(false);
+
+  useEffect(() => {
+    setUseTasksHarness(detectTasksHarness());
+  }, []);
+
   const { chatHistory, sendMessage, clearHistory } = useChatChannel();
 
   const recordedFrames = useRef<Frame[]>([]);
@@ -35,40 +71,38 @@ export default function PacientePage() {
     sendMessage(msg);
   }, [sendMessage]);
 
-  const { transcript, isProcessingSentence, addWord, processSentence } =
-    useSentenceBuilder(handleNewPatientMessage);
+  const {
+    transcript,
+    isProcessingSentence,
+    addWord,
+    processSentence,
+    onFrameTick,
+  } = useSentenceBuilder(handleNewPatientMessage);
 
-  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const handleNewPrediction = useCallback(
+    (data: PredictionResult) => {
+      if (data.top3) {
+        data.top3.forEach((item, index) => {
+          const signEl = document.getElementById(`pred-sign-${index}`);
+          if (signEl) signEl.innerText = item.sign;
+          const confEl = document.getElementById(`pred-conf-${index}`);
+          if (confEl) confEl.innerText = `${item.confidence.toFixed(1)}%`;
+          const barEl = document.getElementById(`pred-bar-${index}`);
+          if (barEl) barEl.style.width = `${item.confidence}%`;
+        });
+      }
 
-  const handleNewPrediction = useCallback((data: PredictionResult) => {
-    if (data.top3) {
-      data.top3.forEach((item, index) => {
-        const signEl = document.getElementById(`pred-sign-${index}`);
-        if (signEl) signEl.innerText = item.sign;
-        const confEl = document.getElementById(`pred-conf-${index}`);
-        if (confEl) confEl.innerText = `${item.confidence.toFixed(1)}%`;
-        const barEl = document.getElementById(`pred-bar-${index}`);
-        if (barEl) barEl.style.width = `${item.confidence}%`;
-      });
-    }
-
-    if (data.sign !== "idle") {
-      if (idleTimerRef.current) {
-        clearTimeout(idleTimerRef.current);
-        idleTimerRef.current = null;
+      if (data.sign !== "idle") {
+        const idleDominant = (data.top3 ?? []).some(
+          (item) => item.sign === "idle" && item.confidence > 50
+        );
+        if (!idleDominant && data.confidence >= CONFIDENCE_THRESHOLD) {
+          addWord(data.sign);
+        }
       }
-      if (data.confidence >= CONFIDENCE_THRESHOLD) {
-        addWord(data.sign);
-      }
-    } else {
-      if (transcript && !isProcessingSentence && !idleTimerRef.current) {
-        idleTimerRef.current = setTimeout(() => {
-          processSentence();
-          idleTimerRef.current = null;
-        }, 1200);
-      }
-    }
-  }, [addWord, processSentence, transcript, isProcessingSentence]);
+    },
+    [addWord]
+  );
 
   // --- WebSocket for sign predictions ---
   const { wsStatus, sendFrames } = useSignWebSocket({ onMessage: handleNewPrediction });
@@ -91,19 +125,26 @@ export default function PacientePage() {
       framesSinceLastPredictRef.current++;
       if (
         recordedFrames.current.length >= 20 &&
-        framesSinceLastPredictRef.current >= 8
+        framesSinceLastPredictRef.current >= PREDICT_STRIDE_FRAMES
       ) {
         sendFrames([...recordedFrames.current]);
         framesSinceLastPredictRef.current = 0;
       }
+
+      onFrameTick(frameData);
     },
-    [sendFrames]
+    [sendFrames, onFrameTick]
   );
 
-  const { videoRef, canvasRef, status, setStatus, stream } = useMediaPipe({
-    onFrame: handleFrame,
-    drawLandmarksOnCanvas: true,
-  });
+  const { videoRef, canvasRef, status, setStatus, stream } = useTasksHarness
+    ? useMediaPipeTasks({
+        onFrame: handleFrame,
+        drawLandmarksOnCanvas: true,
+      })
+    : useMediaPipe({
+        onFrame: handleFrame,
+        drawLandmarksOnCanvas: true,
+      });
 
   return (
     <>

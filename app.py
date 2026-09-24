@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import atexit
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -12,6 +13,7 @@ from collections import OrderedDict
 from piper.voice import PiperVoice
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from src.model.lstm import SignLanguageLSTM
@@ -29,27 +31,124 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
+# Per-stage telemetry (LATENCY_V2_TIMING: off | stdout | jsonl)
+# ---------------------------------------------------------------------------
+TIMING_MODE = os.environ.get("LATENCY_V2_TIMING", "off").lower()
+TIMING_ENDPOINT_ENABLED = (
+    os.environ.get("LATENCY_V2_TIMING_ENDPOINT", "false").lower() == "true"
+)
+TIMING_FILE_PATH = "timings.jsonl"
+TIMING_STREAM_MAX_LINES = 1000
+TIMING_FILE_HANDLE = None
+TIMING_CYCLE_COUNTER = 0
+TIMING_FIELDS = (
+    "lstm_ms",
+    "translation_ms",
+    "tts_ms",
+    "total_ms",
+)
+
+
+def _timing_open_sink():
+    global TIMING_FILE_HANDLE
+    if TIMING_FILE_HANDLE is not None:
+        return True
+    try:
+        TIMING_FILE_HANDLE = open(TIMING_FILE_PATH, "a", encoding="utf-8", buffering=1)
+        return True
+    except Exception as e:
+        print(f"[Nexora timing] failed to open {TIMING_FILE_PATH}: {e}")
+        return False
+
+
+def _timing_close_sink():
+    global TIMING_FILE_HANDLE
+    if TIMING_FILE_HANDLE is not None:
+        try:
+            TIMING_FILE_HANDLE.close()
+        finally:
+            TIMING_FILE_HANDLE = None
+
+
+def _timing_next_cycle_id():
+    global TIMING_CYCLE_COUNTER
+    TIMING_CYCLE_COUNTER += 1
+    return TIMING_CYCLE_COUNTER
+
+
+def _timing_emit_cycle(record: dict):
+    if TIMING_MODE == "off":
+        return
+    if TIMING_MODE == "stdout":
+        parts = []
+        for k in TIMING_FIELDS:
+            if k in record:
+                parts.append(f"{k}={record[k]}")
+        if "cycle_id" in record:
+            parts.insert(0, f"cycle={record['cycle_id']}")
+        if "top3_count" in record:
+            parts.append(f"top3={record['top3_count']}")
+        if "source" in record:
+            parts.append(f"source={record['source']}")
+        print("[Nexora timing] " + " ".join(parts))
+    elif TIMING_MODE == "jsonl":
+        if _timing_open_sink():
+            try:
+                TIMING_FILE_HANDLE.write(json.dumps(record) + "\n")
+            except Exception as e:
+                print(f"[Nexora timing] write failed: {e}")
+
+
+def _stream_timings_tail():
+    try:
+        with open(TIMING_FILE_PATH, "rb") as f:
+            tail = f.readlines()[-TIMING_STREAM_MAX_LINES:]
+        for line in tail:
+            yield line
+    except FileNotFoundError:
+        return
+    except Exception as e:
+        print(f"[Nexora timing] stream failed: {e}")
+        return
+
+
+atexit.register(_timing_close_sink)
+
+# ---------------------------------------------------------------------------
 # Load model once at startup
 # ---------------------------------------------------------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-LSTM_MODEL_PATH = "models/lstm.pth"
+LSTM_MAX_FRAMES = int(os.environ.get("LSTM_MAX_FRAMES", "45"))
+LSTM_VERSIONED_MODEL_PATH = (
+    "models/lstm_v2_24frames.pth"
+    if LSTM_MAX_FRAMES == 24
+    else f"models/lstm_v1_{LSTM_MAX_FRAMES}frames.pth"
+)
+LEGACY_MODEL_PATH = "models/lstm.pth"
 LSTM_CLASSES_PATH = "models/custom_classes.json"
 
-if not os.path.exists(LSTM_MODEL_PATH) or not os.path.exists(LSTM_CLASSES_PATH):
+if os.path.exists(LSTM_VERSIONED_MODEL_PATH):
+    LSTM_MODEL_PATH = LSTM_VERSIONED_MODEL_PATH
+elif os.path.exists(LEGACY_MODEL_PATH):
+    LSTM_MODEL_PATH = LEGACY_MODEL_PATH
+else:
+    LSTM_MODEL_PATH = ""
+
+if not LSTM_MODEL_PATH or not os.path.exists(LSTM_CLASSES_PATH):
     print("[Nexora] ATENCIÓN: No se encontraron los archivos del modelo LSTM. Por favor graba datos y entrena el modelo.")
-    # Initialize empty classes and dummy model to avoid crash, but predict will fail if not trained
     CLASSES = []
     model = None
+    MAX_FRAMES = LSTM_MAX_FRAMES
 else:
     with open(LSTM_CLASSES_PATH, "r", encoding="utf-8") as f:
         CLASSES = json.load(f)
-        
+
     model = SignLanguageLSTM(num_classes=len(CLASSES)).to(device)
     model.load_state_dict(torch.load(LSTM_MODEL_PATH, map_location=device, weights_only=False))
     model.eval()
-    MAX_FRAMES = 45
-    print(f"[Nexora] Custom LSTM Model loaded on {device} — {len(CLASSES)} classes")
+    MAX_FRAMES = LSTM_MAX_FRAMES
+    print(f"[Nexora] Custom LSTM Model loaded on {device} — {len(CLASSES)} classes — {MAX_FRAMES} frames ({LSTM_MODEL_PATH})")
 
 PIPER_MODEL_PATH = "voices/es_AR-daniela-high.onnx"
 if os.path.exists(PIPER_MODEL_PATH):
@@ -110,7 +209,28 @@ MEDICAL_TEMPLATES: dict[frozenset[str], str] = {
     frozenset({"yo", "cabeza", "dolor"}): "Me duele la cabeza.",
     frozenset({"yo", "cabeza", "dolor", "respirar"}): "Me duele la cabeza y me cuesta respirar.",
     frozenset({"cabeza", "dolor", "respirar"}): "Tengo dolor de cabeza al respirar.",
+    # Trainable 5-class combinations (head, dolor, respirar, yo). idle excluded by _match_template.
+    frozenset({"cabeza"}): "Tengo algo en la cabeza.",
+    frozenset({"yo"}): "Necesito comunicar algo.",
+    frozenset({"cabeza", "respirar"}): "Me cuesta respirar, me duele la cabeza.",
+    frozenset({"cabeza", "yo"}): "Necesito hablar sobre mi cabeza.",
+    frozenset({"dolor", "yo"}): "Tengo dolor.",
+    frozenset({"respirar", "yo"}): "No puedo respirar bien.",
+    frozenset({"cabeza", "dolor", "yo"}): "Me duele la cabeza.",
+    frozenset({"cabeza", "respirar", "yo"}): "Mi cabeza y mi respiración no están bien.",
+    frozenset({"dolor", "respirar", "yo"}): "Tengo dolor y no puedo respirar bien.",
+    frozenset({"cabeza", "dolor", "respirar", "yo"}): "Me duele la cabeza, no puedo respirar bien.",
 }
+
+LATENCY_V2_UNREACHABLE_TOKENS = ("ayuda", "doctor", "revisar")
+TRAINABLE_HEAD_TOKENS = ("cabeza", "dolor", "respirar", "yo")
+TRAINABLE_NEW_TEMPLATE_COUNT = 2 ** len(TRAINABLE_HEAD_TOKENS) - 1
+
+print(
+    f"[Nexora] MEDICAL_TEMPLATES: {TRAINABLE_NEW_TEMPLATE_COUNT} trainable combos "
+    f"covered ({len(TRAINABLE_HEAD_TOKENS)} tokens); unreachable entries for "
+    f"{'/'.join(LATENCY_V2_UNREACHABLE_TOKENS)} kept for forward compatibility."
+)
 
 
 def _normalize_words(words: str) -> str:
@@ -234,7 +354,10 @@ def predict(payload: SkeletonPayload):
         
     data = data.reshape(MAX_FRAMES, -1)
     input_tensor = torch.tensor(data, dtype=torch.float32).unsqueeze(0).to(device)
-    
+
+    if TIMING_MODE != "off":
+        lstm_t0 = time.perf_counter()
+
     with torch.no_grad():
         outputs = model(input_tensor)
         probs = F.softmax(outputs, dim=1)
@@ -246,6 +369,17 @@ def predict(payload: SkeletonPayload):
         {"sign": CLASSES[i.item()], "confidence": round(p.item() * 100, 2)}
         for p, i in zip(top3_probs[0], top3_idx[0])
     ]
+
+    if TIMING_MODE != "off":
+        lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
+        cycle_id = _timing_next_cycle_id()
+        _timing_emit_cycle({
+            "cycle_id": cycle_id,
+            "lstm_ms": round(lstm_ms, 2),
+            "total_ms": round(lstm_ms, 2),
+            "top3_count": len(top3),
+            "source": "predict",
+        })
 
     return {
         "sign": CLASSES[predicted_idx.item()],
@@ -259,19 +393,67 @@ async def websocket_predict(websocket: WebSocket):
     if model is None:
         await websocket.close(code=1011, reason="Modelo no entrenado")
         return
-        
+
+    proto_version = "1"
+    try:
+        query = getattr(websocket, "scope", {}).get("query", {})
+        if isinstance(query, dict):
+            proto_version = str(query.get("v", "1") or "1").lower()
+    except Exception:
+        proto_version = "1"
+
     try:
         while True:
-            # Receive frames
-            data_json = await websocket.receive_json()
-            frames = data_json.get("frames", [])
-            if len(frames) < 5:
-                await websocket.send_json({"error": "Too few frames (min 5)"})
+            data_np = None
+            if proto_version == "2":
+                payload = await websocket.receive_bytes()
+                if len(payload) < 4:
+                    await websocket.send_json({"error": "binary header too short"})
+                    continue
+                if payload[0] != 0x02:
+                    await websocket.send_json({"error": "unsupported binary version"})
+                    continue
+                flags = payload[1]
+                left_omit = bool(flags & 0x01)
+                right_omit = bool(flags & 0x02)
+                pose_floats = 33 * 3
+                hand_floats = 21 * 3
+                floats_per_frame = pose_floats + (0 if left_omit else hand_floats) + (0 if right_omit else hand_floats)
+                body_bytes = len(payload) - 4
+                if floats_per_frame <= 0 or body_bytes % (floats_per_frame * 4) != 0:
+                    await websocket.send_json({"error": "binary payload misaligned"})
+                    continue
+                T = body_bytes // (floats_per_frame * 4)
+                if T < 5 or T > 64:
+                    await websocket.send_json({"error": "frame count out of range"})
+                    continue
+                arr = np.frombuffer(payload, dtype=np.float32, offset=4)
+                arr = arr.reshape(T, floats_per_frame)
+                pose = arr[:, :pose_floats].reshape(T, 33, 3)
+                offset = pose_floats
+                if left_omit:
+                    left = np.zeros((T, 21, 3), dtype=np.float32)
+                else:
+                    left = arr[:, offset:offset + hand_floats].reshape(T, 21, 3)
+                    offset += hand_floats
+                if right_omit:
+                    right = np.zeros((T, 21, 3), dtype=np.float32)
+                else:
+                    right = arr[:, offset:offset + hand_floats].reshape(T, 21, 3)
+                frame_xyz = np.concatenate([pose, left, right], axis=1)
+                vis = np.zeros((T, 75, 1), dtype=np.float32)
+                data_np = np.concatenate([frame_xyz, vis], axis=2)
+            else:
+                data_json = await websocket.receive_json()
+                frames = data_json.get("frames", [])
+                if len(frames) < 5:
+                    await websocket.send_json({"error": "Too few frames (min 5)"})
+                    continue
+                data_np = np.array(frames, dtype=np.float32)
+
+            if data_np is None:
                 continue
-                
-            data_np = np.array(frames, dtype=np.float32)
-            
-            # LSTM Preprocessing
+
             T = data_np.shape[0]
             if T > MAX_FRAMES:
                 data_np = data_np[:MAX_FRAMES]
@@ -279,10 +461,13 @@ async def websocket_predict(websocket: WebSocket):
                 pad_len = MAX_FRAMES - T
                 pad_arr = np.zeros((pad_len, 75, 4), dtype=data_np.dtype)
                 data_np = np.concatenate((data_np, pad_arr), axis=0)
-                
+
             data_np = data_np.reshape(MAX_FRAMES, -1)
             input_tensor = torch.tensor(data_np, dtype=torch.float32).unsqueeze(0).to(device)
-            
+
+            if TIMING_MODE != "off":
+                lstm_t0 = time.perf_counter()
+
             with torch.no_grad():
                 outputs = model(input_tensor)
                 probs = F.softmax(outputs, dim=1)
@@ -301,6 +486,17 @@ async def websocket_predict(websocket: WebSocket):
             }
             await websocket.send_json(result)
 
+            if TIMING_MODE != "off":
+                lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
+                cycle_id = _timing_next_cycle_id()
+                _timing_emit_cycle({
+                    "cycle_id": cycle_id,
+                    "lstm_ms": round(lstm_ms, 2),
+                    "total_ms": round(lstm_ms, 2),
+                    "top3_count": len(top3),
+                    "source": "ws_predict",
+                })
+
     except WebSocketDisconnect:
         print("[Nexora] Client disconnected from WebSocket")
     except Exception as e:
@@ -311,6 +507,7 @@ async def websocket_predict(websocket: WebSocket):
 @app.post("/process_sentence")
 def process_sentence(payload: SentencePayload):
     t0 = time.perf_counter()
+    translation_t0 = time.perf_counter()
     words = payload.words.strip()
     if not words:
         raise HTTPException(status_code=400, detail="Empty words")
@@ -387,7 +584,10 @@ Traducción:"""
         except Exception as e:
             print(f"[Nexora] Ollama error: {e}")
 
+    translation_ms = (time.perf_counter() - translation_t0) * 1000.0
+
     # --- Step 4: TTS with audio cache ---
+    tts_t0 = time.perf_counter()
     audio_base64 = ""
     if piper_voice and natural_sentence:
         cached_audio = _cache_get(_audio_cache, natural_sentence)
@@ -407,9 +607,20 @@ Traducción:"""
                 _cache_put(_audio_cache, natural_sentence, audio_base64, MAX_AUDIO_CACHE)
             except Exception as e:
                 print(f"[Nexora] Piper error: {e}")
+    tts_ms = (time.perf_counter() - tts_t0) * 1000.0
 
     elapsed_ms = (time.perf_counter() - t0) * 1000
     print(f"[Nexora] process_sentence: {elapsed_ms:.0f}ms (source={source}) '{words}' -> '{natural_sentence}'")
+
+    if TIMING_MODE != "off":
+        cycle_id = _timing_next_cycle_id()
+        _timing_emit_cycle({
+            "cycle_id": cycle_id,
+            "translation_ms": round(translation_ms, 2),
+            "tts_ms": round(tts_ms, 2),
+            "total_ms": round(elapsed_ms, 2),
+            "source": source,
+        })
 
     return {
         "original": words,
@@ -418,3 +629,13 @@ Traducción:"""
         "source": source,
         "latency_ms": round(elapsed_ms),
     }
+
+
+@app.get("/debug/timings.jsonl")
+def debug_timings():
+    if TIMING_MODE != "jsonl" or not TIMING_ENDPOINT_ENABLED:
+        raise HTTPException(status_code=404, detail="timing disabled")
+    return StreamingResponse(
+        _stream_timings_tail(),
+        media_type="application/x-ndjson",
+    )
