@@ -21,6 +21,7 @@ const OVERALL_AGREEMENT_THRESHOLD = 0.9;
 const PER_CLASS_AGREEMENT_THRESHOLD = 0.8;
 const MEAN_PROB_DIFF_THRESHOLD = 0.1;
 const MIN_WINDOWS_PER_CLASS = 5;
+const EXPECTED_CLASSES = ["cabeza", "dolor", "idle", "respirar", "yo"];
 
 type WindowResult = {
   legacy: PredictionResult;
@@ -38,7 +39,8 @@ type ParityReport = {
   overallAgreement: number;
   overallMeanProbDiff: number;
   perClass: Record<string, ClassStat>;
-  pass: boolean;
+  missingClasses: string[];
+  verdict: "PASS" | "FAIL" | "INCONCLUSIVE";
 };
 
 declare global {
@@ -114,15 +116,16 @@ function buildReport(results: WindowResult[]): ParityReport {
   const overallMeanProbDiff =
     overallDiffs.length > 0 ? overallDiffs.reduce((a, b) => a + b, 0) / overallDiffs.length : 0;
 
-  const perClassPass = Object.values(perClass).every(
-    (s) => s.agreement === "insufficient" || s.agreement >= PER_CLASS_AGREEMENT_THRESHOLD
-  );
-  const pass =
-    overallAgreement >= OVERALL_AGREEMENT_THRESHOLD &&
-    overallMeanProbDiff <= MEAN_PROB_DIFF_THRESHOLD &&
-    perClassPass;
+  const stats = Object.values(perClass);
+  const missingClasses = EXPECTED_CLASSES.filter((c) => !(c in perClass));
+  const failed =
+    overallAgreement < OVERALL_AGREEMENT_THRESHOLD ||
+    overallMeanProbDiff > MEAN_PROB_DIFF_THRESHOLD ||
+    stats.some((s) => s.agreement !== "insufficient" && s.agreement < PER_CLASS_AGREEMENT_THRESHOLD);
+  const incomplete = missingClasses.length > 0 || stats.some((s) => s.agreement === "insufficient");
+  const verdict = failed ? "FAIL" : incomplete ? "INCONCLUSIVE" : "PASS";
 
-  return { windows: results.length, overallAgreement, overallMeanProbDiff, perClass, pass };
+  return { windows: results.length, overallAgreement, overallMeanProbDiff, perClass, missingClasses, verdict };
 }
 
 export default function ParityPage() {
@@ -267,7 +270,7 @@ export default function ParityPage() {
       </div>
       {report && (
         <div className="mt-6">
-          <p className="font-semibold">{report.pass ? "PASS" : "FAIL"}</p>
+          <p className="font-semibold">{report.verdict}</p>
           <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg text-xs overflow-auto mt-2">
             {JSON.stringify(report, null, 2)}
           </pre>
