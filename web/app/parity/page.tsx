@@ -173,9 +173,10 @@ function buildReport(results: WindowResult[], frameDiagnostics: FrameDiagnostics
   const stats = Object.values(perClass);
   const missingClasses = EXPECTED_CLASSES.filter((c) => !(c in perClass));
   const failed =
-    overallAgreement < OVERALL_AGREEMENT_THRESHOLD ||
-    overallMeanProbDiff > MEAN_PROB_DIFF_THRESHOLD ||
-    stats.some((s) => s.agreement !== "insufficient" && s.agreement < PER_CLASS_AGREEMENT_THRESHOLD);
+    results.length > 0 &&
+    (overallAgreement < OVERALL_AGREEMENT_THRESHOLD ||
+      overallMeanProbDiff > MEAN_PROB_DIFF_THRESHOLD ||
+      stats.some((s) => s.agreement !== "insufficient" && s.agreement < PER_CLASS_AGREEMENT_THRESHOLD));
   const incomplete = missingClasses.length > 0 || stats.some((s) => s.agreement === "insufficient");
   const verdict = failed ? "FAIL" : incomplete ? "INCONCLUSIVE" : "PASS";
 
