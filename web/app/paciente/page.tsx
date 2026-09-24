@@ -39,12 +39,12 @@ const PREDICT_STRIDE_FRAMES = readIntEnv(
 type MediaPipeBackend = "legacy" | "tasks";
 
 function resolveBackend(): MediaPipeBackend {
-  if (typeof window === "undefined") return "tasks";
+  if (typeof window === "undefined") return "legacy";
   try {
     const params = new URLSearchParams(window.location.search);
-    return params.get("mp") === "legacy" ? "legacy" : "tasks";
+    return params.get("mp") === "tasks" ? "tasks" : "legacy";
   } catch (e) {
-    return "tasks";
+    return "legacy";
   }
 }
 
