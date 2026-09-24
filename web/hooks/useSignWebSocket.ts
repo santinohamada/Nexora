@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { PredictionResult, Frame, Landmark } from "../types";
+import { PredictionResult, Frame } from "../types";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 const LATENCY_TIMING_ENABLED =
@@ -11,16 +11,10 @@ const USE_BINARY_V2 = WS_PROTOCOL_VERSION === "v2";
 
 const POSE_LANDMARKS = 33;
 const HAND_LANDMARKS = 21;
-const POSE_FLOATS = POSE_LANDMARKS * 3;
-const HAND_FLOATS = HAND_LANDMARKS * 3;
+const TOTAL_LANDMARKS = POSE_LANDMARKS + 2 * HAND_LANDMARKS;
 const HEADER_BYTES = 4;
-const FLAG_LEFT_OMIT = 0x01;
-const FLAG_RIGHT_OMIT = 0x02;
 const COORDINATE_DECIMALS = 10000;
-
-function isHandEmpty(hand: Landmark[]): boolean {
-  return hand.every((lm) => lm[3] === 0);
-}
+const WS_STALE_REQUEST_MS = 2000;
 
 function roundCoord(value: number): number {
   return Math.round(value * COORDINATE_DECIMALS) / COORDINATE_DECIMALS;
@@ -28,26 +22,11 @@ function roundCoord(value: number): number {
 
 function packFramesBinary(frames: Frame[]): ArrayBuffer {
   const T = frames.length;
-  const anyLeftEmpty = frames.some((f) =>
-    isHandEmpty(f.slice(POSE_LANDMARKS, POSE_LANDMARKS + HAND_LANDMARKS))
-  );
-  const anyRightEmpty = frames.some((f) =>
-    isHandEmpty(f.slice(POSE_LANDMARKS + HAND_LANDMARKS, POSE_LANDMARKS + 2 * HAND_LANDMARKS))
-  );
-
-  const floatsPerFrame =
-    POSE_FLOATS +
-    (anyLeftEmpty ? 0 : HAND_FLOATS) +
-    (anyRightEmpty ? 0 : HAND_FLOATS);
-
-  const totalFloats = T * floatsPerFrame;
-  const buf = new ArrayBuffer(HEADER_BYTES + totalFloats * 4);
+  const floatsPerFrame = TOTAL_LANDMARKS * 4;
+  const buf = new ArrayBuffer(HEADER_BYTES + T * floatsPerFrame * 4);
   const view = new DataView(buf);
   view.setUint8(0, 0x02);
-  let flags = 0;
-  if (anyLeftEmpty) flags |= FLAG_LEFT_OMIT;
-  if (anyRightEmpty) flags |= FLAG_RIGHT_OMIT;
-  view.setUint8(1, flags);
+  view.setUint8(1, 0);
   view.setUint8(2, 0);
   view.setUint8(3, 0);
 
@@ -55,28 +34,11 @@ function packFramesBinary(frames: Frame[]): ArrayBuffer {
   let offset = 0;
   for (let i = 0; i < T; i++) {
     const f = frames[i];
-    for (let j = 0; j < POSE_LANDMARKS; j++) {
+    for (let j = 0; j < TOTAL_LANDMARKS; j++) {
       arr[offset++] = roundCoord(f[j][0]);
       arr[offset++] = roundCoord(f[j][1]);
       arr[offset++] = roundCoord(f[j][2]);
-    }
-    if (!anyLeftEmpty) {
-      const leftStart = POSE_LANDMARKS;
-      for (let j = 0; j < HAND_LANDMARKS; j++) {
-        const lm = f[leftStart + j];
-        arr[offset++] = roundCoord(lm[0]);
-        arr[offset++] = roundCoord(lm[1]);
-        arr[offset++] = roundCoord(lm[2]);
-      }
-    }
-    if (!anyRightEmpty) {
-      const rightStart = POSE_LANDMARKS + HAND_LANDMARKS;
-      for (let j = 0; j < HAND_LANDMARKS; j++) {
-        const lm = f[rightStart + j];
-        arr[offset++] = roundCoord(lm[0]);
-        arr[offset++] = roundCoord(lm[1]);
-        arr[offset++] = roundCoord(lm[2]);
-      }
+      arr[offset++] = roundCoord(f[j][3]);
     }
   }
   return buf;
@@ -88,6 +50,7 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
   >("connecting");
   const wsRef = useRef<WebSocket | null>(null);
   const isPredictingRef = useRef(false);
+  const inFlightSinceRef = useRef<number | null>(null);
   const sendTimestampRef = useRef<number | null>(null);
   const onMessageRef = useRef(onMessage);
 
@@ -109,7 +72,11 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
       }
       wsRef.current = ws;
 
-      ws.onopen = () => setWsStatus("connected");
+      ws.onopen = () => {
+        isPredictingRef.current = false;
+        inFlightSinceRef.current = null;
+        setWsStatus("connected");
+      };
 
       ws.onmessage = (event) => {
         try {
@@ -130,6 +97,7 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
             return;
           }
           isPredictingRef.current = false;
+          inFlightSinceRef.current = null;
           if (LATENCY_TIMING_ENABLED && sendTimestampRef.current !== null) {
             const wsRoundtripMs = performance.now() - sendTimestampRef.current;
             sendTimestampRef.current = null;
@@ -142,17 +110,21 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
           }
         } catch {
           isPredictingRef.current = false;
+          inFlightSinceRef.current = null;
         }
       };
 
       ws.onclose = () => {
         wsRef.current = null;
+        isPredictingRef.current = false;
+        inFlightSinceRef.current = null;
         setWsStatus("disconnected");
         reconnectTimeout = setTimeout(connect, 2000);
       };
 
       ws.onerror = () => {
         isPredictingRef.current = false;
+        inFlightSinceRef.current = null;
       };
     };
 
@@ -165,13 +137,18 @@ export function useSignWebSocket({ onMessage }: { onMessage?: (data: PredictionR
   }, []);
 
   const sendFrames = useCallback((frames: Frame[]) => {
+    const isStale =
+      isPredictingRef.current &&
+      inFlightSinceRef.current !== null &&
+      performance.now() - inFlightSinceRef.current > WS_STALE_REQUEST_MS;
     if (
-      isPredictingRef.current ||
+      (isPredictingRef.current && !isStale) ||
       !wsRef.current ||
       wsRef.current.readyState !== WebSocket.OPEN
     )
       return;
     isPredictingRef.current = true;
+    inFlightSinceRef.current = performance.now();
     if (LATENCY_TIMING_ENABLED) {
       sendTimestampRef.current = performance.now();
     }
