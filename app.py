@@ -18,7 +18,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from src.model.lstm import SignLanguageLSTM
-from capture_validation import validate_capture_blendshapes
+from capture_validation import validate_capture_blendshapes, validate_capture_label
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -336,6 +336,11 @@ def capture(payload: CapturePayload):
     if len(payload.frames) < 5:
         raise HTTPException(status_code=400, detail="Too few frames (min 5)")
 
+    try:
+        validate_capture_label(payload.label)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     mode = payload.mode if payload.mode in ("legacy", "tasks") else "legacy"
     T = len(payload.frames)
 
@@ -445,14 +450,10 @@ async def websocket_predict(websocket: WebSocket):
                     if payload[0] != 0x02:
                         await websocket.send_json({"error": "unsupported binary version"})
                         continue
-                    flags = payload[1]
-                    left_omit = bool(flags & 0x01)
-                    right_omit = bool(flags & 0x02)
-                    pose_floats = 33 * 4
-                    hand_floats = 21 * 3
-                    floats_per_frame = pose_floats + (0 if left_omit else hand_floats) + (0 if right_omit else hand_floats)
+                    landmarks_per_frame = 75
+                    floats_per_frame = landmarks_per_frame * 4
                     body_bytes = len(payload) - 4
-                    if floats_per_frame <= 0 or body_bytes % (floats_per_frame * 4) != 0:
+                    if body_bytes <= 0 or body_bytes % (floats_per_frame * 4) != 0:
                         await websocket.send_json({"error": "binary payload misaligned"})
                         continue
                     T = body_bytes // (floats_per_frame * 4)
@@ -460,23 +461,10 @@ async def websocket_predict(websocket: WebSocket):
                         await websocket.send_json({"error": "frame count out of range"})
                         continue
                     arr = np.frombuffer(payload, dtype=np.float32, offset=4)
-                    arr = arr.reshape(T, floats_per_frame)
-                    pose = arr[:, :pose_floats].reshape(T, 33, 4)
-                    offset = pose_floats
-                    if left_omit:
-                        left = np.zeros((T, 21, 4), dtype=np.float32)
-                    else:
-                        left_xyz = arr[:, offset:offset + hand_floats].reshape(T, 21, 3)
-                        left_vis = np.zeros((T, 21, 1), dtype=np.float32)
-                        left = np.concatenate([left_xyz, left_vis], axis=2)
-                        offset += hand_floats
-                    if right_omit:
-                        right = np.zeros((T, 21, 4), dtype=np.float32)
-                    else:
-                        right_xyz = arr[:, offset:offset + hand_floats].reshape(T, 21, 3)
-                        right_vis = np.zeros((T, 21, 1), dtype=np.float32)
-                        right = np.concatenate([right_xyz, right_vis], axis=2)
-                    data_np = np.concatenate([pose, left, right], axis=1)
+                    if arr.size != T * floats_per_frame:
+                        await websocket.send_json({"error": "binary payload misaligned"})
+                        continue
+                    data_np = arr.reshape(T, landmarks_per_frame, 4)
                 else:
                     try:
                         data_json = await asyncio.wait_for(

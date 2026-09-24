@@ -1,4 +1,32 @@
-from capture_validation import validate_capture_blendshapes
+from capture_validation import validate_capture_blendshapes, validate_capture_label
+
+
+def test_label_rejects_path_traversal():
+    try:
+        validate_capture_label("../x")
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+
+
+def test_label_rejects_path_separator():
+    try:
+        validate_capture_label("a/b")
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+
+
+def test_label_rejects_empty():
+    try:
+        validate_capture_label("")
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+
+
+def test_label_accepts_valid():
+    validate_capture_label("dolor")
 
 
 def test_legacy_mode_skips_validation():
@@ -48,6 +76,10 @@ def test_tasks_mode_valid_payload():
 
 
 if __name__ == "__main__":
+    test_label_rejects_path_traversal()
+    test_label_rejects_path_separator()
+    test_label_rejects_empty()
+    test_label_accepts_valid()
     test_legacy_mode_skips_validation()
     test_tasks_mode_requires_blendshapes()
     test_tasks_mode_frame_count_mismatch()

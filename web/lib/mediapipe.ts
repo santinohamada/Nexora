@@ -34,12 +34,37 @@ export function toFrame(
 
 export type HandSlots = { left?: RawLandmark[]; right?: RawLandmark[] };
 
-export function resolveHandSlots(
-  landmarks: RawLandmark[][] | undefined,
+const POSE_LEFT_WRIST = 15;
+const POSE_RIGHT_WRIST = 16;
+
+function wristDistance(hand: RawLandmark[], wrist: RawLandmark): number {
+  const dx = hand[0].x - wrist.x;
+  const dy = hand[0].y - wrist.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function resolveHandSlotsByWrist(
+  landmarks: RawLandmark[][],
+  leftWrist: RawLandmark,
+  rightWrist: RawLandmark
+): HandSlots {
+  if (landmarks.length === 1) {
+    const hand = landmarks[0];
+    return wristDistance(hand, leftWrist) <= wristDistance(hand, rightWrist)
+      ? { left: hand }
+      : { right: hand };
+  }
+  const [a, b] = landmarks;
+  const straight = wristDistance(a, leftWrist) + wristDistance(b, rightWrist);
+  const swapped = wristDistance(a, rightWrist) + wristDistance(b, leftWrist);
+  return straight <= swapped ? { left: a, right: b } : { left: b, right: a };
+}
+
+function resolveHandSlotsByHandedness(
+  landmarks: RawLandmark[][],
   handedness: HandednessCategory[][] | undefined
 ): HandSlots {
   const slots: HandSlots = {};
-  if (!landmarks || landmarks.length === 0) return slots;
   for (let i = 0; i < landmarks.length; i++) {
     const label = handedness?.[i]?.[0]?.categoryName;
     const wantsRightSlot = label === "Left";
@@ -55,6 +80,20 @@ export function resolveHandSlots(
     }
   }
   return slots;
+}
+
+export function resolveHandSlots(
+  pose: RawLandmark[] | undefined,
+  landmarks: RawLandmark[][] | undefined,
+  handedness: HandednessCategory[][] | undefined
+): HandSlots {
+  if (!landmarks || landmarks.length === 0) return {};
+  const leftWrist = pose?.[POSE_LEFT_WRIST];
+  const rightWrist = pose?.[POSE_RIGHT_WRIST];
+  if (leftWrist && rightWrist) {
+    return resolveHandSlotsByWrist(landmarks, leftWrist, rightWrist);
+  }
+  return resolveHandSlotsByHandedness(landmarks, handedness);
 }
 
 export function extractBlendshapes(

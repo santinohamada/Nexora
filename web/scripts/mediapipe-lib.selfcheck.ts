@@ -17,13 +17,24 @@ assert.equal(frameNoHands[33][3], 0, "hand visibility must be forced to 0");
 const leftHand = Array.from({ length: 21 }, () => ({ x: 0.1, y: 0.1, z: 0, visibility: 0 }));
 const rightHand = Array.from({ length: 21 }, () => ({ x: 0.2, y: 0.2, z: 0, visibility: 0 }));
 
-const slotsUnmirrored = resolveHandSlots([leftHand, rightHand], [[{ categoryName: "Left" }], [{ categoryName: "Right" }]]);
-assert.equal(slotsUnmirrored.right, leftHand, "Tasks 'Left' must map to the right output slot (unmirrored input)");
-assert.equal(slotsUnmirrored.left, rightHand, "Tasks 'Right' must map to the left output slot (unmirrored input)");
+const poseWithWrists = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, z: 0, visibility: 0.9 }));
+poseWithWrists[15] = { x: 0.1, y: 0.1, z: 0, visibility: 0.9 };
+poseWithWrists[16] = { x: 0.9, y: 0.9, z: 0, visibility: 0.9 };
 
-const slotsCollision = resolveHandSlots([leftHand, rightHand], [[{ categoryName: "Left" }], [{ categoryName: "Left" }]]);
-assert.equal(slotsCollision.right, leftHand, "first hand claims its wanted slot");
-assert.equal(slotsCollision.left, rightHand, "second hand on a slot collision takes the remaining free slot");
+const handNearLeftWrist = Array.from({ length: 21 }, () => ({ x: 0.12, y: 0.12, z: 0, visibility: 0 }));
+const slotsSingleHand = resolveHandSlots(poseWithWrists, [handNearLeftWrist], [[{ categoryName: "Right" }]]);
+assert.equal(slotsSingleHand.left, handNearLeftWrist, "hand near left pose wrist must go to the left slot regardless of the classifier label");
+assert.equal(slotsSingleHand.right, undefined, "unclaimed slot stays empty");
+
+const handNearLeft = Array.from({ length: 21 }, () => ({ x: 0.1, y: 0.1, z: 0, visibility: 0 }));
+const handNearRight = Array.from({ length: 21 }, () => ({ x: 0.9, y: 0.9, z: 0, visibility: 0 }));
+const slotsSameLabel = resolveHandSlots(poseWithWrists, [handNearLeft, handNearRight], [[{ categoryName: "Left" }], [{ categoryName: "Left" }]]);
+assert.equal(slotsSameLabel.left, handNearLeft, "wrist distance must win over identical classifier labels");
+assert.equal(slotsSameLabel.right, handNearRight, "wrist distance must win over identical classifier labels");
+
+const slotsNoPose = resolveHandSlots(undefined, [leftHand, rightHand], [[{ categoryName: "Left" }], [{ categoryName: "Right" }]]);
+assert.equal(slotsNoPose.right, leftHand, "no pose falls back to the handedness label mapping: Tasks 'Left' maps to the right slot");
+assert.equal(slotsNoPose.left, rightHand, "no pose falls back to the handedness label mapping: Tasks 'Right' maps to the left slot");
 
 assert.deepEqual(extractBlendshapes(undefined), new Array(52).fill(0), "missing face must yield 52 zeros");
 assert.deepEqual(extractBlendshapes([{ score: 0.3 }]), [0.3], "blendshapes must be extracted in category order");

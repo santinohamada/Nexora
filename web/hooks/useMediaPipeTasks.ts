@@ -155,7 +155,11 @@ export function useMediaPipeTasks({ onFrame }: UseMediaPipeTasksOptions = {}) {
           try {
             const poseResult = landmarkers.pose.detectForVideo(video, ts);
             const handResult = landmarkers.hand.detectForVideo(video, ts);
-            const { left, right } = resolveHandSlots(handResult.landmarks, handResult.handedness);
+            const { left, right } = resolveHandSlots(
+              poseResult.landmarks[0],
+              handResult.landmarks,
+              handResult.handedness
+            );
 
             if (isFaceEligibleTick(eligibleTickRef.current)) {
               const faceResult = landmarkers.face.detectForVideo(video, ts);

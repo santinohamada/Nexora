@@ -210,7 +210,11 @@ export default function ParityPage() {
       const ts = (k * 1000) / REPLAY_FPS;
       const poseResult = landmarkers.pose.detectForVideo(canvasB, ts);
       const handResult = landmarkers.hand.detectForVideo(canvasB, ts);
-      const { left, right } = resolveHandSlots(handResult.landmarks, handResult.handedness);
+      const { left, right } = resolveHandSlots(
+        poseResult.landmarks[0],
+        handResult.landmarks,
+        handResult.handedness
+      );
       const tasksFrame = toFrame(poseResult.landmarks[0], left, right);
       pushCapped(tasksBuffer, tasksFrame);
 
