@@ -54,6 +54,15 @@ def test_audit_rejects_negative_e2e_ms():
         pass
 
 
+def test_audit_rejects_non_finite_e2e_ms():
+    for value in (float("nan"), float("inf")):
+        try:
+            validate_audit_payload("translation_displayed", "paciente", None, value)
+            assert False, "expected ValueError"
+        except ValueError:
+            pass
+
+
 def test_audit_rejects_e2e_ms_out_of_range():
     try:
         validate_audit_payload("translation_displayed", "paciente", None, 999999)
@@ -94,6 +103,7 @@ if __name__ == "__main__":
     test_audit_rejects_invalid_consent_value()
     test_audit_rejects_missing_e2e_ms()
     test_audit_rejects_negative_e2e_ms()
+    test_audit_rejects_non_finite_e2e_ms()
     test_audit_rejects_e2e_ms_out_of_range()
     test_percentile_matches_known_values()
     test_latency_summary_reports_p50_p95_max_count()

@@ -665,7 +665,7 @@ async def websocket_predict(websocket: WebSocket):
                 await websocket.send_json(result)
 
                 lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
-                _log_audit("prediction", lstm_ms=round(lstm_ms, 2), confidence=confidence_pct)
+                await asyncio.to_thread(_log_audit, "prediction", lstm_ms=round(lstm_ms, 2), confidence=confidence_pct)
 
                 if TIMING_MODE != "off":
                     cycle_id = _timing_next_cycle_id()

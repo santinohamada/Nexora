@@ -1,3 +1,4 @@
+import math
 import re
 
 import numpy as np
@@ -63,5 +64,5 @@ def validate_audit_payload(
     if event_type == "translation_displayed":
         if not isinstance(e2e_ms, (int, float)) or isinstance(e2e_ms, bool):
             raise ValueError("Invalid e2e_ms")
-        if e2e_ms < 0 or e2e_ms > AUDIT_E2E_MS_MAX:
+        if not math.isfinite(e2e_ms) or e2e_ms < 0 or e2e_ms > AUDIT_E2E_MS_MAX:
             raise ValueError("Invalid e2e_ms")
