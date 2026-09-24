@@ -36,7 +36,6 @@ export type HandSlots = { left?: RawLandmark[]; right?: RawLandmark[] };
 
 const POSE_LEFT_WRIST = 15;
 const POSE_RIGHT_WRIST = 16;
-const HAND_MIN_WRIST_VISIBILITY = 0.5;
 
 function wristDistance(hand: RawLandmark[], wrist: RawLandmark): number {
   const dx = hand[0].x - wrist.x;
@@ -92,11 +91,7 @@ export function resolveHandSlots(
   const leftWrist = pose?.[POSE_LEFT_WRIST];
   const rightWrist = pose?.[POSE_RIGHT_WRIST];
   if (leftWrist && rightWrist) {
-    const slots = resolveHandSlotsByWrist(landmarks, leftWrist, rightWrist);
-    return {
-      left: (leftWrist.visibility ?? 0) >= HAND_MIN_WRIST_VISIBILITY ? slots.left : undefined,
-      right: (rightWrist.visibility ?? 0) >= HAND_MIN_WRIST_VISIBILITY ? slots.right : undefined,
-    };
+    return resolveHandSlotsByWrist(landmarks, leftWrist, rightWrist);
   }
   return resolveHandSlotsByHandedness(landmarks, handedness);
 }
