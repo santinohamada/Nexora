@@ -41,7 +41,61 @@ type ParityReport = {
   perClass: Record<string, ClassStat>;
   missingClasses: string[];
   verdict: "PASS" | "FAIL" | "INCONCLUSIVE";
+  confusion: Record<string, Record<string, number>>;
+  frameDiagnostics: FrameDiagnostics;
 };
+
+type FrameDiagnostics = {
+  frames: number;
+  poseXYMeanAbsDiff: number;
+  poseZMeanAbsDiff: number;
+  poseVisMeanAbsDiff: number;
+  leftPresent: { legacy: number; tasks: number; mismatch: number };
+  rightPresent: { legacy: number; tasks: number; mismatch: number };
+};
+
+const POSE_COUNT = 33;
+const LEFT_START = 33;
+const RIGHT_START = 54;
+const HAND_COUNT = 21;
+
+function handPresent(frame: Frame, start: number): boolean {
+  return frame.slice(start, start + HAND_COUNT).some((lm) => lm[2] !== 0);
+}
+
+function newDiagnostics(): FrameDiagnostics {
+  return {
+    frames: 0,
+    poseXYMeanAbsDiff: 0,
+    poseZMeanAbsDiff: 0,
+    poseVisMeanAbsDiff: 0,
+    leftPresent: { legacy: 0, tasks: 0, mismatch: 0 },
+    rightPresent: { legacy: 0, tasks: 0, mismatch: 0 },
+  };
+}
+
+function accumulateDiagnostics(d: FrameDiagnostics, a: Frame, b: Frame) {
+  let xy = 0;
+  let z = 0;
+  let vis = 0;
+  for (let i = 0; i < POSE_COUNT; i++) {
+    xy += (Math.abs(a[i][0] - b[i][0]) + Math.abs(a[i][1] - b[i][1])) / 2;
+    z += Math.abs(a[i][2] - b[i][2]);
+    vis += Math.abs(a[i][3] - b[i][3]);
+  }
+  const n = d.frames;
+  d.poseXYMeanAbsDiff = (d.poseXYMeanAbsDiff * n + xy / POSE_COUNT) / (n + 1);
+  d.poseZMeanAbsDiff = (d.poseZMeanAbsDiff * n + z / POSE_COUNT) / (n + 1);
+  d.poseVisMeanAbsDiff = (d.poseVisMeanAbsDiff * n + vis / POSE_COUNT) / (n + 1);
+  for (const [slot, start] of [[d.leftPresent, LEFT_START], [d.rightPresent, RIGHT_START]] as const) {
+    const pa = handPresent(a, start);
+    const pb = handPresent(b, start);
+    if (pa) slot.legacy++;
+    if (pb) slot.tasks++;
+    if (pa !== pb) slot.mismatch++;
+  }
+  d.frames = n + 1;
+}
 
 declare global {
   interface Window {
@@ -81,7 +135,7 @@ function pushCapped(buffer: Frame[], frame: Frame) {
   if (buffer.length > RECORDING_MAX_FRAMES) buffer.shift();
 }
 
-function buildReport(results: WindowResult[]): ParityReport {
+function buildReport(results: WindowResult[], frameDiagnostics: FrameDiagnostics): ParityReport {
   const perClassWindows = new Map<string, WindowResult[]>();
   for (const r of results) {
     const c = r.legacy.sign;
@@ -125,7 +179,22 @@ function buildReport(results: WindowResult[]): ParityReport {
   const incomplete = missingClasses.length > 0 || stats.some((s) => s.agreement === "insufficient");
   const verdict = failed ? "FAIL" : incomplete ? "INCONCLUSIVE" : "PASS";
 
-  return { windows: results.length, overallAgreement, overallMeanProbDiff, perClass, missingClasses, verdict };
+  const confusion: Record<string, Record<string, number>> = {};
+  for (const r of results) {
+    const row = (confusion[r.legacy.sign] ??= {});
+    row[r.tasks.sign] = (row[r.tasks.sign] ?? 0) + 1;
+  }
+
+  return {
+    windows: results.length,
+    overallAgreement,
+    overallMeanProbDiff,
+    perClass,
+    missingClasses,
+    verdict,
+    confusion,
+    frameDiagnostics,
+  };
 }
 
 export default function ParityPage() {
@@ -194,6 +263,7 @@ export default function ParityPage() {
     const tasksBuffer: Frame[] = [];
     const results: WindowResult[] = [];
     let framesSincePredict = 0;
+    const diagnostics = newDiagnostics();
 
     for (let k = 0; k < totalFrames; k++) {
       setProgress(`processing frame ${k + 1}/${totalFrames}`);
@@ -220,6 +290,7 @@ export default function ParityPage() {
       );
       const tasksFrame = toFrame(poseResult.landmarks[0], left, right);
       pushCapped(tasksBuffer, tasksFrame);
+      accumulateDiagnostics(diagnostics, legacyFrame, tasksFrame);
 
       framesSincePredict++;
       if (legacyBuffer.length >= WARMUP_FRAMES && framesSincePredict >= PREDICT_STRIDE_FRAMES) {
@@ -234,19 +305,15 @@ export default function ParityPage() {
 
     try {
       holistic.close();
-    } catch (e) {
-      /* holistic may already be closed */
-    }
+    } catch {}
     try {
       landmarkers.pose.close();
       landmarkers.hand.close();
       landmarkers.face.close();
-    } catch (e) {
-      /* landmarkers may already be closed */
-    }
+    } catch {}
 
     setProgress(`done — ${results.length} windows`);
-    setReport(buildReport(results));
+    setReport(buildReport(results, diagnostics));
     setRunning(false);
   };
 
