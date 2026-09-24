@@ -320,9 +320,9 @@ def get_classes():
 
 
 @app.get("/dataset_stats")
-def dataset_stats():
+def dataset_stats(mode: str = "legacy"):
     stats = {}
-    base_dir = os.path.join("dataset", "custom")
+    base_dir = os.path.join("dataset", "custom" if mode == "legacy" else "custom_tasks")
     if os.path.exists(base_dir):
         for label in os.listdir(base_dir):
             label_dir = os.path.join(base_dir, label)

@@ -51,7 +51,7 @@ export const CaptureMode = memo(function CaptureMode({
       .catch((err) => console.error("Error fetching classes:", err));
 
     // Fetch dataset stats (includes labels not yet in model)
-    fetch(`${API_URL}/dataset_stats`)
+    fetch(`${API_URL}/dataset_stats?mode=${backend}`)
       .then((res) => res.json())
       .then((stats: DatasetStats) => {
         setDatasetStats(stats);
