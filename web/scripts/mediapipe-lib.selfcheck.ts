@@ -32,7 +32,13 @@ const slotsSameLabel = resolveHandSlots(poseWithWrists, [handNearLeft, handNearR
 assert.equal(slotsSameLabel.left, handNearLeft, "wrist distance must win over identical classifier labels");
 assert.equal(slotsSameLabel.right, handNearRight, "wrist distance must win over identical classifier labels");
 
-const slotsNoPose = resolveHandSlots(undefined, [leftHand, rightHand], [[{ categoryName: "Left" }], [{ categoryName: "Right" }]]);
+const poseLowRightWrist = poseWithWrists.map((lm) => ({ ...lm }));
+poseLowRightWrist[16].visibility = 0.2;
+const slotsGated = resolveHandSlots(poseLowRightWrist, [handNearLeft, handNearRight], [[{ categoryName: "Right" }], [{ categoryName: "Left" }]]);
+assert.equal(slotsGated.left, handNearLeft, "hand at a visible pose wrist is kept");
+assert.equal(slotsGated.right, undefined, "hand at a pose wrist with visibility < 0.5 is dropped, as legacy Holistic never tracked it");
+
+const slotsNoPose =resolveHandSlots(undefined, [leftHand, rightHand], [[{ categoryName: "Left" }], [{ categoryName: "Right" }]]);
 assert.equal(slotsNoPose.right, leftHand, "no pose falls back to the handedness label mapping: Tasks 'Left' maps to the right slot");
 assert.equal(slotsNoPose.left, rightHand, "no pose falls back to the handedness label mapping: Tasks 'Right' maps to the left slot");
 
