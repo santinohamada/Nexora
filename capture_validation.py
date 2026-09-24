@@ -3,11 +3,11 @@ import re
 import numpy as np
 
 BLENDSHAPE_COUNT = 52
-LABEL_PATTERN = re.compile(r"^[a-z0-9_]{1,32}$")
+LABEL_PATTERN = re.compile(r"[a-z0-9_]{1,32}")
 
 
 def validate_capture_label(label: str) -> None:
-    if not LABEL_PATTERN.match(label):
+    if not LABEL_PATTERN.fullmatch(label):
         raise ValueError("Invalid label")
 
 

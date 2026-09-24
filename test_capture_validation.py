@@ -25,6 +25,14 @@ def test_label_rejects_empty():
         pass
 
 
+def test_label_rejects_trailing_newline():
+    try:
+        validate_capture_label("dolor\n")
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+
+
 def test_label_accepts_valid():
     validate_capture_label("dolor")
 
@@ -79,6 +87,7 @@ if __name__ == "__main__":
     test_label_rejects_path_traversal()
     test_label_rejects_path_separator()
     test_label_rejects_empty()
+    test_label_rejects_trailing_newline()
     test_label_accepts_valid()
     test_legacy_mode_skips_validation()
     test_tasks_mode_requires_blendshapes()
