@@ -118,7 +118,10 @@ export function useMediaPipeTasks({ onFrame, enabled = true }: UseMediaPipeTasks
         },
       })
       .then((s) => {
-        if (cancelled) return;
+        if (cancelled) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
         streamRef.current = s;
         setStream(s);
         if (videoRef.current) {

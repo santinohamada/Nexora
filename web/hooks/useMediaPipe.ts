@@ -260,6 +260,10 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true, enabled = 
             },
           })
           .then((stream) => {
+            if (!isComponentMounted) {
+              stream.getTracks().forEach((t) => t.stop());
+              return;
+            }
             streamRef.current = stream;
             setStream(stream);
             if (videoRef.current) {

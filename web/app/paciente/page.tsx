@@ -222,7 +222,7 @@ export default function PacientePage() {
           backend={MEDIAPIPE_BACKEND}
         />
       ) : (
-        <main className="min-h-screen bg-slate-50 flex flex-col">
+        <main className="min-h-screen bg-slate-50 flex flex-col" inert={consentState !== "accepted"}>
           <Header />
 
         <div className="flex-1 flex flex-col p-8 pb-20 max-w-[1600px] mx-auto w-full">

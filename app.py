@@ -3,6 +3,7 @@ import time
 import json
 import atexit
 import asyncio
+import threading
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -322,6 +323,7 @@ def _prepare_input(data: np.ndarray) -> np.ndarray:
 os.makedirs("dataset/custom", exist_ok=True)
 os.makedirs("logs", exist_ok=True)
 REPORTS_LOG_PATH = os.path.join("logs", "reports.jsonl")
+REPORTS_LOCK = threading.Lock()
 
 @app.get("/")
 def health():
@@ -396,7 +398,7 @@ def report_translation(payload: ReportPayload):
         "words": payload.words,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    with open(REPORTS_LOG_PATH, "a", encoding="utf-8") as f:
+    with REPORTS_LOCK, open(REPORTS_LOG_PATH, "a", encoding="utf-8") as f:
         f.write(json.dumps(record) + "\n")
 
     return {"status": "ok"}
