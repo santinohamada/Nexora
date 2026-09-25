@@ -50,11 +50,10 @@ académico.
     texto o por dictado de voz.
     \item Ofrece un módulo de captura de datos para ampliar el vocabulario
     del modelo y un script de reentrenamiento.
-    \item \textit{Diseñado, pendiente de implementación:} solicita
-    consentimiento explícito de cámara antes de iniciar la captura
-    (RF-03.1), registra eventos de auditoría anónimos por operación
-    relevante (RF-04.1) y permite reportar una traducción incorrecta o
-    ambigua (RF-06.1). Ver Sección~3.2 y \texttt{IDS.md}.
+    \item Solicita consentimiento explícito de cámara antes de iniciar la
+    captura (RF-03.1), registra eventos de auditoría anónimos por
+    operación relevante (RF-04.1) y permite reportar una traducción
+    incorrecta o ambigua (RF-06.1). Ver Sección~3.2 y \texttt{IDS.md}.
 \end{itemize}
 
 \subsubsection{Lo que el sistema no hace}
@@ -208,7 +207,7 @@ guardia/triaje exigida por los requisitos oficiales RNF-04 y RNF-07.
     \item \textbf{Respuesta por texto o por voz:} el personal de recepción o enfermería responde escribiendo o dictando (CU-04, CU-05).
     \item \textbf{Captura de datos de entrenamiento:} grabación de nuevas señas para ampliar el vocabulario (CU-06, CU-07).
     \item \textbf{Entrenamiento del modelo:} reentrenamiento del LSTM con los datos capturados (CU-08).
-    \item \textbf{Diseñado, pendiente de implementación:} consentimiento de cámara (CU-09), reporte de traducción incorrecta (CU-10) y registro de auditoría (CU-11).
+    \item \textbf{Consentimiento de cámara} (CU-09), \textbf{reporte de traducción incorrecta} (CU-10) y \textbf{registro de auditoría} (CU-11).
 \end{enumerate}
 
 \subsection{Características de los usuarios}
@@ -313,7 +312,7 @@ Apéndice~A).
         \textbf{Interfaz} & \textbf{Ruta} & \textbf{Descripción} \\
         \midrule
         Landing page & \texttt{/} & Selector de estación (Paciente / Recepción). \\
-        Pantalla de Consentimiento (P-05) & \texttt{/paciente} (previa) & Consentimiento explícito antes de activar la cámara. \textit{Diseñada, pendiente de implementación.} \\
+        Diálogo de Consentimiento (P-05) & \texttt{/paciente} (modal previo) & Consentimiento explícito antes de activar la cámara. \\
         Estación del Paciente & \texttt{/paciente} & Cámara, predicción en tiempo real, chat y Modo Captura. \\
         Estación de Recepción & \texttt{/recepcion} & Historial de chat, respuesta por texto y por dictado de voz. \\
         \bottomrule
@@ -356,9 +355,9 @@ Apéndice~A).
         POST & \texttt{/process\_sentence} & Traduce palabras sueltas a oración natural y genera el audio. \\
         GET & \texttt{/debug/timings.jsonl} & Transmite el registro de latencias por etapa (solo si está habilitado por variable de entorno; herramienta de desarrollo). \\
         \midrule
-        POST & \texttt{/consent} \textit{(diseñado)} & Registra el consentimiento de cámara del paciente (CU-09, RF-03.1). \\
-        POST & \texttt{/report} \textit{(diseñado)} & Registra un reporte de traducción incorrecta o ambigua (CU-10, RF-06.1). \\
-        POST & \texttt{/audit} \textit{(diseñado, interno)} & Registra un evento de auditoría anónimo (CU-11, RF-04.1); no es invocado por el frontend, sino por el propio backend al completar cada operación de sistema. \\
+        POST & \texttt{/report} & Registra un reporte de traducción incorrecta o ambigua (CU-10, RF-06.1); invocado por \texttt{ChatBubble}. \\
+        POST & \texttt{/audit} & Registra un evento de auditoría anónimo (CU-11, RF-04.1). Los tipos \texttt{consent} y \texttt{translation\_displayed} los envía el frontend (\texttt{PacientePage}, \texttt{useSentenceBuilder}); los tipos \texttt{prediction}, \texttt{sentence} y \texttt{report} los registra el propio backend al completar la operación correspondiente. \\
+        GET & \texttt{/metrics?since=} & Agrega los eventos de \texttt{logs/audit.jsonl}: conteos por tipo, consentimientos aceptados/declinados, fuente de traducción y latencias p50/p95/máx.\ por campo (E05). \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -387,8 +386,7 @@ Cada uno indica su prioridad (\textit{Esencial}: imprescindible para el
 flujo principal; \textit{Condicional}: mejora el flujo pero el sistema es
 utilizable sin él; \textit{Deseable}: conveniencia menor) y los casos de
 uso relacionados (ver Entregable de Modelos de Casos de Uso). Al final de
-la sección se detallan RF-03.1, RF-04.1 y RF-06.1: \textbf{diseñados,
-pendientes de implementación}.
+la sección se detallan RF-03.1, RF-04.1 y RF-06.1: \textbf{implementados}.
 
 \subsubsection{RF-01.1: Captura de landmarks en tiempo real (RF-01 oficial)}
 \begin{table}[H]
@@ -632,52 +630,52 @@ pendientes de implementación}.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-03.1: Consentimiento explícito de cámara (RF-03 oficial) --- diseñado, pendiente de implementación}
+\subsubsection{RF-03.1: Consentimiento explícito de cámara (RF-03 oficial) --- implementado}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
 \toprule
 \textbf{ID} & RF-03.1 \\
-\textbf{Estado} & \textbf{Diseñado --- pendiente de implementación.} \\
+\textbf{Estado} & \textbf{Implementado.} \\
 \textbf{Prioridad} & Esencial (bloqueante: sin consentimiento, no hay CU-01). \\
-\textbf{Descripción} & Antes de activar la cámara, el sistema debe desplegar una pantalla de consentimiento explícito (P-05) y bloquear el acceso a la cámara hasta que el paciente lo otorgue. \\
-\textbf{Entrada} & Decisión del paciente (acepta / no acepta). \\
-\textbf{Proceso} & El sistema muestra el texto explicativo de P-05 antes de invocar \texttt{getUserMedia()}; si el paciente acepta, registra el consentimiento (sin datos identificatorios) y recién entonces solicita el permiso de cámara al navegador. \\
-\textbf{Salida} & Consentimiento registrado y cámara activada, o cámara inactiva con alternativa ofrecida. \\
+\textbf{Descripción} & Antes de activar la cámara, el sistema despliega un diálogo modal de consentimiento explícito (P-05) sobre \texttt{PacientePage} y mantiene el resto de la página inerte (\texttt{inert}) hasta que el paciente decide. El estado de consentimiento (\texttt{pending} / \texttt{accepted} / \texttt{declined}) vive en memoria del componente, sin persistencia entre sesiones. \\
+\textbf{Entrada} & Decisión del paciente (acepta / no acepta), capturada por el diálogo. \\
+\textbf{Proceso} & \texttt{PacientePage} renderiza el diálogo y solo pasa \texttt{enabled: true} al hook de captura de landmarks (\texttt{useMediaPipe} / \texttt{useMediaPipeTasks}) cuando \texttt{consentState === "accepted"}; ese \texttt{enabled} gatea el efecto que invoca \texttt{getUserMedia()}, por lo que la cámara nunca se activa sin consentimiento previo. Cada decisión se registra como un evento de auditoría anónimo (\texttt{type: "consent"}, campo \texttt{consent}: \texttt{accepted}/\texttt{declined}) vía \texttt{POST /audit}. Si el paciente no acepta, puede reconsiderar más tarde desde el mismo diálogo. \\
+\textbf{Salida} & Consentimiento registrado en \texttt{logs/audit.jsonl} y cámara activada, o cámara inactiva con opción de reconsiderar. \\
 \textbf{CU relacionados} & CU-09 (precondición de CU-01). \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-04.1: Registro de eventos de auditoría (RF-04 oficial) --- diseñado, pendiente de implementación}
+\subsubsection{RF-04.1: Registro de eventos de auditoría (RF-04 oficial) --- implementado}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
 \toprule
 \textbf{ID} & RF-04.1 \\
-\textbf{Estado} & \textbf{Diseñado --- pendiente de implementación.} \\
+\textbf{Estado} & \textbf{Implementado.} \\
 \textbf{Prioridad} & Condicional (no bloquea el flujo de comunicación; es una subfunción de auditoría). \\
-\textbf{Descripción} & El sistema debe registrar, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción, síntesis, respuesta, captura), sin datos identificatorios ni imágenes o video, para habilitar métricas operativas de uso (E08, Informe de Impacto Operativo). \\
-\textbf{Entrada} & Finalización de una operación de sistema (SO-01 a SO-05, ver Entregable 08). \\
-\textbf{Proceso} & El backend arma un evento con tipo de operación, marca temporal y resultado, y lo persiste en el registro de auditoría basado en archivos (ver Entregable 09). \\
-\textbf{Salida} & Evento de auditoría anónimo persistido. \\
+\textbf{Descripción} & El sistema registra, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción/síntesis, reporte, consentimiento, traducción mostrada), sin datos identificatorios ni imágenes, video o texto de la conversación, para habilitar métricas operativas de uso (E08, Informe de Impacto Operativo). \\
+\textbf{Entrada} & Finalización de una operación de sistema (SO-01 a SO-05, ver Entregable 08) o un evento anónimo enviado por el frontend (\texttt{consent}, \texttt{translation\_displayed}). \\
+\textbf{Proceso} & El backend (helpers \texttt{\_log\_audit} / \texttt{\_append\_jsonl} en \texttt{app.py}, protegidos por un \texttt{threading.Lock}) arma un registro con tipo de evento, marca temporal UTC y campos propios del tipo, y lo agrega a \texttt{logs/audit.jsonl}. En la ruta WebSocket (\texttt{/ws/predict}) la escritura se despacha con \texttt{asyncio.to\_thread} para no bloquear el bucle de eventos. \texttt{GET /metrics} agrega el archivo (conteos por tipo, consentimientos, fuente de traducción, p50/p95/máx.\ de latencia). \\
+\textbf{Salida} & Evento de auditoría anónimo persistido en \texttt{logs/audit.jsonl}. \\
 \textbf{CU relacionados} & CU-11 (incluido por CU-01 y CU-04). \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-06.1: Reporte de traducción incorrecta o ambigua (RF-06 oficial) --- diseñado, pendiente de implementación}
+\subsubsection{RF-06.1: Reporte de traducción incorrecta o ambigua (RF-06 oficial) --- implementado}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
 \toprule
 \textbf{ID} & RF-06.1 \\
-\textbf{Estado} & \textbf{Diseñado --- pendiente de implementación.} \\
+\textbf{Estado} & \textbf{Implementado.} \\
 \textbf{Prioridad} & Condicional. \\
-\textbf{Descripción} & El paciente o el personal de recepción o enfermería deben poder marcar un mensaje de la conversación como traducción incorrecta o ambigua, indicando un motivo, para registrar el caso y priorizar el reentrenamiento (CU-08). \\
-\textbf{Entrada} & Mensaje señalado y motivo del reporte. \\
-\textbf{Proceso} & El sistema asocia el reporte al mensaje señalado y lo persiste, sin datos identificatorios del paciente. \\
-\textbf{Salida} & Reporte registrado y confirmación mostrada al actor. \\
+\textbf{Descripción} & El paciente o el personal de recepción o enfermería pueden marcar un mensaje de la conversación (traducido del paciente) como traducción incorrecta o ambigua, para registrar el caso y priorizar el reentrenamiento (CU-08). \\
+\textbf{Entrada} & Click en ``Reportar traducción'' sobre un mensaje del paciente, en \texttt{ChatBubble}. \\
+\textbf{Proceso} & \texttt{ChatBubble} envía \texttt{POST /report} con el texto del mensaje, la estación (\texttt{paciente}/\texttt{recepcion}, derivada de la ruta con \texttt{usePathname}) y, si están disponibles, las palabras crudas reconocidas. El backend valida el payload (\texttt{validate\_report\_payload}: texto no vacío, longitud máxima, estación válida) y lo persiste en \texttt{logs/reports.jsonl} (texto, estación, palabras, marca temporal UTC), además de registrar un evento de auditoría \texttt{report} en \texttt{logs/audit.jsonl}. \\
+\textbf{Salida} & Reporte persistido y botón actualizado a estado ``Reportado'' (o mensaje de error si la petición falla). \\
 \textbf{CU relacionados} & CU-10 (extiende a CU-01 y CU-04). \\
 \bottomrule
 \end{tabularx}
@@ -687,13 +685,23 @@ pendientes de implementación}.
 
 Los siguientes valores son \textbf{objetivos de diseño}, expresados en
 p50/p95 como exige la metodología del proyecto, y trazables al requisito
-oficial RNF-01 (``latencia <1 segundo'', CRIT-01). El repositorio incluye un
-mecanismo de instrumentación por etapa (variable de entorno
-\texttt{LATENCY\_V2\_TIMING}, endpoint \texttt{/debug/timings.jsonl}) capaz
-de medirlos, pero al momento de este documento \textbf{no hay una
-medición formal registrada}; por eso la columna ``Estado'' distingue
-entre objetivo y medición, y el criterio de aceptación oficial CRIT-01 no
-puede darse todavía por verificado.
+oficial RNF-01 (``latencia <1 segundo'', CRIT-01). El sistema ya está
+\textbf{instrumentado} para medirlos: cada predicción y cada oración
+procesada registra su latencia por etapa (\texttt{lstm\_ms},
+\texttt{translation\_ms}, \texttt{tts\_ms}, \texttt{total\_ms}) como
+evento de auditoría en \texttt{logs/audit.jsonl}, y \texttt{GET
+/metrics} agrega esos campos en p50/p95/máx.\ bajo demanda; el frontend
+también reporta \texttt{e2e\_ms} (latencia percibida, desde el cierre de
+la oración hasta que se muestra en pantalla) vía \texttt{POST /audit}
+(\texttt{translation\_displayed}). Existe además el mecanismo de
+instrumentación por etapa previo (variable de entorno
+\texttt{LATENCY\_V2\_TIMING}, endpoint \texttt{/debug/timings.jsonl},
+herramienta de desarrollo). Pese a esta instrumentación, al momento de
+este documento \textbf{no hay una medición formal registrada} --- eso
+requiere una sesión de uso real o simulado que alimente el registro; por
+eso la columna ``Estado'' distingue entre objetivo y medición, y el
+criterio de aceptación oficial CRIT-01 no puede darse todavía por
+verificado.
 
 \begin{table}[H]
     \centering
@@ -704,9 +712,9 @@ puede darse todavía por verificado.
         \toprule
         \textbf{Métrica} & \textbf{Valor objetivo} & \textbf{Estado} \\
         \midrule
-        Latencia extremo a extremo (captura $\rightarrow$ audio listo), ruta con plantilla & p50 $\leq$ 600 ms & Objetivo de diseño \\
-        Latencia extremo a extremo, caso general & p95 $\leq$ 1 s & Objetivo de diseño \\
-        Inferencia LSTM por ventana (\texttt{lstm\_ms}) con MediaPipe Tasks vs.\ Holistic & sin regresión de p95 mayor al 10\% & Objetivo de diseño (gate manual documentado en \texttt{openspec}) \\
+        Latencia extremo a extremo (captura $\rightarrow$ audio listo), ruta con plantilla & p50 $\leq$ 600 ms & Instrumentado, medición pendiente \\
+        Latencia extremo a extremo, caso general & p95 $\leq$ 1 s & Instrumentado, medición pendiente \\
+        Inferencia LSTM por ventana (\texttt{lstm\_ms}) con MediaPipe Tasks vs.\ Holistic & sin regresión de p95 mayor al 10\% & Instrumentado, medición pendiente (gate manual documentado en \texttt{openspec}) \\
         Captura de frames & $\sim$30 fps (según cámara) & Dependiente de hardware \\
         Usuarios simultáneos & 1 par paciente--personal por instancia del backend & Restricción de diseño actual \\
         \bottomrule
@@ -716,11 +724,18 @@ puede darse todavía por verificado.
 \textbf{RNF-02.1 (sub-requisito de RNF-02 oficial, precisión):} la
 exactitud de validación del modelo LSTM (\texttt{ModeloDeReconocimiento.exactitudDeValidación},
 ver Entregable 01) se calcula durante \texttt{train\_lstm.py} sobre el 20\%
-de validación, pero no existe todavía un harness formal que la reporte
-como criterio de aceptación automatizado frente al 90\% exigido por
-RNF-02/CRIT-02 oficiales. \textbf{Estado: objetivo de diseño, sin medición
-formal registrada}; se recomienda incorporarlo al entregable de gestión E05
-(Informe de Pruebas Controladas).
+de validación. Además, el script \texttt{eval\_model.py <directorio>}
+(E05) evalúa el modelo cargado por \texttt{app.py} sobre un directorio de
+muestras \texttt{.npy}, reportando accuracy global, precisión/recall por
+clase, matriz de confusión y cantidad de muestras bajo el umbral de
+confianza; advierte si el directorio evaluado es el mismo usado para
+entrenar (\texttt{dataset/custom}), ya que en ese caso la accuracy no mide
+generalización real. Para que la medición sea representativa del 90\%
+exigido por RNF-02/CRIT-02 oficiales, debe correrse sobre una sesión de
+grabación separada del conjunto de entrenamiento. \textbf{Estado:
+instrumentado (\texttt{eval\_model.py}), sin medición formal registrada
+todavía}; se recomienda incorporarla al entregable de gestión E05 (Informe
+de Pruebas Controladas).
 
 \subsection{Restricciones de diseño}
 
@@ -745,8 +760,8 @@ requisitos técnicos sin contraparte oficial.
     \item \textbf{Privacidad de datos de salud:} todo el procesamiento y almacenamiento ocurre en la máquina local; no hay persistencia de conversaciones (estado en memoria más BroadcastChannel).
     \item \textbf{Autenticación:} no implementada en el prototipo actual (\textit{Requisito futuro}).
     \item \textbf{Configuración de CORS:} el backend acepta actualmente cualquier origen (\texttt{allow\_origins=\allowbreak["*"]} en \texttt{app.py}); apropiado para pruebas en una red local controlada, pero debe restringirse antes de un despliegue de producción (\textit{Requisito futuro}, ver 2.7).
-    \item \textbf{Acceso a cámara y micrófono:} requiere autorización explícita del navegador, otorgada por el usuario, y --- cuando RF-03.1 esté implementado --- consentimiento explícito previo del paciente (CU-09).
-    \item \textbf{Eventos de auditoría (RF-04.1) y reportes de traducción (RF-06.1):} diseñados sin datos identificatorios ni imágenes o video, consistentes con esta restricción.
+    \item \textbf{Acceso a cámara y micrófono:} requiere autorización explícita del navegador, otorgada por el usuario, y consentimiento explícito previo del paciente (CU-09, RF-03.1).
+    \item \textbf{Eventos de auditoría (RF-04.1) y reportes de traducción (RF-06.1):} implementados sin datos identificatorios ni imágenes, video o texto de la conversación (salvo el propio texto reportado en \texttt{logs/reports.jsonl}, necesario para priorizar el reentrenamiento), consistentes con esta restricción.
 \end{itemize}
 
 \subsubsection{Compatibilidad de hardware y estación fija (RNF-04.1 / RNF-07.1, sub-requisitos de RNF-04 y RNF-07 oficiales)}
@@ -843,9 +858,9 @@ requisitos técnicos sin contraparte oficial.
     RF-T-05 & CU-08 & --- \\
     RF-T-06 & Precondición de CU-01, CU-04 & --- \\
     \midrule
-    RF-03.1 \textit{(diseñado)} & CU-09 & RNF-03.1 \\
-    RF-04.1 \textit{(diseñado)} & CU-11 & RNF-03.1 \\
-    RF-06.1 \textit{(diseñado)} & CU-10 & RNF-03.1 \\
+    RF-03.1 & CU-09 & RNF-03.1 \\
+    RF-04.1 & CU-11 & RNF-03.1 \\
+    RF-06.1 & CU-10 & RNF-03.1 \\
     \bottomrule
 \end{longtable}
 

@@ -1,7 +1,7 @@
 """gen_drawio.py — genera los 8 diagramas de colaboracion UML (DC-01..DC-08)
 como archivos .drawio editables, con notacion Larman/UML 2.5 estricta.
-DC-01..DC-05 estan implementados; DC-06..DC-08 son diseno, pendientes de
-implementacion (cubren RF-03, RF-04 y RF-06 oficiales):
+Los 8 estan implementados; DC-06, DC-07 y DC-08 cubren RF-03, RF-04 y RF-06
+oficiales respectivamente:
 
 - objetos como rectangulos con nombre subrayado (instancia : Clase o :Clase)
 - UN enlace sin flecha entre cada par de objetos que colabora, SIEMPRE
@@ -674,46 +674,43 @@ def dc05() -> Diagram:
 
 
 # ---------------------------------------------------------------------------
-# DC-06 — otorgarConsentimiento(paciente) — realiza CU-09
-# Diseñado, pendiente de implementación (RF-03 oficial).
-# 2-row layout (~595 px wide): P-05 -> ConsentGate -> consent straight H on
-# row 1; consent -> audit_log and ConsentGate -> PacientePage each drop via
-# a bend so their messages land on a horizontal sub-segment (clear of both
-# rows); audit_log -> logs/consent.jsonl continues straight H on row 2.
+# DC-06 — otorgarConsentimiento(paciente) — realiza CU-09 (RF-03 oficial)
+# 2-row layout: pacientePage -> sendAudit -> backend straight H on row 1;
+# backend -> fileAudit and pacientePage -> useMediaPipe each drop straight
+# down on row 2 (object x-centers match, so both links stay vertical with
+# no waypoints needed).
 # ---------------------------------------------------------------------------
 def dc06() -> Diagram:
     objects = [
-        Obj("p05", "PantallaConsentimiento (P-05)", 0, 200, 195, 56),
-        Obj("gate", "ConsentGate", 245, 200, 150, 56),
-        Obj("consent", "consent : app.py", 445, 200, 150, 56),
-        Obj("audit", "audit_log", 0, 400, 140, 56),
-        Obj("fileConsent", "logs/consent.jsonl", 175, 400, 170, 56),
-        Obj("pacientePage", "PacientePage", 380, 400, 150, 56),
+        Obj("pacientePage", "PacientePage (diálogo de consentimiento)", 0, 200, 230, 56),
+        Obj("sendAudit", "sendAudit() : audit.ts", 300, 200, 180, 56),
+        Obj("backend", "audit_event : app.py", 550, 200, 170, 56),
+        Obj("useMediaPipe", ":useMediaPipe", 30, 420, 170, 56),
+        Obj("fileAudit", "logs/audit.jsonl", 540, 420, 190, 56),
     ]
-    gate = next(o for o in objects if o.id == "gate")
-    consent = next(o for o in objects if o.id == "consent")
     links = [
-        Link("p05", "gate", [Msg("1", "confirmarConsentimiento()", "ab")]),
-        Link("gate", "consent", [Msg("2", "POST /consent()", "ab")]),
+        Link("pacientePage", "sendAudit", [Msg("1", "sendAudit({type:'consent', consent})", "ab")]),
+        Link("sendAudit", "backend", [Msg("1.1", "POST /audit(payload)", "ab")]),
         Link(
-            "consent",
-            "audit",
-            [Msg("2.1", "registrarEvento(tipo=consentimiento)", "ab", seg=1)],
-            waypoints=[(consent.center()[0], 320), (70, 320)],
-            a_exit=("bottom", 0.5),
+            "backend",
+            "backend",
+            [Msg("1.2", "_log_audit('consent', consent=...)", "ab")],
+            self_loop=True,
+            self_side="top",
         ),
-        Link("audit", "fileConsent", [Msg("2.2", "append(evento)", "ab")]),
+        Link("backend", "fileAudit", [Msg("1.3", "_append_jsonl(record)", "ab")]),
+        Link("pacientePage", "useMediaPipe", [Msg("2", "enabled=true", "ab")]),
         Link(
-            "gate",
-            "pacientePage",
-            [Msg("3", "habilitarCámara()", "ab", seg=1)],
-            waypoints=[(gate.center()[0], 382), (455, 382)],
-            a_exit=("bottom", 0.5),
+            "useMediaPipe",
+            "useMediaPipe",
+            [Msg("2.1", "getUserMedia()", "ab")],
+            self_loop=True,
+            self_side="bottom",
         ),
     ]
     return Diagram(
         "08_colaboracion_dc06",
-        "DC-06 — otorgarConsentimiento(paciente) — realiza CU-09 (diseñado, pendiente de implementación)",
+        "DC-06 — otorgarConsentimiento(paciente) — realiza CU-09",
         objects,
         links,
         title_w=600,
@@ -721,64 +718,89 @@ def dc06() -> Diagram:
 
 
 # ---------------------------------------------------------------------------
-# DC-07 — registrarEventoAuditoria(operacion) — realiza CU-11
-# Diseñado, pendiente de implementación (RF-04 oficial).
-# compact straight horizontal chain: any existing handler -> audit_log -> file.
+# DC-07 — registrarEventoAuditoria(operacion) — realiza CU-11 (RF-04 oficial)
+# compact straight horizontal chain: any handler -> _log_audit -> _append_jsonl
+# -> logs/audit.jsonl. _log_audit and _append_jsonl are both plain functions
+# in app.py (no audit_log module); _append_jsonl writes under a
+# threading.Lock shared by /report and /audit (see nota).
 # ---------------------------------------------------------------------------
 def dc07() -> Diagram:
     objects = [
-        Obj("handler", "handler (websocket_predict /\nprocess_sentence / capture)", 0, 200, 260, 64),
-        Obj("audit", "audit_log", 320, 200, 140, 64),
-        Obj("fileAudit", "logs/audit.jsonl", 520, 200, 170, 64),
+        Obj("handler", "handler (predict / websocket_predict /\nprocess_sentence / report / audit_event)", 0, 200, 300, 64),
+        Obj("logAudit", "_log_audit() : app.py", 340, 200, 170, 64),
+        Obj("appendJsonl", "_append_jsonl() : app.py", 550, 200, 180, 64),
+        Obj("fileAudit", "logs/audit.jsonl", 770, 200, 170, 64),
     ]
     links = [
-        Link("handler", "audit", [Msg("1", "registrarEvento(tipo, resultado)", "ab")]),
-        Link("audit", "fileAudit", [Msg("1.1", "append(evento)", "ab")]),
+        Link("handler", "logAudit", [Msg("1", "_log_audit(tipo, **campos)", "ab")]),
+        Link("logAudit", "appendJsonl", [Msg("1.1", "_append_jsonl(AUDIT_LOG_PATH, record)", "ab")]),
+        Link("appendJsonl", "fileAudit", [Msg("1.2", "write(json.dumps(record))", "ab")]),
+    ]
+    notes = [
+        Note(
+            "appendJsonl",
+            520,
+            60,
+            "Escritura protegida por threading.Lock,\ncompartido con /report; en /ws/predict\nse despacha con asyncio.to_thread\npara no bloquear el loop de eventos.",
+            230,
+            76,
+        )
     ]
     return Diagram(
         "08_colaboracion_dc07",
-        "DC-07 — registrarEventoAuditoria(operacion) — realiza CU-11 (diseñado, pendiente de implementación)",
+        "DC-07 — registrarEventoAuditoria(operacion) — realiza CU-11",
         objects,
         links,
+        notes,
         title_w=650,
     )
 
 
 # ---------------------------------------------------------------------------
-# DC-08 — reportarTraduccion(mensaje, motivo) — realiza CU-10
-# Diseñado, pendiente de implementación (RF-06 oficial).
-# 2-row layout (~730 px wide): bubble -> page -> report straight H on row 1;
-# report -> audit_log drops via a bend so its (long, two-line) message lands
-# on a horizontal sub-segment; audit_log -> logs/reports.jsonl continues
-# straight H on row 2.
+# DC-08 — reportarTraduccion(mensaje) — realiza CU-10 (RF-06 oficial)
+# 2-row layout: bubble -> backend -> validation straight H on row 1;
+# backend -> appendJsonl (same x-center, straight down) -> fileReports on
+# row 2; backend's self-loop covers the extra audit event it also emits
+# (_log_audit('report', ...), full chain in DC-07).
 # ---------------------------------------------------------------------------
 def dc08() -> Diagram:
     objects = [
-        Obj("bubble", "ChatBubble", 0, 200, 150, 64),
-        Obj("page", "PacientePage /\nRecepcionPage", 200, 200, 170, 64),
-        Obj("report", "report : app.py", 420, 200, 160, 64),
-        Obj("audit", "audit_log", 380, 400, 140, 64),
-        Obj("fileReports", "logs/reports.jsonl", 560, 400, 170, 64),
+        Obj("bubble", "ChatBubble", 0, 200, 170, 64),
+        Obj("backend", "report_translation : app.py", 260, 200, 210, 64),
+        Obj("validation", "validate_report_payload() :\ncapture_validation.py", 570, 200, 240, 64),
+        Obj("appendJsonl", "_append_jsonl() : app.py", 260, 420, 210, 64),
+        Obj("fileReports", "logs/reports.jsonl", 570, 420, 200, 64),
     ]
-    report = next(o for o in objects if o.id == "report")
-    audit = next(o for o in objects if o.id == "audit")
     links = [
-        Link("bubble", "page", [Msg("1", "onReport(mensaje, motivo)", "ab")]),
-        Link("page", "report", [Msg("2", "POST /report({mensaje, motivo})", "ab")]),
+        Link("bubble", "backend", [Msg("1", "POST /report({text, station, words})", "ab")]),
+        Link("backend", "validation", [Msg("1.1", "validate_report_payload(text, station, words)", "ab")]),
+        Link("backend", "appendJsonl", [Msg("1.2", "_append_jsonl(REPORTS_LOG_PATH, record)", "ab")]),
+        Link("appendJsonl", "fileReports", [Msg("1.3", "write(json.dumps(record))", "ab")]),
         Link(
-            "report",
-            "audit",
-            [Msg("2.1", "registrarReporte(mensaje, motivo)", "ab", seg=1)],
-            waypoints=[(report.center()[0], 320), (audit.center()[0], 320)],
-            a_exit=("bottom", 0.5),
+            "backend",
+            "backend",
+            [Msg("1.4", "audita('report')", "ab")],
+            self_loop=True,
+            self_side="bottom",
+            self_frac=(0.05, 0.30),
         ),
-        Link("audit", "fileReports", [Msg("2.2", "append(reporte)", "ab")]),
+    ]
+    notes = [
+        Note(
+            "backend",
+            480,
+            60,
+            "El evento de auditoría 'report' sigue la\nmisma cadena _log_audit -> _append_jsonl\n-> logs/audit.jsonl documentada en DC-07.",
+            250,
+            64,
+        )
     ]
     return Diagram(
         "08_colaboracion_dc08",
-        "DC-08 — reportarTraduccion(mensaje, motivo) — realiza CU-10 (diseñado, pendiente de implementación)",
+        "DC-08 — reportarTraduccion(mensaje) — realiza CU-10",
         objects,
         links,
+        notes,
         title_w=700,
     )
 

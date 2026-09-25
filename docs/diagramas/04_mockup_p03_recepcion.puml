@@ -8,12 +8,12 @@
   {
     {^"Historial del paciente  (3)"
       {SI
-        <b>Paciente:</b> Me duele la cabeza.    | 10:32 | [<&flag>]
-        <b>Recepción:</b> ¿Desde cuándo?        | 10:33 | [<&flag>]
-        <b>Paciente:</b> Desde ayer.            | 10:34 | [<&flag>]
+        <b>Paciente:</b> Me duele la cabeza.    | 10:32 | [<&flag> Reportar traducción]
+        <b>Recepción:</b> ¿Desde cuándo?        | 10:33 | .
+        <b>Paciente:</b> Desde ayer.            | 10:34 | [<&flag> Reportar traducción]
         .                                       | .     | .
       }
-      <i>Ícono de reporte por mensaje --- diseñado, pendiente</i>  (8)
+      <i>Botón "Reportar traducción" solo en mensajes del paciente</i>  (8)
     } | {^"Responder al paciente"
       Respuesta escrita:  (4)
       "Escriba su respuesta...          "

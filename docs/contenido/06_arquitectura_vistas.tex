@@ -12,10 +12,9 @@ Este documento describe la arquitectura de software de \textbf{LSA Salud}
 mediante el modelo de vistas \textbf{4+1} de Kruchten, aplicando la
 metodología de diseño usada en el resto de los entregables (Larman / Proceso
 Unificado, notación UML 2.5 --- ver Referencias de la ERS, Entregable 05).
-Incluye, marcados explícitamente, los componentes \textbf{diseñados pero
-pendientes de implementación} que cubren los requisitos oficiales RF-03,
-RF-04 y RF-06 (consentimiento, auditoría y reporte de traducción).
-Mientras que el Modelo de Dominio (Entregable 01) describe los conceptos del
+Incluye los componentes que cubren los requisitos oficiales RF-03, RF-04 y
+RF-06 (consentimiento, auditoría y reporte de traducción), todos
+implementados. Mientras que el Modelo de Dominio (Entregable 01) describe los conceptos del
 \emph{problema}, este documento describe las decisiones de \emph{diseño} del
 software que lo resuelve: módulos, procesos concurrentes, organización del
 código fuente y despliegue físico.
@@ -59,12 +58,17 @@ dependencias: en el frontend, las páginas de \texttt{app/}, los
 \texttt{hooks} de React y los \texttt{components}; en el backend, el
 módulo de endpoints (\texttt{app.py}), el modelo LSTM
 (\texttt{src.model.lstm}) y el módulo de validación de capturas
-(\texttt{capture\_validation}). Los módulos \textbf{diseñados y pendientes
-de implementación} llevan el estereotipo «diseñado»: el componente de
-consentimiento \texttt{ConsentGate} (P-05, RF-03.1) y el módulo de auditoría
-\texttt{audit\_log} (RF-04.1). El reporte de traducción (RF-06.1) se inicia
-desde \texttt{ChatBubble} y viaja por la dependencia HTTP de
-\texttt{components} hacia \texttt{app.py}.
+(\texttt{capture\_validation}). El diálogo de consentimiento (P-05, RF-03.1)
+no es un componente ni una ruta aparte: vive dentro de
+\texttt{paciente/page} (\texttt{PacientePage}), que gatea el montaje de los
+\texttt{hooks} de captura con la prop \texttt{enabled}. El registro de
+auditoría (RF-04.1) tampoco es un módulo propio: son funciones
+(\texttt{\_log\_audit}, \texttt{\_append\_jsonl}) dentro de \texttt{app.py}
+mismo, invocadas por cada \textit{handler} que completa una operación de
+sistema, y por el endpoint \texttt{POST /audit} para los eventos que origina
+el frontend (\texttt{consent}, \texttt{translation\_displayed}). El reporte
+de traducción (RF-06.1) se inicia desde \texttt{ChatBubble} y viaja por la
+dependencia HTTP de \texttt{components} hacia \texttt{app.py}.
 
 \diagrama{06_vista_logica}{\textwidth}{Vista Lógica de LSA Salud: módulos de diseño y dependencias}{fig:arq-vista-logica}
 
@@ -89,14 +93,14 @@ Puntos relevantes del diagrama:
     delega la clasificación en el módulo del modelo LSTM y la validación de
     capturas en \texttt{capture\_validation}, ambos desacoplados como
     módulos propios (RNF-T-03).
-    \item \textbf{Diseñado, pendiente de implementación:} el componente
-    \texttt{ConsentGate} (frontend, antepuesto a \texttt{paciente/page}) y el
-    módulo \texttt{audit\_log} (backend, invocado desde cada
-    \textit{handler} de \texttt{app.py} que realiza una operación de
-    sistema) siguen el mismo patrón de desacoplamiento que
+    \item El gateo de consentimiento (frontend, dentro de
+    \texttt{paciente/page}) y las funciones de auditoría
+    (\texttt{\_log\_audit} / \texttt{\_append\_jsonl}, backend, invocadas
+    desde cada \textit{handler} de \texttt{app.py} que realiza una
+    operación de sistema) siguen el mismo patrón de desacoplamiento que
     \texttt{capture\_validation}: ninguno de los \textit{handlers}
-    existentes necesitaría conocer el formato interno del registro de
-    auditoría, solo invocar una función del módulo.
+    necesita conocer el formato interno del registro de auditoría, solo
+    invocar una función.
 \end{itemize}
 
 % ============================================================================
@@ -167,17 +171,21 @@ Puntos relevantes:
     \textbf{offline}, fuera del proceso del backend: lee \texttt{dataset/} y
     escribe en \texttt{models/}, sin invocación síncrona desde \texttt{app.py}
     (ver CU-08 en \texttt{IDS.md}).
+    \item \texttt{eval\_model.py <directorio>} es otro script offline (E05):
+    importa el modelo ya cargado de \texttt{app.py} y evalúa su accuracy
+    sobre un directorio de muestras \texttt{.npy}, sin exponer ningún
+    endpoint ni modificar el proceso del backend.
     \item \texttt{dataset/}, \texttt{models/} y \texttt{voices/} son
     carpetas de datos, no paquetes de código: representan la persistencia
     basada en archivos del sistema (sin base de datos, ver
     Entregable 09 para el detalle del modelo de datos).
     \item \texttt{docs/} (esta documentación) no tiene dependencias de
     código y no participa en el flujo de ejecución.
-    \item \textbf{Diseñado, pendiente de implementación:} \texttt{logs/}
-    sería la carpeta de datos que recibe los eventos de auditoría
-    (RF-04.1) y los reportes de traducción (RF-06.1) escritos por el
-    módulo \texttt{audit\_log}, con el mismo patrón de persistencia basada
-    en archivos que \texttt{dataset/} (ver Entregable 09).
+    \item \texttt{logs/} es la carpeta de datos que recibe los eventos de
+    auditoría (RF-04.1, \texttt{audit.jsonl}) y los reportes de traducción
+    (RF-06.1, \texttt{reports.jsonl}), escritos por funciones dentro de
+    \texttt{app.py} mismo, con el mismo patrón de persistencia basada en
+    archivos que \texttt{dataset/} (ver Entregable 09).
 \end{itemize}
 
 % ============================================================================
@@ -213,9 +221,9 @@ Puntos relevantes:
     \item El sistema de archivos local (\texttt{dataset/}, \texttt{models/},
     \texttt{voices/}) es leído y escrito únicamente por el proceso del
     backend; no hay motor de base de datos en ningún nodo. La carpeta
-    \texttt{logs/} (eventos de auditoría, consentimiento y reportes de
-    traducción) está diseñada y pendiente de implementación (RF-03, RF-04,
-    RF-06).
+    \texttt{logs/} (eventos de auditoría y consentimiento en
+    \texttt{audit.jsonl}, reportes de traducción en \texttt{reports.jsonl})
+    también es escrita únicamente por ese proceso (RF-03, RF-04, RF-06).
     \item La Estación Paciente usa WebSocket (\texttt{/ws/predict}) y HTTP
     REST contra el backend; la Estación Recepción solo HTTP REST. El backend
     invoca a Ollama por HTTP (\texttt{POST /api/generate}).
@@ -308,26 +316,27 @@ vistas anteriores.
     en la máquina (ver ERS 2.7, Suposiciones); no hay escalado horizontal
     posible sin rediseño. \\
 
-    \textit{Diseñado, pendiente de implementación:} módulo
-    \texttt{audit\_log} de auditoría basado en archivos
-    (\texttt{logs/audit.jsonl}), invocado por cada \textit{handler} de
-    \texttt{app.py} al completar una operación de sistema &
+    Auditoría basada en archivos (\texttt{logs/audit.jsonl}) mediante
+    funciones simples dentro de \texttt{app.py}
+    (\texttt{\_log\_audit}/\texttt{\_append\_jsonl}), sin un módulo
+    separado &
     RF-04.1 oficial exige registrar logs de uso y métricas operativas
     anónimas para auditoría, sin agregar un servicio ni una base de datos
     nueva (coherente con la decisión de persistencia basada en archivos). &
-    Cada \textit{handler} existente necesita una línea adicional de
-    invocación al módulo; el formato de línea (JSON Lines) permite anexar
-    sin reescribir el archivo completo. \\
+    Cada \textit{handler} existente agrega una línea de invocación a
+    \texttt{\_log\_audit}; el formato de línea (JSON Lines) permite anexar
+    sin reescribir el archivo completo; la escritura comparte un
+    \texttt{threading.Lock} con \texttt{/report}. \\
 
-    \textit{Diseñado, pendiente de implementación:} \texttt{ConsentGate}
-    como componente de guardia en el frontend, antepuesto a toda la lógica
-    de \texttt{paciente/page} &
+    Gateo de consentimiento dentro del propio \texttt{paciente/page}
+    (\texttt{consentState} pasado como \texttt{enabled} al hook de
+    landmarks), en vez de un componente de guardia separado &
     RF-03.1 oficial exige bloquear la cámara hasta el consentimiento
-    explícito; ubicarlo como guardia (en vez de una validación dispersa en
-    cada \texttt{hook}) concentra la responsabilidad en un único punto de
-    entrada. &
-    \texttt{useMediaPipe} y \texttt{useMediaPipe\-Tasks} solo se montan después
-    de que \texttt{ConsentGate} confirma el consentimiento; ningún otro
+    explícito; controlar el flag \texttt{enabled} del hook de captura desde
+    la propia página evita introducir un componente y un árbol de render
+    adicionales para un estado que ya vive en \texttt{PacientePage}. &
+    \texttt{useMediaPipe} y \texttt{useMediaPipe\-Tasks} solo invocan
+    \texttt{getUserMedia()} cuando \texttt{enabled === true}; ningún otro
     \texttt{hook} necesita conocer el estado de consentimiento. \\
 
     Protocolo binario v2 opcional en el WebSocket de predicción, además del

@@ -24,7 +24,7 @@ node "PC del puesto de atención" as PC {
     folder "dataset/"
     folder "models/"
     folder "voices/"
-    folder "logs/ «diseñado»" as LogsFolder
+    folder "logs/" as LogsFolder
   }
 }
 

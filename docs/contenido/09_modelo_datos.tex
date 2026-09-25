@@ -86,11 +86,12 @@ entidades). Quedan fuera de este modelo, por no persistirse, los conceptos
 audio; se documentan igualmente en la Sección~\ref{sec:dat-mapeo-fisico}
 para dejar constancia explícita de que fueron considerados y descartados.
 
-Se agregan además tres entidades \textbf{diseñadas, pendientes de
-implementación}, que cubren los requisitos oficiales RF-03, RF-04 y RF-06
-(marcadas con relleno distinto en el diagrama):
-\textit{EventoDeConsentimiento} (RF-03.1), \textit{EventoDeAuditoría}
-(RF-04.1) y \textit{ReporteDeTraducción} (RF-06.1). Las tres son, por
+Se agregan además dos entidades que cubren los requisitos oficiales RF-03,
+RF-04 y RF-06: \textit{EventoDeAuditoría} (RF-04.1, cuyo campo \texttt{tipo}
+también cubre el consentimiento de RF-03.1 con el valor \texttt{consent} ---
+no existe una entidad \textit{EventoDeConsentimiento} separada ni un
+archivo \texttt{logs/consent.jsonl}: el consentimiento es un evento de
+auditoría más) y \textit{ReporteDeTraducción} (RF-06.1). Ambas son, por
 diseño, anónimas --- sin identidad del paciente ni contenido de imagen o
 video --- consistentes con RNF-03.1, y se persisten con el mismo patrón
 basado en archivos que el resto del modelo (ver
@@ -307,69 +308,73 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
     \label{tab:dat-dic-conversacion}
 \end{longtable}
 
-\subsubsection{Entidades diseñadas, pendientes de implementación (RF-03/04/06 oficiales)}
+\subsubsection{Entidades de consentimiento, auditoría y reporte (RF-03/04/06 oficiales)}
 
-Las Tablas~\ref{tab:dat-dic-consentimiento} a~\ref{tab:dat-dic-reporte}
-detallan las tres entidades nuevas. Ninguna existe en el código todavía;
-se especifican con el mismo nivel de detalle que el resto para que el
-diseño de persistencia quede completo.
+Las Tablas~\ref{tab:dat-dic-auditoria} y~\ref{tab:dat-dic-reporte} detallan
+las dos entidades implementadas. A diferencia de \textit{MuestraDeEntrenamiento}
+(un archivo \texttt{.npy} por muestra), cada una es una \textbf{línea JSON}
+dentro de un único archivo compartido y de solo anexado
+(\texttt{logs/audit.jsonl}, \texttt{logs/reports.jsonl}): no hay clave
+primaria de archivo, sino orden de aparición en el archivo; la escritura
+está protegida por un \texttt{threading.Lock} compartido entre ambos
+archivos (\texttt{\_append\_jsonl} en \texttt{app.py}).
 
-\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.6cm} p{5.2cm}}
     \toprule
     \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
     \midrule
     \endhead
-    marca\_temporal & \texttt{int64} & epoch ms (nombre de archivo) &
-    Generado por el backend al confirmar el consentimiento (CU-09); único
-    dentro del archivo de consentimientos. \\
+    tipo & \texttt{str} & \texttt{"prediction"} \textbar\ \texttt{"sentence"} \textbar\ \texttt{"report"} \textbar\ \texttt{"consent"} \textbar\ \texttt{"translation\_displayed"} &
+    Identifica el evento; \texttt{"consent"} cubre RF-03.1 (no existe una
+    entidad ni un archivo de consentimiento separados). \\
 
-    otorgado & \texttt{bool} & \texttt{true} \textbar\ \texttt{false} &
-    Siempre \texttt{true} en el flujo principal (RF-03.1); no se persiste
-    un rechazo, porque un rechazo no activa la cámara ni genera datos que
-    auditar. \\
+    timestamp & \texttt{str} & ISO 8601 UTC &
+    Generado por \texttt{\_log\_audit} con
+    \texttt{datetime.now(timezone.\allowbreak utc).\allowbreak isoformat()};
+    no es un nombre de archivo, es un campo más de la línea JSON. \\
+
+    campos según tipo & \texttt{float} \textbar\ \texttt{str} \textbar\ \texttt{int} &
+    varía por \texttt{tipo} &
+    \texttt{prediction}: \texttt{lstm\_ms}, \texttt{confidence}.
+    \texttt{sentence}: \texttt{translation\_ms}, \texttt{tts\_ms},
+    \texttt{total\_ms}, \texttt{source}, \texttt{word\_count}.
+    \texttt{report}: \texttt{station}.
+    \texttt{consent}: \texttt{station}, \texttt{consent}
+    (\texttt{"accepted"}\textbar\texttt{"declined"}).
+    \texttt{translation\_displayed}: \texttt{station}, \texttt{e2e\_ms}
+    (validado finito, $0 \leq$ e2e\_ms $\leq$ 60000, por
+    \texttt{validate\_audit\_payload}). \\
     \bottomrule
-    \caption{Diccionario de datos — EventoDeConsentimiento (diseñado, pendiente de implementación)}
-    \label{tab:dat-dic-consentimiento}
-\end{longtable}
-
-\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
-    \toprule
-    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
-    \midrule
-    \endhead
-    tipo\_operacion & \texttt{str} & \texttt{"prediccion"} \textbar\ \texttt{"traduccion"} \textbar\ \texttt{"sintesis"} \textbar\ \texttt{"respuesta"} \textbar\ \texttt{"captura"} &
-    Identifica la operación de sistema (SO-01 a SO-05) que originó el
-    evento. \\
-
-    marca\_temporal & \texttt{int64} & epoch ms (nombre de archivo) &
-    Generado por \texttt{audit\_log} al persistir el evento. \\
-
-    resultado & \texttt{str} & \texttt{"exito"} \textbar\ \texttt{"error"} &
-    Sin datos identificatorios del paciente ni contenido de imagen o video
-    (RNF-03.1). \\
-    \bottomrule
-    \caption{Diccionario de datos — EventoDeAuditoría (diseñado, pendiente de implementación)}
+    \caption{Diccionario de datos — EventoDeAuditoría}
     \label{tab:dat-dic-auditoria}
 \end{longtable}
 
-\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
+\begin{longtable}{p{2.8cm} p{2.2cm} p{3.6cm} p{5.2cm}}
     \toprule
     \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
     \midrule
     \endhead
-    mensaje\_id & \texttt{number} & identificador de mensaje &
-    Referencia al \texttt{id} del \texttt{ChatMessage} señalado (ver
-    Tabla~\ref{tab:dat-dic-conversacion}); como la conversación no se
-    persiste, el reporte solo conserva ese identificador y el texto del
-    mensaje en el momento del reporte, no una referencia viva. \\
+    texto & \texttt{str} & texto libre, máx.\ 500 caracteres &
+    Texto del \texttt{ChatMessage} señalado en el momento del reporte
+    (validado por \texttt{validate\_report\_payload}); como la conversación
+    no se persiste (Tabla~\ref{tab:dat-dic-conversacion}), el reporte
+    guarda directamente el texto, no una referencia al \texttt{id} del
+    mensaje. \\
 
-    motivo & \texttt{str} & texto libre o categoría & Motivo indicado por
-    el actor (CU-10); sin datos identificatorios del paciente. \\
+    estacion & \texttt{str} & \texttt{"paciente"} \textbar\ \texttt{"recepcion"} &
+    Estación desde la que se reportó (derivada de \texttt{usePathname} en
+    \texttt{ChatBubble}). \\
 
-    marca\_temporal & \texttt{int64} & epoch ms (nombre de archivo) &
-    Generado por \texttt{audit\_log} al persistir el reporte. \\
+    palabras & \texttt{list[str]} \textbar\ \texttt{null} & hasta 20
+    palabras, cada una $\leq$ 32 caracteres &
+    Palabras crudas reconocidas del mensaje, cuando están disponibles;
+    ausente (\texttt{null}) si el mensaje no las tiene. \\
+
+    timestamp & \texttt{str} & ISO 8601 UTC &
+    Generado por \texttt{report\_translation} con
+    \texttt{datetime.now(timezone.\allowbreak utc).\allowbreak isoformat()}. \\
     \bottomrule
-    \caption{Diccionario de datos — ReporteDeTraducción (diseñado, pendiente de implementación)}
+    \caption{Diccionario de datos — ReporteDeTraducción}
     \label{tab:dat-dic-reporte}
 \end{longtable}
 
@@ -427,15 +432,11 @@ intencionalmente sin persistir).
     \texttt{BroadcastChannel} &
     no persistido \\
 
-    Evento\-De\-Consentimiento \textit{(diseñado)} &
-    \texttt{logs/consent.jsonl} &
-    JSON Lines --- un evento anónimo por línea \\
-
-    Evento\-De\-Auditoría \textit{(diseñado)} &
+    Evento\-De\-Auditoría (incluye \texttt{consent}, RF-03.1) &
     \texttt{logs/audit.jsonl} &
     JSON Lines --- un evento anónimo por línea \\
 
-    Reporte\-De\-Traducción \textit{(diseñado)} &
+    Reporte\-De\-Traducción &
     \texttt{logs/reports.jsonl} &
     JSON Lines --- un reporte por línea \\
     \bottomrule

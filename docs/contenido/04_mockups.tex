@@ -17,8 +17,9 @@ la información y las interacciones disponibles, no el diseño visual final
 pantallas ya implementadas). Los wireframes se generaron con la notación
 \textbf{Salt} de PlantUML a partir de una lectura directa de esos
 componentes, de modo que cada elemento mostrado corresponde a un elemento
-real de la interfaz implementada; la excepción es P-05 (Pantalla de
-Consentimiento), diseño nuevo sin componente real todavía (RF-03 oficial).
+real de la interfaz implementada, incluida P-05 (Diálogo de
+Consentimiento, RF-03 oficial), leída directamente de
+\texttt{web/app/paciente/page.tsx}.
 
 Cada elemento relevante de una pantalla está marcado con un \textbf{callout}
 numerado entre paréntesis --(1), (2), (3)...--, único dentro de esa pantalla.
@@ -30,8 +31,7 @@ la Pantalla P-02''.
 Las cinco pantallas identificadas son las mismas de la sección 3.1 de la
 ERS (ver Entregable 05) y del registro de identificadores (\texttt{IDS.md}):
 P-01 (Selección de Estación), P-02 (Estación del Paciente), P-03 (Estación
-de Recepción), P-04 (Modo Captura) y P-05 (Pantalla de Consentimiento,
-diseñada, pendiente de implementación).
+de Recepción), P-04 (Modo Captura) y P-05 (Diálogo de Consentimiento).
 
 Un principio de producto atraviesa las pantallas del flujo de comunicación y
 se remarca en cada sección: en el flujo del paciente \textbf{no hay botones
@@ -39,7 +39,7 @@ de confirmación manual}. La oración traducida se exhibe brevemente en
 pantalla (ventana de exhibición previa, RF-01.6) y ese lapso actúa como
 confirmación automática antes de reproducir el audio; el paciente no tiene
 que pulsar ``aceptar'' ni ``enviar'' (ver RNF-T-05). La única confirmación
-manual explícita del flujo es, precisamente, la nueva Pantalla P-05 de
+manual explícita del flujo es, precisamente, el diálogo P-05 de
 consentimiento (RF-03.1): es una excepción deliberada al principio, porque
 el consentimiento de cámara exige una acción positiva y consciente del
 paciente, no una confirmación automática.
@@ -110,9 +110,12 @@ Estación de Recepción.
         enfermería, sincronizada entre estaciones (RF-01.7). \\
         (8) & Botón ``Limpiar Historial''. \\
         (9) & Botón ``Ajustes (Modo Captura)''; cambia a la Pantalla P-04. \\
-        (10) & Ícono ``Reportar'' sobre cada burbuja del panel (7); abre
-        CU-10 (Reportar Traducción Incorrecta o Ambigua, RF-06.1).
-        \textbf{Diseñado --- pendiente de implementación.} \\
+        (10) & Botón ``Reportar traducción'' (ícono de bandera), visible
+        solo sobre las burbujas del paciente en el panel (7); dispara CU-10
+        (Reportar Traducción Incorrecta o Ambigua, RF-06.1). Cambia de
+        estado mientras se envía (``Enviando...''), al confirmarse
+        (``Reportado'') o si falla (mensaje de error debajo de la
+        burbuja). \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -153,9 +156,10 @@ dictado de voz.
         (7) & Indicador de estado: ``Click para hablar'' / ``Escuchando...
         click para detener'', o el mensaje de error si el navegador no
         soporta reconocimiento de voz o falla el micrófono. \\
-        (8) & Ícono ``Reportar'' sobre cada burbuja del panel (3); abre
-        CU-10 (Reportar Traducción Incorrecta o Ambigua, RF-06.1).
-        \textbf{Diseñado --- pendiente de implementación.} \\
+        (8) & Botón ``Reportar traducción'' (ícono de bandera), visible
+        solo sobre las burbujas del paciente en el panel (3); dispara CU-10
+        (Reportar Traducción Incorrecta o Ambigua, RF-06.1), con los mismos
+        estados que en P-02. \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -209,41 +213,50 @@ nuevas muestras de entrenamiento para el modelo de reconocimiento.
 \end{table}
 
 % ============================================================================
-\subsection{P-05 --- Pantalla de Consentimiento}
-\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-03.}
+\subsection{P-05 --- Diálogo de Consentimiento}
+\textit{Implementado. Cubre el requisito oficial RF-03.}
 
-Pantalla modal prevista para \texttt{/paciente}, mostrada antes de invocar
-\texttt{navigator.mediaDevices.getUserMedia()} y antes de cualquier otro
-elemento de P-02. Bloquea el acceso a la cámara hasta que el paciente
-otorgue el consentimiento explícito (CU-09; RF-03 oficial). Diseño nuevo,
-sin componente real todavía; se describe aquí en el mismo nivel de
-fidelidad que el resto de los wireframes para dejar constancia de su
-disposición y contenido mínimo.
+Diálogo modal renderizado dentro de \texttt{PacientePage}
+(\texttt{web/app/paciente/page.tsx}), superpuesto a \texttt{/paciente}
+mientras el consentimiento no fue otorgado (\texttt{role="dialog"},
+\texttt{aria-modal="true"}); el resto de la página queda marcado
+\texttt{inert}. Se muestra antes de invocar
+\texttt{navigator.mediaDevices.getUserMedia()}: el estado
+\texttt{consentState} se pasa como \texttt{enabled} al hook de landmarks,
+que solo pide permiso de cámara cuando vale \texttt{"accepted"} (CU-09;
+RF-03 oficial).
 
-\diagrama{04_mockup_p05_consentimiento}{0.75\textwidth}{Mockup de P-05 --- Pantalla de Consentimiento}{fig:mock-p05}
+\diagrama{04_mockup_p05_consentimiento}{0.75\textwidth}{Mockup de P-05 --- Diálogo de Consentimiento}{fig:mock-p05}
 
 \begin{table}[H]
     \centering
-    \caption{Elementos de la Pantalla P-05 (diseñada, pendiente de implementación)}
+    \caption{Elementos de la Pantalla P-05}
     \label{tab:mock-p05}
     \begin{tabularx}{\textwidth}{c X}
         \toprule
         \textbf{Callout} & \textbf{Elemento} \\
         \midrule
-        (1) & Logotipo de LSA Salud, en el encabezado del modal. \\
+        (1) & Ícono de escudo (\texttt{ShieldCheck}), junto al título. \\
         (2) & Título ``Consentimiento para usar la cámara''. \\
         (3) & Texto explicativo en lenguaje simple: qué capta la cámara,
-        para qué se usa (traducir señas) y que no se guarda video ni
-        imágenes (RNF-03 oficial). \\
-        (4) & Botón ``Acepto y continúo''; otorga el consentimiento
-        (CU-09) y activa la cámara. \\
-        (5) & Botón ``No acepto''; deja la cámara inactiva y muestra una
-        alternativa (por ejemplo, solicitar asistencia del personal). \\
+        para qué se usa (traducir señas a texto y voz) y que no se guarda
+        video ni imágenes (RNF-03 oficial). \\
+        (4) & Botón ``No acepto''; deja la cámara inactiva y registra el
+        evento de auditoría \texttt{consent: "declined"}. \\
+        (5) & Botón ``Acepto y continúo''; otorga el consentimiento
+        (CU-09), registra \texttt{consent: "accepted"} y habilita la
+        cámara. \\
+        (6) & Estado ``declined'': el texto explicativo (3) se reemplaza
+        por una advertencia (``El traductor necesita la cámara para
+        funcionar. Podés reconsiderar cuando quieras.''). \\
+        (7) & Botón ``Reconsiderar'', único botón visible en el estado
+        ``declined''; vuelve al estado inicial del diálogo (con los
+        botones (4) y (5)). \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-Al igual que en P-02/P-03, el botón (4) es la única acción manual
+Al igual que en P-02/P-03, el botón (5) es la única acción manual
 requerida en todo el flujo del paciente: es una excepción deliberada al
 principio de ``sin confirmación manual'' (ver introducción de esta
 sección), porque el consentimiento exige una decisión explícita y

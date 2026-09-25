@@ -90,9 +90,9 @@ pantalla de administración fuera del alcance de TP2.
 | CU-06 | Capturar Muestra de Seña para Entrenamiento | Desarrollador de IA / Equipo de Proyecto | Objetivo de usuario | Base; incluye CU-07 | Implementado |
 | CU-07 | Gestionar Vocabulario de Señas | Desarrollador de IA / Equipo de Proyecto | Subfunción | Incluido por CU-06 | Implementado |
 | CU-08 | Entrenar el Modelo de Reconocimiento | Desarrollador de IA / Equipo de Proyecto | Objetivo de usuario | Independiente (precondición: CU-06 ejecutado antes) | Implementado |
-| CU-09 | Otorgar Consentimiento Explícito de Cámara | Paciente | Objetivo de usuario | Precondición obligatoria de CU-01 | **Diseñado — pendiente de implementación** (RF-03 oficial) |
-| CU-10 | Reportar Traducción Incorrecta o Ambigua | Paciente, Personal de Recepción o Enfermería | Objetivo de usuario | Extiende a CU-01 y a CU-04 (punto de extensión: "revisión de mensaje") | **Diseñado — pendiente de implementación** (RF-06 oficial) |
-| CU-11 | Registrar Evento de Auditoría | (subfunción interna del sistema, sin actor humano) | Subfunción | Incluido por CU-01 y CU-04 | **Diseñado — pendiente de implementación** (RF-04 oficial) |
+| CU-09 | Otorgar Consentimiento Explícito de Cámara | Paciente | Objetivo de usuario | Precondición obligatoria de CU-01 | Implementado (RF-03 oficial) |
+| CU-10 | Reportar Traducción Incorrecta o Ambigua | Paciente, Personal de Recepción o Enfermería | Objetivo de usuario | Extiende a CU-01 y a CU-04 (punto de extensión: "revisión de mensaje") | Implementado (RF-06 oficial) |
+| CU-11 | Registrar Evento de Auditoría | (subfunción interna del sistema, sin actor humano) | Subfunción | Incluido por CU-01 y CU-04 | Implementado (RF-04 oficial) |
 
 Paquetes del diagrama de casos de uso: **Comunicación** (CU-01 a CU-05,
 CU-09, CU-10), **Gestión del Modelo** (CU-06 a CU-08), **Auditoría** (CU-11).
@@ -112,10 +112,10 @@ Estos seis IDs están **reservados** para el texto oficial; no se reescriben.
 |---|---|---|---|---|
 | RF-01 | El sistema debe traducir LSA a texto y voz en tiempo casi real. | CRIT-01 | OE01 | Implementado (ver RF-01.1 a RF-01.7) |
 | RF-02 | El sistema debe transcribir la voz o texto del profesional a un formato de texto accesible para el paciente sordo. | CRIT-03 | OE09 | Implementado (ver RF-02.1, RF-02.2) |
-| RF-03 | La interfaz debe desplegar una pantalla de consentimiento explícito obligatorio antes de activar la cámara. | CRIT-07 | OE10 | **Diseñado — pendiente de implementación** (ver CU-09, RF-03.1) |
-| RF-04 | El sistema debe registrar logs de uso internos y métricas operativas anónimas para auditoría. | CRIT-03 | OE08 | **Diseñado — pendiente de implementación** (ver CU-11, RF-04.1) |
+| RF-03 | La interfaz debe desplegar una pantalla de consentimiento explícito obligatorio antes de activar la cámara. | CRIT-07 | OE10 | Implementado (ver CU-09, RF-03.1) |
+| RF-04 | El sistema debe registrar logs de uso internos y métricas operativas anónimas para auditoría. | CRIT-03 | OE08 | Implementado (ver CU-11, RF-04.1) |
 | RF-05 | El sistema debe detectar cuando una seña no pueda interpretarse con confianza y evitar mostrar una traducción incorrecta. | CRIT-02/03 | OE06 | Implementado (mecanismo de umbral, ver RF-01.3, RF-01.4) |
-| RF-06 | El sistema debe permitir que paciente o profesional reporten una traducción incorrecta/ambigua/no comprendida, para registrar el caso y mejorar el modelo. | CRIT-02/03 | OE06 | **Diseñado — pendiente de implementación** (ver CU-10, RF-06.1) |
+| RF-06 | El sistema debe permitir que paciente o profesional reporten una traducción incorrecta/ambigua/no comprendida, para registrar el caso y mejorar el modelo. | CRIT-02/03 | OE06 | Implementado (ver CU-10, RF-06.1) |
 
 ### 3.2 Sub-requisitos técnicos trazables (implementados)
 
@@ -149,22 +149,19 @@ en ACT-03 (sección 1) y en el Entregable 02.
 | RF-T-05 | Reentrenamiento offline del modelo LSTM a partir de las muestras capturadas, con separación entrenamiento/validación y guardado del mejor modelo. | CU-08 |
 | RF-T-06 | Selección de la estación de trabajo (Paciente / Recepción) desde la página de inicio. | Precondición de CU-01 y CU-04 |
 
-### 3.4 Requisitos diseñados — pendientes de implementación
+### 3.4 Sub-requisitos de consentimiento, auditoría y reporte (implementados)
 
-Cubren RF-03, RF-04 y RF-06 oficiales (decisión vinculante: deben quedar
-diseñados a nivel de conceptos de dominio, casos de uso, mockups,
-colaboración, arquitectura y modelo de datos, aunque el código actual no los
-implemente).
+Cubren RF-03, RF-04 y RF-06 oficiales.
 
 | ID | Texto (una línea) | CU relacionados | Traza a RF oficial | Estado |
 |----|--------------------|------------------|---------------------|--------|
-| RF-03.1 | Antes de activar la cámara, el sistema debe desplegar una pantalla de consentimiento explícito y bloquear el acceso a la cámara hasta que el paciente lo otorgue. | CU-09 | RF-03 | Diseñado — pendiente de implementación |
-| RF-04.1 | El sistema debe registrar, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción, síntesis, respuesta, captura), sin datos identificatorios ni imágenes/video. | CU-11 | RF-04 | Diseñado — pendiente de implementación |
-| RF-06.1 | El paciente o el personal de recepción/enfermería deben poder marcar un mensaje de la conversación como traducción incorrecta o ambigua, indicando un motivo, para registrar el caso. | CU-10 | RF-06 | Diseñado — pendiente de implementación |
+| RF-03.1 | Antes de activar la cámara, el sistema despliega un diálogo de consentimiento explícito (`PacientePage`) y bloquea el acceso a la cámara (`enabled` en el hook de landmarks) hasta que el paciente lo otorgue. | CU-09 | RF-03 | Implementado |
+| RF-04.1 | El sistema registra, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción/síntesis, reporte, consentimiento, traducción mostrada), sin datos identificatorios ni imágenes/video, en `logs/audit.jsonl`. | CU-11 | RF-04 | Implementado |
+| RF-06.1 | El paciente o el personal de recepción/enfermería pueden marcar un mensaje del paciente como traducción incorrecta o ambigua (botón "Reportar traducción" en `ChatBubble`); el reporte se persiste en `logs/reports.jsonl`. | CU-10 | RF-06 | Implementado |
 
-Total: **9 RF sub-requisitos implementados** (RF-01.1–RF-01.7, RF-02.1–RF-02.2),
-**6 RF técnicos sin RF oficial** (RF-T-01–RF-T-06), **3 RF diseñados
-pendientes** (RF-03.1, RF-04.1, RF-06.1).
+Total: **12 RF sub-requisitos implementados** (RF-01.1–RF-01.7,
+RF-02.1–RF-02.2, RF-03.1, RF-04.1, RF-06.1), **6 RF técnicos sin RF oficial**
+(RF-T-01–RF-T-06).
 
 ---
 
@@ -174,8 +171,8 @@ pendientes** (RF-03.1, RF-04.1, RF-06.1).
 
 | ID oficial | Descripción (texto literal) | Criterio de aceptación | Estado en LSA Salud |
 |---|---|---|---|
-| RNF-01 | Latencia: procesamiento e interpretación de señas en tiempo real <1 segundo. | CRIT-01 | Parcial — objetivo de diseño, sin medición formal registrada (ver RNF-01.1) |
-| RNF-02 | Precisión: accuracy mínimo 90% en entornos clínicos controlados. | CRIT-02 | Parcial — no verificado formalmente (ver RNF-02.1) |
+| RNF-01 | Latencia: procesamiento e interpretación de señas en tiempo real <1 segundo. | CRIT-01 | Parcial — instrumentado (`GET /metrics`, `LATENCY_V2_TIMING`), sin medición formal registrada (ver RNF-01.1) |
+| RNF-02 | Precisión: accuracy mínimo 90% en entornos clínicos controlados. | CRIT-02 | Parcial — instrumentado (`eval_model.py`), sin medición formal registrada (ver RNF-02.1) |
 | RNF-03 | Seguridad y Privacidad: 100% de interacciones de video procesadas sin almacenamiento persistente de imágenes/video. | CRIT-04 | Implementado (ver RNF-03.1) |
 | RNF-04 | Compatibilidad de Hardware: exclusivamente cámaras, pantallas doble cara y componentes comerciales estándar. | CRIT-06 | Parcial (ver RNF-04.1) |
 | RNF-05 | Especialización de Datos: dataset ampliado y adaptado al dominio clínico (síntomas, triaje, dolor). | CRIT-02/05 | Parcial (ver RNF-05.1) |
@@ -186,9 +183,9 @@ pendientes** (RF-03.1, RF-04.1, RF-06.1).
 
 | ID | Atributo | Texto (una línea) | Traza a RNF oficial | Estado |
 |----|----------|--------------------|----------------------|--------|
-| RNF-01.1 | Rendimiento | Metas de latencia extremo a extremo expresadas en p50/p95 (ver ERS 3.3): p50 ≤ 600 ms (ruta con plantilla), p95 ≤ 1 s (caso general). | RNF-01 | Objetivo de diseño, no medición formal registrada |
-| RNF-02.1 | Precisión del modelo | Exactitud de validación del modelo LSTM (`ModeloDeReconocimiento.exactitudDeValidación`, ver Entregable 01), calculada durante `train_lstm.py` sobre el 20% de validación. | RNF-02 | No hay un harness formal que valide 90% como criterio de aceptación automatizado; recomendado como parte de E05 (Informe de Pruebas Controladas) |
-| RNF-03.1 | Seguridad / privacidad | Todo el procesamiento y almacenamiento ocurre en la máquina local; no hay persistencia de conversaciones (estado en memoria + BroadcastChannel); los eventos de auditoría (RF-04.1) se diseñan sin imágenes ni video, consistentes con esta restricción. | RNF-03 | Implementado |
+| RNF-01.1 | Rendimiento | Metas de latencia extremo a extremo expresadas en p50/p95 (ver ERS 3.3): p50 ≤ 600 ms (ruta con plantilla), p95 ≤ 1 s (caso general). Instrumentado vía eventos de auditoría (`lstm_ms`, `translation_ms`, `tts_ms`, `total_ms`, `e2e_ms`) agregados por `GET /metrics`. | RNF-01 | Instrumentado, medición formal pendiente |
+| RNF-02.1 | Precisión del modelo | Exactitud de validación del modelo LSTM (`ModeloDeReconocimiento.exactitudDeValidación`, ver Entregable 01), calculada durante `train_lstm.py` sobre el 20% de validación; `eval_model.py <directorio>` (E05) mide accuracy, precisión/recall y matriz de confusión sobre un directorio de muestras. | RNF-02 | Instrumentado (`eval_model.py`); falta correrlo sobre una sesión de grabación separada del entrenamiento como criterio de aceptación formal (E05) |
+| RNF-03.1 | Seguridad / privacidad | Todo el procesamiento y almacenamiento ocurre en la máquina local; no hay persistencia de conversaciones (estado en memoria + BroadcastChannel); los eventos de auditoría (RF-04.1) se registran sin imágenes ni video, consistentes con esta restricción. | RNF-03 | Implementado |
 | RNF-04.1 / RNF-07.1 | Compatibilidad de hardware / estación fija | Las dos estaciones sincronizadas (Paciente y Recepción), sobre el mismo navegador y canal BroadcastChannel, con doble monitor, **implementan las dos caras de la estación fija de guardia/triaje** exigida por RNF-04/RNF-07 oficiales: cámara y pantalla del lado del paciente, pantalla y controles del lado del personal. El **ensamblaje físico** de esas dos pantallas y la cámara sobre hardware comercial (mostrador o box existente) es tarea del entregable E07 "Estación Desplegada en Guardia" (EDT), fuera del alcance de software de TP2. | RNF-04, RNF-07 | Parcial — diseño de software completo; integración física pendiente (E07) |
 | RNF-05.1 | Especialización de datos | El Modo Captura y los árboles `dataset/custom`, `dataset/custom_tasks`, `dataset/custom_blendshapes` permiten ampliar el vocabulario a señas médicas (dolor, cabeza, respirar, etc.); la cobertura completa del dominio clínico (síntomas, triaje) y su validación no están verificadas al día de este documento. | RNF-05 | Parcial |
 | RNF-06.1 | Validación lingüística | La validación del dataset clínico por intérpretes oficiales de LSA es un proceso organizacional (EDT, paquete 3.2.5), no una función de software; el riesgo #1 del Registro de Riesgos ("falta de disponibilidad de intérpretes oficiales", calificación *Inaceptable*, 30%) aplica directamente a este requisito. | RNF-06 | Pendiente — proceso organizacional, no verificable en código |
@@ -253,9 +250,9 @@ en `docs/referencias/RESUMEN_REFERENCIAS.md`, secciones 1 y 2.
 | SíntesisDeVoz | Locución sonora asociada a un mensaje traducido. |
 | ModeloDeReconocimiento | Red LSTM entrenada capaz de clasificar clases de seña. |
 | MuestraDeEntrenamiento | Grabación de una seña capturada para (re)entrenar el modelo. |
-| ConsentimientoDeCámara | Autorización explícita del paciente para activar la cámara, otorgada antes de iniciar CU-01 (RF-03 oficial). |
+| ConsentimientoDeCámara | Autorización explícita del paciente para activar la cámara, otorgada antes de iniciar CU-01 (RF-03 oficial); se realiza como un evento de auditoría de tipo `consent`, sin entidad ni archivo propios. |
 | EventoDeAuditoría | Registro anónimo de una operación de sistema relevante, sin datos identificatorios ni imágenes/video (RF-04 oficial). |
-| ReporteDeTraducción | Señalamiento de un mensaje como traducción incorrecta o ambigua, con motivo, hecho por el paciente o el personal (RF-06 oficial). |
+| ReporteDeTraducción | Señalamiento de un mensaje del paciente como traducción incorrecta o ambigua, hecho por el paciente o el personal (RF-06 oficial). |
 
 Diagramas de clases (dos vistas): `docs/diagramas/dominio/gen_modelo_dominio.py` → `docs/img/01_modelo_dominio_a.pdf` y `01_modelo_dominio_b.pdf`.
 Diagrama de casos de uso: `docs/diagramas/02_casos_uso.puml` → `docs/img/02_casos_uso.pdf`.
@@ -267,10 +264,10 @@ Diagrama de casos de uso: `docs/diagramas/02_casos_uso.puml` → `docs/img/02_ca
 | ID | Pantalla | Ruta | Componentes reales representados | Estado |
 |----|----------|------|-----------------------------------|--------|
 | P-01 | Selección de Estación | `/` | `web/app/page.tsx` | Implementado |
-| P-02 | Estación del Paciente (modo predicción) | `/paciente` | `web/app/paciente/page.tsx`, `Header`, `TopPredictions`, `ChatBubble` | Implementado (con elemento de reporte diseñado, pendiente) |
-| P-03 | Estación de Recepción | `/recepcion` | `web/app/recepcion/page.tsx`, `Header`, `ChatBubble`, `ReceptionControls` | Implementado (con elemento de reporte diseñado, pendiente) |
+| P-02 | Estación del Paciente (modo predicción) | `/paciente` | `web/app/paciente/page.tsx`, `Header`, `TopPredictions`, `ChatBubble` | Implementado |
+| P-03 | Estación de Recepción | `/recepcion` | `web/app/recepcion/page.tsx`, `Header`, `ChatBubble`, `ReceptionControls` | Implementado |
 | P-04 | Modo Captura | `/paciente` (`mode === "capture"`) | `web/components/capture/CaptureMode.tsx` | Implementado |
-| P-05 | Pantalla de Consentimiento | `/paciente` (previa a activar la cámara) | Diseño nuevo — sin componente real todavía | **Diseñado — pendiente de implementación** |
+| P-05 | Diálogo de Consentimiento | `/paciente` (modal previo a activar la cámara) | `web/app/paciente/page.tsx` (diálogo inline en `PacientePage`, sin componente ni ruta propios) | Implementado |
 
 Cada elemento anotado dentro de una pantalla usa un callout numerado en
 círculo (①②③…), único por pantalla (no se reinicia entre secciones de la
@@ -286,8 +283,8 @@ misma pantalla). El Entregable 07 referencia estos callouts como
 | SO-03 | `sintetizarVoz(oracion)` | CU-03 | DC-03 | Implementado |
 | SO-04 | `enviarRespuesta(mensaje)` | CU-04 (sincronización por BroadcastChannel) | DC-04 | Implementado |
 | SO-05 | `capturarMuestra(frames, etiqueta)` | CU-06 | DC-05 | Implementado |
-| SO-06 | `otorgarConsentimiento(paciente)` | CU-09 | DC-06 | Diseñado — pendiente de implementación |
-| SO-07 | `registrarEventoAuditoria(operacion)` | CU-11 | DC-07 | Diseñado — pendiente de implementación |
-| SO-08 | `reportarTraduccion(mensaje, motivo)` | CU-10 | DC-08 | Diseñado — pendiente de implementación |
+| SO-06 | `otorgarConsentimiento(paciente)` | CU-09 | DC-06 | Implementado |
+| SO-07 | `registrarEventoAuditoria(operacion)` | CU-11 | DC-07 | Implementado |
+| SO-08 | `reportarTraduccion(mensaje)` | CU-10 | DC-08 | Implementado |
 
 Diagramas: `docs/diagramas/colaboracion/08_colaboracion_dc0N.drawio` → `docs/img/08_colaboracion_dc0N.pdf`.

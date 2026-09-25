@@ -62,8 +62,8 @@ ubica a la izquierda del límite y los demás actores a la derecha.
     subrutinas obligatorias del flujo principal de CU-01, no
     comportamiento opcional, por lo que se modelan con \texttt{include}.
     \item \textbf{CU-09 es precondición de CU-01:} el paciente debe otorgar
-    el consentimiento explícito de cámara (RF-03 oficial, diseñado y
-    pendiente de implementación) antes de que exista cualquier sesión de
+    el consentimiento explícito de cámara (RF-03 oficial) antes de que
+    exista cualquier sesión de
     reconocimiento. Se modela como precondición y no como \texttt{include}
     porque ocurre una sola vez por sesión, no en cada ejecución de CU-01.
     \item \textbf{CU-05 «extend» CU-04:} dictar la respuesta por voz es una
@@ -74,13 +74,15 @@ ubica a la izquierda del límite y los demás actores a la derecha.
     variante opcional del comportamiento base, corresponde \texttt{extend}
     y no \texttt{include}.
     \item \textbf{CU-10 «extend» CU-01 y CU-04:} reportar una traducción
-    incorrecta o ambigua (RF-06 oficial, diseñado y pendiente de
-    implementación) es opcional y puede dispararse tanto sobre un mensaje
-    del paciente (dentro de CU-01) como sobre uno del personal (dentro de
-    CU-04), en el punto de extensión ``revisión de mensaje'' de cada uno.
+    incorrecta o ambigua (RF-06 oficial) es opcional y solo aplica a
+    mensajes del paciente (los únicos traducidos por el sistema); puede
+    dispararse tanto desde la vista de CU-01 (Estación del Paciente) como
+    desde la de CU-04 (Estación de Recepción, que también muestra esos
+    mensajes), en el punto de extensión ``revisión de mensaje'' de cada
+    uno.
     \item \textbf{CU-01 y CU-04 «include» CU-11:} registrar el evento de
-    auditoría anónimo (RF-04 oficial, diseñado y pendiente de
-    implementación) es una subrutina obligatoria de ambos casos de uso, sin
+    auditoría anónimo (RF-04 oficial) es una subrutina obligatoria de
+    ambos casos de uso, sin
     comportamiento opcional ni actor humano que la dispare --- de ahí que se
     modele como \texttt{include} y no como \texttt{extend}.
     \item \textbf{CU-06 «include» CU-07:} capturar una muestra de

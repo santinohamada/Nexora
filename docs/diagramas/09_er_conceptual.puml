@@ -34,21 +34,17 @@ class ArchivoDeVoz {
     configuracion
 }
 
-' --- Entidades diseñadas, pendientes de implementación (RF-03/04/06 oficiales) ---
-class EventoDeConsentimiento <<diseñado>> {
+' --- Entidades de consentimiento, auditoría y reporte (RF-03/04/06 oficiales) ---
+class EventoDeAuditoría {
+    tipo {prediction | sentence | report |\nconsent | translation_displayed}
     marcaTemporal
-    otorgado
+    camposSegúnTipo
 }
 
-class EventoDeAuditoría <<diseñado>> {
-    tipoOperacion
-    marcaTemporal
-    resultado
-}
-
-class ReporteDeTraducción <<diseñado>> {
-    mensajeId
-    motivo
+class ReporteDeTraducción {
+    texto
+    estacion
+    palabras
     marcaTemporal
 }
 
@@ -64,7 +60,6 @@ MuestraDeEntrenamiento -[hidden]-> ClaseDeSeña
 VocabularioDelModelo -[hidden]-> ModeloDeReconocimiento
 ModeloDeReconocimiento -[hidden]-> ArchivoDeVoz
 
-EventoDeConsentimiento -[hidden]-> EventoDeAuditoría
 EventoDeAuditoría -[hidden]-> ReporteDeTraducción
 
 note bottom of ArchivoDeVoz
@@ -75,11 +70,12 @@ note bottom of ArchivoDeVoz
 end note
 
 note bottom of ReporteDeTraducción
-  Entidades diseñadas, pendientes
-  de implementación (RF-03/04/06
-  oficiales). Sin relacion con el
-  resto: cada una es independiente,
+  RF-03/04/06 oficiales. Sin relacion
+  con el resto: cada una es independiente,
   anonima, sin datos de imagen/video.
+  El consentimiento (RF-03) no es una
+  entidad propia: es un EventoDeAuditoría
+  con tipo = "consent".
 end note
 
 note top of ClaseDeSeña
