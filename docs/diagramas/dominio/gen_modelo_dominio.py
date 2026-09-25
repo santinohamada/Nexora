@@ -26,14 +26,12 @@ ROW = {0: 60, 1: 200, 2: 320, 3: 450, 4: 600}
 LINE = 19
 
 
-def box_h(header, attrs, stereo):
-    return 14 + LINE * len(header) + (LINE * len(attrs) + 10 if attrs else 0) + (LINE if stereo else 0)
+def box_h(header, attrs):
+    return 14 + LINE * len(header) + (LINE * len(attrs) + 10 if attrs else 0)
 
 
-def class_html(header, attrs, stereo):
+def class_html(header, attrs):
     parts = []
-    if stereo:
-        parts.append("<i>&#171;diseñado&#187;</i><br>")
     parts.append("<b>" + "<br>".join(escape(h) for h in header) + "</b>")
     if attrs:
         parts.append("<hr size='1' style='margin:4px 0'/>")
@@ -68,11 +66,11 @@ class Diagram:
                       xml_vertex("title", title, TITLE, 0, 0, 780, 30)]
         self.n = 0
 
-    def cls(self, cid, col, row, header, attrs=(), stereo=False, dy=0, h=None):
-        h = h or box_h(header, attrs, stereo)
+    def cls(self, cid, col, row, header, attrs=(), dy=0, h=None):
+        h = h or box_h(header, attrs)
         x, y, w = X[col], ROW[row] + dy, W[col]
         self.boxes[cid] = (x, y, w, h)
-        self.cells.append(xml_vertex(cid, class_html(header, attrs, stereo), CLS, x, y, w, h))
+        self.cells.append(xml_vertex(cid, class_html(header, attrs), CLS, x, y, w, h))
 
     def at(self, cid, fx, fy):
         x, y, w, h = self.boxes[cid]
@@ -179,7 +177,7 @@ def vista_reconocimiento():
     d.cls("clase", "L", 4, ["ClaseDeSeña"], ["nombre"], dy=40)
     d.cls("modelo", "C", 2, ["ModeloDe", "Reconocimiento"], ["versión", "cantidadDeClases", "exactitudDeValidación"], dy=50)
     d.cls("dev", "R", 2, ["Desarrollador de IA /", "Equipo de Proyecto"], dy=50)
-    d.cls("muestra", "R", 4, ["MuestraDe", "Entrenamiento"], ["cantidadDeFrames", "fechaCaptura", "modoDeCaptura"], dy=40)
+    d.cls("muestra", "R", 4, ["MuestraDe", "Entrenamiento"], ["cantidadDeFrames", "fechaCaptura", "cantidadDeBlendshapes"], dy=40)
 
     wx, wy, ww, wh = d.boxes["palabra"]
     ox, oy, ow, oh = d.boxes["modelo"]

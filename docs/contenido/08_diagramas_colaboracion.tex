@@ -11,9 +11,9 @@
 Esta sección documenta, siguiendo la técnica descripta por Craig Larman en
 \textit{UML y Patrones}, los \textbf{contratos de operación de sistema} y los
 \textbf{diagramas de colaboración} (\textit{communication diagrams} en UML
-2.5) correspondientes a las ocho operaciones de sistema identificadas en
-\texttt{docs/IDS.md}: SO-01 a SO-08, todas \textbf{implementadas} (SO-06 a
-SO-08 cubren RF-03, RF-04 y RF-06 oficiales). Cada operación de sistema es un mensaje
+2.5) correspondientes a las nueve operaciones de sistema identificadas en
+\texttt{docs/IDS.md}: SO-01 a SO-09 (SO-06 a SO-08 cubren RF-03, RF-04 y
+RF-06 oficiales; SO-09 cubre RNF-03 oficial). Cada operación de sistema es un mensaje
 que un actor le envía al sistema considerado como una caja negra durante el
 diseño de la interacción; el diagrama de colaboración muestra cómo el
 sistema, ya descompuesto en sus objetos de diseño reales (\textit{hooks} de
@@ -41,9 +41,10 @@ la instancia), con el nombre subrayado, cuando corresponde a una instancia
 real (por ejemplo, un componente de React o el modelo LSTM cargado en
 memoria), o simplemente por su nombre cuando representa un módulo o una
 colección de funciones del backend sin una clase propia (por ejemplo,
-\texttt{capture\_validation} o \texttt{MEDICAL\_TEMPLATES}), ya que el
+\texttt{capture\_validation} o \texttt{MEDICAL\_TEMPLATES}, el diccionario
+de plantillas médicas para combinaciones frecuentes de señas), ya que el
 backend de LSA Salud (\texttt{app.py}) no está organizado en clases salvo por el
-modelo \texttt{SignLanguageLSTM}. Los cinco diagramas se dibujan en
+modelo \texttt{SignLanguageLSTM}. Los nueve diagramas se dibujan en
 draw.io (formato \texttt{.drawio} editable, generado desde
 \texttt{docs/diagramas/colaboracion/gen\_drawio.py}) para poder expresar
 esta notación de forma exacta; ver \texttt{docs/README.md} para el flujo de
@@ -116,7 +117,7 @@ backend y, si la seña reconocida superó el umbral de confianza y no fue
 \toprule
 \textbf{Objeto} & \textbf{Ubicación real} \\
 \midrule
-\texttt{useMediaPipe} & Hook (pipeline por defecto) $\rightarrow$ \texttt{web/hooks/useMediaPipe.ts}; intercambiable por \texttt{useMediaPipeTasks} ($\rightarrow$ \texttt{web/hooks/useMediaPipeTasks.ts}) activando \texttt{?mp=tasks} en \texttt{web/app/paciente/page.tsx} --- ambos exponen el mismo contrato \texttt{onFrame} \\
+\texttt{useMediaPipe} & Hook $\rightarrow$ \texttt{web/hooks/useMediaPipe.ts}; extrae landmarks de manos, pose y rostro (\textit{blendshapes}) en cada \textit{frame} y expone el contrato \texttt{onFrame} \\
 \texttt{handleFrame : PacientePage} & Componente $\rightarrow$ \texttt{web/app/paciente/page.tsx} \\
 \texttt{recordedFrames} & Ref (búfer) $\rightarrow$ \texttt{web/app/paciente/page.tsx} \\
 \texttt{useSignWebSocket} & Hook $\rightarrow$ \texttt{web/hooks/useSignWebSocket.ts} \\
@@ -350,10 +351,10 @@ RF-T-03, RF-T-04. \\
 seleccionó o creó una etiqueta de seña; la cuenta regresiva de la repetición
 ya finalizó. \\
 \textbf{Postcondiciones} & Si los datos son válidos (etiqueta bien formada,
-cantidad de \textit{frames} y de \textit{blendshapes} consistente con el
-modo activo), la muestra quedó persistida como archivo \texttt{.npy} en el
-árbol de datos correspondiente al modo (legado o Tasks), asociada a la
-etiqueta, y el conteo de muestras por etiqueta quedó actualizado. Si los
+cantidad de \textit{frames} y de \textit{blendshapes} consistente), la
+muestra quedó persistida como archivo \texttt{.npy} en el árbol de datos,
+con los landmarks y los \textit{blendshapes} en el mismo archivo, asociada a
+la etiqueta, y el conteo de muestras por etiqueta quedó actualizado. Si los
 datos no son válidos, no se guardó ningún archivo y el error quedó
 informado al Modo Captura. \\
 \bottomrule
@@ -374,13 +375,13 @@ informado al Modo Captura. \\
     punto único de entrada de la operación en el frontend.
     \item \textbf{Experto en información:} \texttt{capture\_validation}
     concentra el conocimiento de las reglas de validación (formato de
-    etiqueta, consistencia de \textit{blendshapes} según el modo) y es quien
-    debe decidir si los datos son aceptables, no el \textit{handler}
-    \texttt{capture}.
+    etiqueta, consistencia de la cantidad de \textit{frames} y de
+    \textit{blendshapes}) y es quien debe decidir si los datos son
+    aceptables, no el \textit{handler} \texttt{capture}.
     \item \textbf{Creador:} el \textit{handler} \texttt{capture} es
     responsable de crear el archivo \texttt{.npy} persistido, porque es
-    quien contiene los datos ya validados y quien conoce la ruta de destino
-    según el modo (legado o Tasks).
+    quien contiene los datos ya validados y quien conoce la ruta de
+    destino.
     \item \textbf{Bajo acoplamiento:} \texttt{CaptureMode} no conoce las
     reglas de validación ni el formato de persistencia en disco; solo conoce
     el contrato HTTP de \texttt{/capture} y su respuesta.
@@ -398,7 +399,7 @@ informado al Modo Captura. \\
 \texttt{captureHandlerRef} & Ref (manejador de \textit{frames} en modo captura) $\rightarrow$ \texttt{web/components/capture/CaptureMode.tsx} \\
 \texttt{capture} & Handler FastAPI $\rightarrow$ \texttt{app.py} \\
 \texttt{capture\_validation} & Módulo de funciones de validación $\rightarrow$ \texttt{capture\_validation.py} \\
-\texttt{dataset/custom/<etiqueta>/*.npy} & Archivo persistido en disco $\rightarrow$ \texttt{dataset/custom/} (o \texttt{dataset/custom\_tasks/} + \texttt{dataset/custom\_blendshapes/} en Modo Tasks) \\
+\texttt{dataset/custom/<etiqueta>/*.npy} & Archivo persistido en disco $\rightarrow$ \texttt{dataset/custom/} \\
 \bottomrule
 \end{tabularx}
 \caption{Trazabilidad de objetos --- DC-05}
@@ -406,7 +407,7 @@ informado al Modo Captura. \\
 \end{table}
 
 \subsection{SO-06: otorgarConsentimiento(paciente) --- DC-06}
-\textit{Implementado. Cubre el requisito oficial RF-03.}
+\textit{Cubre el requisito oficial RF-03.}
 
 \subsubsection{Contrato de operación}
 
@@ -422,9 +423,8 @@ consentimiento (P-05); la cámara todavía no fue activada
 \textbf{Postcondiciones} & El consentimiento quedó registrado como evento
 de auditoría anónimo (\texttt{type: "consent"}) en
 \texttt{logs/audit.jsonl}, y --- si fue aceptado --- \texttt{PacientePage}
-pasó \texttt{enabled: true} al hook de landmarks
-(\texttt{useMediaPipe}/\texttt{useMediaPipeTasks}), habilitando la cámara y
-la Pantalla P-02. \\
+pasó \texttt{enabled: true} al hook de landmarks (\texttt{useMediaPipe}),
+habilitando la cámara y la Pantalla P-02. \\
 \bottomrule
 \end{tabularx}
 \caption{Contrato de la operación SO-06 --- otorgarConsentimiento(paciente)}
@@ -467,7 +467,7 @@ la Pantalla P-02. \\
 \texttt{PacientePage (diálogo de consentimiento)} & Componente $\rightarrow$ \texttt{web/app/paciente/page.tsx} \\
 \texttt{sendAudit()} & Función $\rightarrow$ \texttt{web/lib/audit.ts} \\
 \texttt{audit\_event} & Handler FastAPI (\texttt{POST /audit}) $\rightarrow$ \texttt{app.py} \\
-\texttt{:useMediaPipe} & Hook $\rightarrow$ \texttt{web/hooks/useMediaPipe.ts} (o \texttt{useMediaPipeTasks.ts}) \\
+\texttt{:useMediaPipe} & Hook $\rightarrow$ \texttt{web/hooks/useMediaPipe.ts} \\
 \texttt{logs/audit.jsonl} & Archivo persistido en disco $\rightarrow$ \texttt{logs/} \\
 \bottomrule
 \end{tabularx}
@@ -476,7 +476,7 @@ la Pantalla P-02. \\
 \end{table}
 
 \subsection{SO-07: registrarEventoAuditoria(operacion) --- DC-07}
-\textit{Implementado. Cubre el requisito oficial RF-04.}
+\textit{Cubre el requisito oficial RF-04.}
 
 \subsubsection{Contrato de operación}
 
@@ -538,7 +538,7 @@ datos identificatorios ni imágenes, video o texto de la conversación. \\
 \end{table}
 
 \subsection{SO-08: reportarTraduccion(mensaje) --- DC-08}
-\textit{Implementado. Cubre el requisito oficial RF-06.}
+\textit{Cubre el requisito oficial RF-06.}
 
 \subsubsection{Contrato de operación}
 
@@ -605,4 +605,72 @@ botón de \texttt{ChatBubble} pasó a estado ``Reportado''. \\
 \end{tabularx}
 \caption{Trazabilidad de objetos --- DC-08}
 \label{tab:col-objetos-dc08}
+\end{table}
+
+\subsection{SO-09: limpiarConversacion() --- DC-09}
+\textit{Cubre el requisito oficial RNF-03.}
+
+\subsubsection{Contrato de operación}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
+\toprule
+\textbf{Operación} & \texttt{limpiarConversacion()} \\
+\textbf{Referencias cruzadas} & Realiza CU-12 completo; RNF-03 oficial;
+RF-04.1. \\
+\textbf{Precondiciones} & Hay una atención en curso o recién finalizada en
+la estación (la conversación no está vacía en al menos una de sus dos
+caras). \\
+\textbf{Postcondiciones} & La conversación quedó vacía en las dos caras de
+la estación; se registró un evento de auditoría anónimo
+(\texttt{type: "fin\_atencion"}) en \texttt{logs/audit.jsonl}; no queda
+ningún dato de la sesión atendida. \\
+\bottomrule
+\end{tabularx}
+\caption{Contrato de la operación SO-09 --- limpiarConversacion()}
+\label{tab:col-contrato-so09}
+\end{table}
+
+\subsubsection{Diagrama de colaboración DC-09}
+
+\diagrama{08_colaboracion_dc09}{\textwidth}{DC-09 --- Colaboración para limpiarConversacion()}{fig:col-dc09}
+
+\subsubsection{Patrones GRASP aplicados}
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{Controlador:} \texttt{RecepcionPage} centraliza el manejo
+    del evento del botón ``Finalizar atención'' y lo delega en
+    \texttt{useChatChannel}, sin conocer los detalles de sincronización
+    entre estaciones.
+    \item \textbf{Bajo acoplamiento:} \texttt{useChatChannel} encapsula el
+    mecanismo de sincronización entre estaciones; ni \texttt{RecepcionPage}
+    ni la otra cara de la estación conocen los detalles del canal.
+    \item \textbf{Variación protegida:} el mecanismo de sincronización
+    (canal de difusión entre estaciones) queda aislado detrás de
+    \texttt{useChatChannel}, igual que en DC-04.
+    \item \textbf{Fabricación pura:} \texttt{audit.ts} es un módulo dedicado
+    exclusivamente a enviar eventos de auditoría, reutilizado sin cambios
+    desde DC-06 y DC-07.
+\end{itemize}
+
+\subsubsection{Objetos del diagrama y su ubicación en el código}
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}l X@{}}
+\toprule
+\textbf{Objeto} & \textbf{Ubicación real} \\
+\midrule
+\texttt{RecepcionPage (botón Finalizar atención)} & Componente $\rightarrow$ \texttt{web/app/recepcion/page.tsx} \\
+\texttt{clearHistory() : useChatChannel (Recepción)} & Hook $\rightarrow$ \texttt{web/hooks/useChatChannel.ts} \\
+\texttt{BroadcastChannel} & API nativa del navegador (canal de sincronización entre estaciones) \\
+\texttt{useChatChannel (Paciente)} & Hook $\rightarrow$ \texttt{web/hooks/useChatChannel.ts} \\
+\texttt{sendAudit()} & Función $\rightarrow$ \texttt{web/lib/audit.ts} \\
+\texttt{audit\_event} & Handler FastAPI (\texttt{POST /audit}) $\rightarrow$ \texttt{app.py} \\
+\texttt{logs/audit.jsonl} & Archivo persistido en disco $\rightarrow$ \texttt{logs/} \\
+\bottomrule
+\end{tabularx}
+\caption{Trazabilidad de objetos --- DC-09}
+\label{tab:col-objetos-dc09}
 \end{table}

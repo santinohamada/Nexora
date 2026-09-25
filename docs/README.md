@@ -56,13 +56,13 @@ de uso, requisito, concepto de dominio, pantalla, operación de sistema,
 diagrama de colaboración) reutilizado entre entregables: cualquier cambio de
 nombre o numeración se hace primero ahí. También documenta la trazabilidad
 completa hacia la matriz de requisitos oficial de la cátedra (`RF-01..06`,
-`RNF-01..07`, reservados para su texto literal) y el estado de los
+`RNF-01..07`, reservados para su texto literal) y la realización de los
 requisitos oficiales **RF-03 (consentimiento), RF-04 (auditoría) y RF-06
-(reporte de traducción)**, todos **implementados** (CU-09, CU-10, CU-11;
-Diálogo de Consentimiento P-05 dentro de `PacientePage`; DC-06, DC-07,
-DC-08; funciones `_log_audit`/`_append_jsonl` dentro de `app.py` en
-Arquitectura; eventos de auditoría y reportes en `logs/audit.jsonl` y
-`logs/reports.jsonl` en el Modelo de Datos).
+(reporte de traducción)** (CU-09, CU-10, CU-11; Diálogo de Consentimiento
+P-05 dentro de `PacientePage`; DC-06, DC-07, DC-08; funciones
+`_log_audit`/`_append_jsonl` dentro de `app.py` en Arquitectura; eventos de
+auditoría y reportes en `logs/audit.jsonl` y `logs/reports.jsonl` en el
+Modelo de Datos).
 
 ## Regenerar los diagramas
 
@@ -131,10 +131,10 @@ draw.io: `diagramas/casos_uso/gen_casos_uso.py` define las posiciones y
 relaciones y escribe `02_casos_uso.drawio` (editable en draw.io), que
 `render.sh` exporta a `img/02_casos_uso.pdf`.
 
-### Diagramas de colaboración (DC-01..DC-08): draw.io, no PlantUML
+### Diagramas de colaboración (DC-01..DC-09): draw.io, no PlantUML
 
-Los 8 diagramas de colaboración de `contenido/08_diagramas_colaboracion.tex`
-(los 8 implementados; DC-06 a DC-08 cubren RF-03/04/06 oficiales) son un caso aparte: PlantUML
+Los 9 diagramas de colaboración de `contenido/08_diagramas_colaboracion.tex`
+(DC-06 a DC-08 cubren RF-03/04/06 oficiales; DC-09 cubre RNF-03 oficial) son un caso aparte: PlantUML
 no permite expresar la notación exacta de Larman/UML 2.5 (enlace sin punta
 de flecha + una flechita propia y paralela por cada mensaje). Por eso se
 generan como archivos **draw.io** (`.drawio`, XML editable) en
@@ -144,10 +144,10 @@ generan como archivos **draw.io** (`.drawio`, XML editable) en
   declarativamente los objetos, enlaces y mensajes de cada diagrama y
   calcula la geometría (enlace recto sin flecha, mensajes como flechitas
   cortas paralelas al enlace, apiladas cuando comparten enlace, automensajes
-  como bucle sobre el objeto). Escribe los 8 `08_colaboracion_dc0N.drawio`.
+  como bucle sobre el objeto). Escribe los 9 `08_colaboracion_dc0N.drawio`.
   Para agregar un diagrama nuevo, sumar una función `dcNN()` que devuelva un
-  `Diagram` (ver `dc06`/`dc07`/`dc08` como ejemplo de cadena horizontal
-  simple) y registrarla en la tupla de `main()`.
+  `Diagram` (ver `dc06`/`dc07`/`dc08`/`dc09` como ejemplo de cadena
+  horizontal simple) y registrarla en la tupla de `main()`.
 - Esos `.drawio` se pueden abrir y editar a mano en la aplicación de
   escritorio de draw.io (`https://github.com/jgraph/drawio-desktop`,
   en Windows se instala con `winget install JGraph.Draw`) si hace falta un
@@ -161,7 +161,7 @@ generan como archivos **draw.io** (`.drawio`, XML editable) en
     docs/diagramas/colaboracion/08_colaboracion_dc01.drawio
   ```
 
-  `render.sh` ya hace esto automáticamente para los 8 diagramas después de
+  `render.sh` ya hace esto automáticamente para los 9 diagramas después de
   correr `gen_drawio.py`.
 - Si se edita un `.drawio` a mano, no volver a correr `gen_drawio.py`
   encima (lo sobrescribe); si se necesita regenerar desde cero, ajustar la
@@ -204,9 +204,9 @@ generan como archivos **draw.io** (`.drawio`, XML editable) en
   proyecto, cliente, preparado por, director, tutor, cotutor, fecha,
   versión) sin logo, según decisión del equipo de retirar el logo de
   "Nexora" de las portadas.
-- RF-03, RF-04 y RF-06 oficiales (consentimiento, auditoría, reporte de
-  traducción) están implementados; si algún entregable vuelve a marcar un
-  requisito, caso de uso, pantalla o diagrama como
-  "diseñado --- pendiente de implementación", debe corresponder a una
-  funcionalidad realmente ausente del código, no reintroducirse por
-  desactualización.
+- Los entregables describen el sistema LSA Salud completo, tal como se
+  construirá: RF-03, RF-04 y RF-06 oficiales (consentimiento, auditoría,
+  reporte de traducción) se describen igual que el resto de los requisitos,
+  en presente/futuro declarativo. Ningún entregable usa lenguaje de avance de
+  código; las excepciones explícitas del alcance de TP2 se documentan
+  únicamente en la sección "Exclusiones del alcance" de la ERS.

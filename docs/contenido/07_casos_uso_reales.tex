@@ -12,7 +12,8 @@
 Esta sección redacta, en formato completamente vestido (\textit{fully
 dressed}) según Craig Larman, la versión \textbf{real} (concreta) de los
 casos de uso principales de LSA Salud: describe la interacción efectiva con la
-interfaz gráfica implementada, en lugar de la intención abstracta del actor.
+interfaz gráfica real del sistema, en lugar de la intención abstracta del
+actor.
 Cada caso de uso real toma como base su contraparte \textbf{esencial},
 documentada en el Entregable~03 (Modelos de Casos de Uso), y la especializa
 citando pantallas (P-01 a P-05) y elementos numerados (\emph{callouts})
@@ -22,12 +23,12 @@ reconocida en el panel (6) de la Pantalla P-02''.
 Se desarrollan aquí CU-01 (Comunicarse mediante Lengua de Señas Argentina),
 CU-04 (Responder al Paciente) con su extensión CU-05 (Dictar Respuesta por
 Voz), CU-06 (Capturar Muestra de Seña para Entrenamiento), CU-09 (Otorgar
-Consentimiento Explícito de Cámara) y CU-10 (Reportar Traducción Incorrecta
-o Ambigua). Todos están \textbf{implementados}: se redactan a nivel real
-sobre el mockup correspondiente (P-05 y los callouts de reporte en
-P-02/P-03), leído directamente del componente real. Los IDs de actores,
-casos de uso y requisitos citados son los del registro canónico
-(\texttt{IDS.md}).
+Consentimiento Explícito de Cámara), CU-10 (Reportar Traducción Incorrecta
+o Ambigua) y CU-12 (Finalizar Atención y Preparar la Estación para el
+Próximo Paciente). Se redactan a nivel real sobre el mockup correspondiente
+(P-05 y los callouts de reporte en P-02/P-03), leído directamente del
+componente real. Los IDs de actores, casos de uso y requisitos citados son
+los del registro canónico (\texttt{IDS.md}).
 
 % ============================================================================
 \subsection{CU-01 (real): Comunicarse mediante Lengua de Señas Argentina}
@@ -83,16 +84,25 @@ audio si la síntesis estuvo disponible. \\
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[1a.] La conexión WebSocket con el backend de predicción se
+    interrumpe: el área de video (4) sigue mostrando la imagen de la
+    cámara con normalidad y el sistema reconecta automáticamente en unos
+    segundos, retomando el reconocimiento sin mostrar ningún error al
+    paciente.
     \item[2a.] Ninguna seña alcanza el 70\,\% de confianza o la seña de
     reposo domina el top-3: las barras del panel (6) se actualizan igual,
     pero no se agrega ninguna palabra a la ventana (5).
     \item[6a.] El sistema no logra traducir la secuencia en una oración
     clara: no se agrega ninguna burbuja al panel (7) y la ventana (5)
     simplemente desaparece.
+    \item[6b.] El modelo de lenguaje local no está disponible: la burbuja
+    del paso 6 muestra directamente la secuencia de palabras reconocidas,
+    sin reformularla en una oración natural, y el flujo continúa sin
+    interrupciones.
     \item[7a.] El motor de síntesis de voz no está cargado: el paso 7 se
     omite y la burbuja del paso 6 queda igual, sin audio asociado.
 \end{itemize} \\
-\textbf{Requisitos especiales} & RF-01.1 a RF-01.7; RNF-T-01, RNF-T-05, RNF-01.1. \\
+\textbf{Requisitos especiales} & RF-01.1 a RF-01.8; RNF-T-01, RNF-T-05, RNF-01.1. \\
 \textbf{Frecuencia} &
 Continua durante toda la sesión; se repite cada vez que el paciente forma
 una idea completa. \\
@@ -235,8 +245,7 @@ la etiqueta, en el selector (2), se actualizó. \\
     \item El sistema muestra una cuenta regresiva (6) de 3 a 1 sobre el
     área de video (5).
     \item El sistema activa el indicador ``GRABANDO'' (7) y captura 45
-    frames de landmarks (y, en modo Tasks, blendshapes faciales) desde el
-    área de video (5).
+    frames de landmarks y blendshapes faciales desde el área de video (5).
     \item El sistema envía la muestra al backend y la guarda; si se
     configuraron varias repeticiones, el indicador ``MUESTRA \emph{n} /
     \emph{N}'' (8) avanza y el sistema repite los pasos 4 a 6.
@@ -267,7 +276,6 @@ Bajo demanda, cuando se necesita ampliar o reforzar el vocabulario. \\
 
 % ============================================================================
 \subsection{CU-09 (real): Otorgar Consentimiento Explícito de Cámara}
-\textit{Implementado.}
 
 Especializa el caso de uso esencial \textbf{CU-09} (ver Entregable~03,
 sección 2.10) sobre la Pantalla \textbf{P-05 --- Diálogo de
@@ -317,7 +325,6 @@ contrario, permanece inactiva. \\
 
 % ============================================================================
 \subsection{CU-10 (real): Reportar Traducción Incorrecta o Ambigua}
-\textit{Implementado.}
 
 Especializa el caso de uso esencial \textbf{CU-10} (ver Entregable~03,
 sección 2.11) sobre las Pantallas P-02 y P-03, mediante el callout de
@@ -363,4 +370,64 @@ ambigua. \\
 \bottomrule
 \end{tabularx}
 \caption{CU-10 (real) — Reportar Traducción Incorrecta o Ambigua}
+\end{table}
+
+% ============================================================================
+\subsection{CU-12 (real): Finalizar Atención y Preparar la Estación para el
+Próximo Paciente}
+
+Especializa el caso de uso esencial \textbf{CU-12} (ver Entregable~03) sobre
+la Pantalla \textbf{P-03 --- Estación de Recepción}
+(Figura~\ref{fig:cur-p03-cu04}, callout (9)). Su realización técnica se
+documenta como \textbf{SO-09} / \textbf{DC-09} en el Entregable~08
+(Diagramas de Colaboración).
+
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{@{}p{4.1cm} X@{}}
+\toprule
+\textbf{Nombre} & Finalizar Atención y Preparar la Estación para el Próximo
+Paciente (real) \\
+\textbf{ID} & CU-12 (real; esencial en Entregable 03) \\
+\textbf{Actor principal} & Personal de Recepción o Enfermería \\
+\textbf{Personal involucrado e intereses} &
+Personal de Recepción o Enfermería: necesita dejar la estación lista para
+el próximo paciente sin que quede a la vista ninguna conversación previa.
+\newline
+Paciente: espera que su conversación no quede expuesta a la siguiente
+persona atendida. \\
+\textbf{Precondiciones} &
+La atención del paciente actual concluyó; el panel (3) de la Pantalla
+P-03 muestra la conversación de esa atención. \\
+\textbf{Garantías de éxito} &
+El panel de conversación queda vacío en las dos caras de la estación
+(P-02 y P-03) y no persiste ningún dato de la atención finalizada (RNF-03). \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El personal hace clic en el botón ``Finalizar atención''
+    (callout (9) de la Pantalla P-03).
+    \item El sistema vacía de inmediato el panel de conversación (3) de
+    la Pantalla P-03.
+    \item El sistema notifica a la Pantalla P-02, del lado del paciente,
+    por el canal de sincronización de la estación; esa pantalla vacía a su
+    vez el panel de conversación (7).
+    \item El sistema registra un evento de auditoría anónimo
+    (\texttt{tipo: "fin\_atencion"}), sin datos identificatorios ni
+    contenido de la conversación.
+    \item La estación queda con ambos paneles vacíos, lista para la
+    siguiente atención.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[3a.] La Pantalla P-02 no está abierta en ese momento: al
+    abrirse, el panel de conversación (7) ya inicia vacío, porque ningún
+    dato de la atención anterior persiste en el sistema.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RNF-03.1, RF-04.1. \\
+\textbf{Frecuencia} &
+Una vez por atención, al finalizar cada paciente. \\
+\bottomrule
+\end{tabularx}
+\caption{CU-12 (real) — Finalizar Atención y Preparar la Estación para el
+Próximo Paciente}
 \end{table}

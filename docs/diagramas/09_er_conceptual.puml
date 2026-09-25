@@ -11,12 +11,7 @@ class ClaseDeSeña {
 class MuestraDeEntrenamiento {
     timestamp
     cantidadDeFrames
-    modoDeCaptura
-}
-
-class MuestraDeBlendshapes {
-    timestamp
-    cantidadDeCoeficientes
+    cantidadDeCoeficientesDeBlendshapes
 }
 
 class VocabularioDelModelo {
@@ -36,7 +31,7 @@ class ArchivoDeVoz {
 
 ' --- Entidades de consentimiento, auditoría y reporte (RF-03/04/06 oficiales) ---
 class EventoDeAuditoría {
-    tipo {prediction | sentence | report |\nconsent | translation_displayed}
+    tipo {prediction | sentence | report |\nconsent | translation_displayed |\nfin_atencion}
     marcaTemporal
     camposSegúnTipo
 }
@@ -49,12 +44,10 @@ class ReporteDeTraducción {
 }
 
 ClaseDeSeña "1" -- "0..*" MuestraDeEntrenamiento : ejemplifica >
-MuestraDeEntrenamiento "1" -- "0..1" MuestraDeBlendshapes : se complementa con\n(solo modo Tasks) >
 ClaseDeSeña "1" -- "0..*" VocabularioDelModelo : aparece en >
 VocabularioDelModelo "0..*" -- "1" ModeloDeReconocimiento : pertenece a >
 
 ' --- Enlaces ocultos: fuerzan tres columnas verticales angostas (layout, no semántica) ---
-MuestraDeBlendshapes -[hidden]-> MuestraDeEntrenamiento
 MuestraDeEntrenamiento -[hidden]-> ClaseDeSeña
 
 VocabularioDelModelo -[hidden]-> ModeloDeReconocimiento

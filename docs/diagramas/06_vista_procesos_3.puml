@@ -10,7 +10,7 @@ participant "Navegador\nEstación Recepción" as NavR
 actor Recepcionista
 actor Paciente
 
-== Sincronización entre estaciones (RF-07) ==
+== Sincronización entre estaciones (RF-01) ==
 par publicación y exhibición en Estación Paciente
   NavP -> BC : postMessage(MESSAGE)\n(mismo origen, sin red)
   NavP -> NavP : exhibir texto (1000 ms)\nluego reproducir audio
@@ -19,7 +19,7 @@ else propagación a Estación Recepción
   NavR -> Recepcionista : mostrar mensaje (ChatBubble)
 end
 
-== Respuesta del recepcionista (RF-08, RF-09) ==
+== Respuesta del recepcionista (RF-02) ==
 Recepcionista -> NavR : escribe o dicta respuesta
 NavR -> BC : postMessage(MESSAGE)
 BC -> NavP : evento MESSAGE

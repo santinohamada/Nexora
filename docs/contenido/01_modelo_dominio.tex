@@ -82,12 +82,15 @@ como corresponde a un modelo de dominio).
     Pantalla o dispositivo desde el que un actor humano interactúa con
     LSA Salud; existen dos por sesión de atención (una por paciente, una
     por personal de recepción o enfermería) y permanecen sincronizadas
-    entre sí. &
+    entre sí. Cada estación fija se despliega de forma independiente en un
+    punto de atención del sanatorio (admisión, recepción, triaje o
+    guardia), sin datos compartidos entre estaciones. &
     tipo (identifica si es la estación del paciente o la de recepción). \\
 
     Conversación &
     Intercambio de mensajes correspondiente a una sesión de atención entre
-    un paciente y el personal de recepción o enfermería. &
+    un paciente y el personal de recepción o enfermería; se descarta por
+    completo en las dos caras de la estación al finalizar la atención. &
     fechaInicio. \\
 
     Mensaje &
@@ -103,9 +106,11 @@ como corresponde a un modelo de dominio).
     estado (en curso / cerrada), marcaTemporalInicio. \\
 
     Clase\-De\-Seña &
-    Categoría de seña que el sistema es capaz de reconocer (por ejemplo,
-    ``dolor'', ``cabeza'', ``respirar'', ``yo'' o el estado de reposo
-    ``idle''). &
+    Categoría de seña del vocabulario clínico de LSA Salud, ampliado desde
+    LSA64 y adaptado a síntomas, triaje, dolor y admisión, recepción y
+    guardia, validado por intérpretes oficiales de LSA (por ejemplo,
+    ``dolor'', ``cabeza'' o ``respirar''); el vocabulario se amplía de forma
+    continua mediante el Modo Captura (CU-06/CU-07/CU-08). &
     nombre. \\
 
     Palabra\-Reconocida &
@@ -138,9 +143,9 @@ como corresponde a un modelo de dominio).
     Muestra\-De\-Entrenamiento &
     Grabación de una seña realizada por el Desarrollador de IA / Equipo de
     Proyecto, utilizada para entrenar o reentrenar el modelo de
-    reconocimiento. &
-    cantidadDeFrames, fechaCaptura, modoDeCaptura (legado o basado en
-    MediaPipe Tasks). \\
+    reconocimiento; incluye en un mismo registro los landmarks de manos y
+    pose junto con los blendshapes faciales del gesto. &
+    cantidadDeFrames, fechaCaptura, cantidadDeBlendshapes. \\
     \bottomrule
     \caption{Diccionario de conceptos del dominio de LSA Salud}
     \label{tab:diccionario-conceptos}
@@ -151,9 +156,9 @@ como corresponde a un modelo de dominio).
 
 Los siguientes tres conceptos corresponden a los requisitos oficiales RF-03,
 RF-04 y RF-06 de la matriz de trazabilidad (RF-03.1, RF-04.1 y RF-06.1 en
-\texttt{IDS.md}, todos \textbf{implementados}). Se documentan aparte del
-resto del diccionario porque, a diferencia de los demás conceptos, no
-tienen una clase de software dedicada: \textit{Consentimiento\-De\-Cámara}
+\texttt{IDS.md}). Se documentan aparte del resto del diccionario porque, a
+diferencia de los demás conceptos, no tienen una clase de software dedicada:
+\textit{Consentimiento\-De\-Cámara}
 se realiza como un evento de \textit{Evento\-De\-Auditoría} de tipo
 \texttt{consent} (no hay una entidad ni un archivo separados para el
 consentimiento). La Tabla~\ref{tab:diccionario-pendientes} los describe con
@@ -172,9 +177,9 @@ el mismo nivel de detalle que el resto del diccionario.
 
     Evento\-De\-Auditoría &
     Registro anónimo de una operación de sistema relevante (predicción,
-    traducción, síntesis, respuesta, captura), sin datos identificatorios
-    ni imágenes o video, generado automáticamente para auditoría operativa
-    (RF-04 oficial). &
+    traducción, síntesis, respuesta, captura, consentimiento, fin de
+    atención), sin datos identificatorios ni imágenes o video, generado
+    automáticamente para auditoría operativa (RF-04 oficial). &
     tipoDeOperación, marcaTemporal, resultado (éxito o error). \\
 
     Reporte\-De\-Traducción &

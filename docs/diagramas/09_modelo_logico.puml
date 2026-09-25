@@ -6,15 +6,8 @@ entity "MuestraDeEntrenamiento" as MDE {
     * etiqueta : varchar(32) <<PK, FK>>
     * timestamp_ms : bigint <<PK>>
     --
-    arbol : varchar {legacy | tasks}
-    shape : varchar = '(45,75,4)'
-}
-
-entity "MuestraDeBlendshapes" as MBS {
-    * etiqueta : varchar(32) <<PK, FK>>
-    * timestamp_ms : bigint <<PK, FK>>
-    --
-    shape : varchar = '(45,52)'
+    shapeLandmarks : varchar = '(45,75,4)'
+    shapeBlendshapes : varchar = '(45,52)'
 }
 
 entity "ClaseDeSeña" as CDS {
@@ -36,11 +29,11 @@ entity "ModeloDeReconocimiento" as MOD {
 entity "EventoDeAuditoría" as EDA {
     (sin PK: una línea JSON más\nen logs/audit.jsonl, sin id)
     --
-    tipo : varchar {prediction | sentence |\nreport | consent | translation_displayed}
+    tipo : varchar {prediction | sentence |\nreport | consent | translation_displayed |\nfin_atencion}
     timestamp : varchar (ISO 8601 UTC)
     lstm_ms, confidence : float (tipo=prediction)
     translation_ms, tts_ms, total_ms,\nsource, word_count : (tipo=sentence)
-    station : varchar (report | consent | translation_displayed)
+    station : varchar (report | consent | translation_displayed | fin_atencion)
     consent : varchar {accepted | declined} (tipo=consent)
     e2e_ms : float (tipo=translation_displayed)
 }
@@ -55,12 +48,10 @@ entity "ReporteDeTraducción" as RDT {
 }
 
 CDS ||--o{ MDE : etiqueta
-MDE ||--o| MBS : "etiqueta + timestamp_ms"
 CDS ||--o{ VOC : etiqueta
 MOD ||--|{ VOC : "vocabulario de"
 
 ' --- Enlaces ocultos: fuerzan dos columnas verticales angostas (layout, no semántica) ---
-MBS -[hidden]-> MDE
 MDE -[hidden]-> CDS
 CDS -[hidden]-> VOC
 VOC -[hidden]-> MOD
@@ -69,12 +60,15 @@ EDA -[hidden]-> RDT
 note top of MDE
   PK compuesta = ruta fisica
   (directorio <etiqueta> +
-  archivo <timestamp_ms>.npy)
+  archivo <timestamp_ms>.npy,
+  con landmarks y blendshapes
+  en el mismo archivo)
 end note
 
 note bottom of MOD
-  archivo in {lstm_v1_<N>frames.pth,
-  lstm_v2_24frames.pth, lstm.pth}
+  archivo: lstm.pth
+  (mejor modelo del ultimo
+  reentrenamiento)
 end note
 
 note bottom of RDT

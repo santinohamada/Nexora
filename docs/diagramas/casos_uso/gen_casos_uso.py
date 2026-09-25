@@ -12,6 +12,7 @@ USE_CASES = {
     "CU01": ("CU-01<br>Comunicarse mediante<br>Lengua de Señas Argentina", "L", 300),
     "CU03": ("CU-03<br>Sintetizar Oración<br>en Voz", "L", 415),
     "CU10": ("CU-10<br>Reportar Traducción<br>Incorrecta o Ambigua", "C", 185),
+    "CU12": ("CU-12<br>Finalizar Atención y<br>Preparar la Estación", "C", 300),
     "CU11": ("CU-11<br>Registrar Evento<br>de Auditoría", "C", 415),
     "CU05": ("CU-05<br>Dictar Respuesta<br>por Voz", "R", 185),
     "CU04": ("CU-04<br>Responder al Paciente", "R", 300),
@@ -30,6 +31,7 @@ ASSOCIATIONS = [
     ("Paciente", "CU09"),
     ("Paciente", "CU01"),
     ("Personal", "CU04"),
+    ("Personal", "CU12"),
     ("Dev", "CU06"),
     ("Dev", "CU08"),
 ]
