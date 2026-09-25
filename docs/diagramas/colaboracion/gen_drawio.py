@@ -803,36 +803,35 @@ def dc08() -> Diagram:
 # ---------------------------------------------------------------------------
 def dc09() -> Diagram:
     objects = [
-        Obj("controls", "RecepcionPage (botón Finalizar atención)", 0, 200, 200, 56),
-        Obj("chatRec", "clearHistory() : useChatChannel (Recepción)", 215, 200, 220, 56),
-        Obj("sendAudit", "sendAudit() : audit.ts", 450, 200, 150, 56),
-        Obj("backend", "audit_event : app.py", 615, 200, 150, 56),
-        Obj("chatPac", "useChatChannel (Paciente)", 0, 430, 190, 64),
-        Obj("bc", "BroadcastChannel (canal de sincronización)", 215, 430, 220, 64),
-        Obj("fileAudit", "logs/audit.jsonl", 615, 430, 150, 64),
+        Obj("controls", "RecepcionPage", 0, 60, 230, 56),
+        Obj("chatRec", "useChatChannel (Recepción)", 0, 230, 230, 56),
+        Obj("bc", "BroadcastChannel", 0, 400, 230, 56),
+        Obj("chatPac", "useChatChannel (Paciente)", 0, 570, 230, 56),
+        Obj("sendAudit", "sendAudit() : audit.ts", 360, 230, 200, 56),
+        Obj("backend", "audit_event : app.py", 360, 400, 200, 56),
+        Obj("fileAudit", "logs/audit.jsonl", 360, 570, 200, 56),
     ]
     links = [
-        Link("controls", "chatRec", [Msg("1", "finalizarAtencion() -> setChatHistory([])", "ab")]),
+        Link("controls", "chatRec", [Msg("1", "clearHistory()", "ab")]),
         Link("chatRec", "bc", [Msg("1.1", "postMessage({type:'CLEAR'})", "ab")]),
-        Link("bc", "chatPac", [Msg("1.2", "onmessage(evento) -> setChatHistory([])", "ab")]),
-        Link("chatRec", "sendAudit", [Msg("2", "sendAudit({type:'fin_atencion'})", "ab")]),
-        Link("sendAudit", "backend", [Msg("2.1", "POST /audit(payload)", "ab")]),
+        Link("bc", "chatPac", [Msg("1.1.1", "onmessage(CLEAR)", "ab")]),
+        Link("chatRec", "sendAudit", [Msg("1.2", "sendAudit('fin_atencion')", "ab")]),
+        Link("sendAudit", "backend", [Msg("1.2.1", "POST /audit(payload)", "ab")]),
         Link(
             "backend",
             "backend",
-            [Msg("2.2", "_log_audit('fin_atencion', ...)", "ab")],
+            [Msg("1.2.2", "_log_audit('fin_atencion')", "ab")],
             self_loop=True,
-            self_side="bottom",
-            self_frac=(0.05, 0.30),
+            self_side="right",
         ),
-        Link("backend", "fileAudit", [Msg("2.3", "_append_jsonl(record)", "ab")]),
+        Link("backend", "fileAudit", [Msg("1.2.3", "_append_jsonl(record)", "ab")]),
     ]
     return Diagram(
         "08_colaboracion_dc09",
         "DC-09 — limpiarConversacion() — realiza CU-12",
         objects,
         links,
-        title_w=700,
+        title_w=560,
     )
 
 

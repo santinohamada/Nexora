@@ -53,47 +53,42 @@ def build():
     c = ['<mxCell id="0"/>', '<mxCell id="1" parent="0"/>',
          vertex("title", "Vista Física — LSA Salud (estaciones fijas de doble cara)", TITLE, 0, 0, 620, 28)]
 
-    c.append(vertex("pkg", "Estación de Admisión", PKG, 0, 40, 600, 590))
-    c.append(vertex("pc", "PC de la estación", NODE, 15, 75, 570, 545))
+    c.append(vertex("pkg", "Estación fija (ej.: Admisión)", PKG, 0, 40, 600, 620))
+    c.append(vertex("pc", "PC de la estación", NODE, 15, 75, 570, 575))
 
-    c.append(vertex("browser", "Navegador (Chrome)", NODE, 35, 105, 530, 110))
-    c.append(vertex("tabP", "Estación Paciente\n/paciente", NODE, 55, 135, 220, 60))
-    c.append(vertex("tabR", "Estación Recepción\n/recepcion", NODE, 315, 135, 220, 60))
+    c.append(vertex("browser", "Navegador (Chrome)", NODE, 35, 105, 530, 115))
+    c.append(vertex("tabP", "Cara del paciente<br>/paciente", NODE, 50, 138, 185, 60))
+    c.append(vertex("tabR", "Cara del personal<br>/recepcion", NODE, 365, 138, 185, 60))
 
-    c.append(vertex("next", "Next.js\n:3000", NODE, 35, 240, 150, 50))
-    c.append(vertex("backend", "FastAPI (Uvicorn)\n:8000", NODE, 210, 240, 355, 150))
-    c.append(vertex("appPy", "app.py", ARTIFACT, 230, 275, 90, 34))
-    c.append(vertex("lstmPy", "lstm.py", ARTIFACT, 335, 275, 90, 34))
-    c.append(vertex("piper", "Piper TTS", ARTIFACT, 440, 275, 100, 34))
+    c.append(vertex("next", "Next.js<br>:3000", NODE, 35, 290, 150, 50))
+    c.append(vertex("backend", "FastAPI (Uvicorn)<br>:8000", NODE, 210, 290, 355, 130))
+    c.append(vertex("appPy", "app.py", ARTIFACT, 230, 340, 90, 34))
+    c.append(vertex("lstmPy", "lstm.py", ARTIFACT, 335, 340, 90, 34))
+    c.append(vertex("piper", "Piper TTS", ARTIFACT, 440, 340, 100, 34))
 
-    c.append(vertex("ollama", "Ollama\n:11434", NODE, 35, 415, 150, 50))
-    c.append(vertex("fs", "Archivos locales", NODE, 210, 415, 355, 150))
-    c.append(vertex("fDataset", "dataset/", FOLDER, 230, 450, 90, 40))
-    c.append(vertex("fModels", "models/", FOLDER, 335, 450, 90, 40))
-    c.append(vertex("fVoices", "voices/", FOLDER, 440, 450, 90, 40))
-    c.append(vertex("fLogs", "logs/", FOLDER, 335, 500, 90, 40))
+    c.append(vertex("ollama", "Ollama<br>:11434", NODE, 35, 500, 150, 50))
+    c.append(vertex("fs", "Archivos locales", NODE, 210, 480, 355, 150))
+    c.append(vertex("fDataset", "dataset/", FOLDER, 225, 515, 75, 40))
+    c.append(vertex("fModels", "models/", FOLDER, 310, 515, 75, 40))
+    c.append(vertex("fVoices", "voices/", FOLDER, 395, 515, 75, 40))
+    c.append(vertex("fLogs", "logs/", FOLDER, 480, 515, 70, 40))
 
-    # fila superior: gap vacío entre el borde inferior del Navegador (y=215) y
-    # el borde superior de Next.js/FastAPI (y=240); los quiebres a y=222 usan
-    # ese gap para no cruzar ninguna caja hermana.
-    c.append(edge("e1", "HTTP", DEP, [(150, 195), (150, 240)], label_offset=(0, -14)))
-    c.append(edge("e2", "HTTP", DEP, [(335, 195), (335, 220), (160, 220), (160, 240)], label_offset=(0, -10)))
-    c.append(edge("e3", "WS + HTTP", DEP, [(180, 195), (180, 230), (380, 230), (380, 240)], label_offset=(0, -10)))
-    c.append(edge("e4", "HTTP", DEP, [(450, 195), (450, 240)], label_offset=(0, -14)))
-    c.append(edge("e5", "canal de\nsincronización", BIDIR, [(275, 165), (315, 165)]))
-    c.append(edge("e6", "HTTP", DEP, [(230, 390), (110, 415)]))
-    c.append(edge("e7", "lee/escribe", DEP, [(280, 390), (450, 415)]))
+    c.append(edge("e5", "BroadcastChannel", BIDIR, [(235, 168), (365, 168)], label_offset=(0, -14)))
+    c.append(edge("e1", "HTTP (páginas)", DEP, [(110, 220), (110, 290)], label_offset=(-50, 0)))
+    c.append(edge("e3", "WS + HTTP", DEP, [(225, 198), (225, 290)], label_offset=(36, 0)))
+    c.append(edge("e4", "HTTP", DEP, [(445, 198), (445, 290)], label_offset=(22, 0)))
+    c.append(edge("e6", "HTTP", DEP, [(250, 420), (250, 450), (110, 450), (110, 500)], label_offset=(0, -10)))
+    c.append(edge("e7", "lee/escribe", DEP, [(420, 420), (420, 480)], label_offset=(40, 0)))
 
-    c.append(vertex("otras", "Estación de Recepción\nEstación de Triaje\nEstación de Guardia\n"
-                             "(misma estructura interna que la Estación de Admisión)",
-                     SUMMARY, 60, 650, 480, 90))
-    c.append(edge("e8", "misma estructura,\nreplicada en cada estación", DEP, [(300, 630), (300, 650)]))
+    c.append(vertex("otras", "<b>Estaciones de Recepción, Triaje y Guardia</b><br>"
+                             "misma estructura interna, cada una como instancia independiente",
+                     SUMMARY, 60, 680, 480, 60))
 
     c.append(vertex("note", "Cada estación es una instancia local independiente: navegador, Next.js, "
                              "FastAPI, Ollama y almacenamiento local propio. No hay servidor central ni "
                              "datos compartidos entre estaciones (RNF-T-02, RNF-03); cada una conserva su "
                              "propia conversación mientras dura la atención.",
-                     NOTE, 30, 770, 540, 110))
+                     NOTE, 30, 760, 540, 90))
 
     body = "".join(c)
     OUT.write_text(

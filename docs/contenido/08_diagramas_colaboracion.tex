@@ -433,7 +433,7 @@ habilitando la cámara y la Pantalla P-02. \\
 
 \subsubsection{Diagrama de colaboración DC-06}
 
-\diagrama{08_colaboracion_dc06}{0.9\textwidth}{DC-06 --- Colaboración para otorgarConsentimiento(paciente)}{fig:col-dc06}
+\diagrama{08_colaboracion_dc06}{\textwidth}{DC-06 --- Colaboración para otorgarConsentimiento(paciente)}{fig:col-dc06}
 
 \subsubsection{Patrones GRASP aplicados}
 
@@ -642,12 +642,12 @@ ningún dato de la sesión atendida. \\
     \item \textbf{Controlador:} \texttt{RecepcionPage} centraliza el manejo
     del evento del botón ``Finalizar atención'' y lo delega en
     \texttt{useChatChannel}, sin conocer los detalles de sincronización
-    entre estaciones.
+    entre las dos caras de la estación.
     \item \textbf{Bajo acoplamiento:} \texttt{useChatChannel} encapsula el
-    mecanismo de sincronización entre estaciones; ni \texttt{RecepcionPage}
+    mecanismo de sincronización entre las dos caras; ni \texttt{RecepcionPage}
     ni la otra cara de la estación conocen los detalles del canal.
     \item \textbf{Variación protegida:} el mecanismo de sincronización
-    (canal de difusión entre estaciones) queda aislado detrás de
+    (canal de difusión entre las dos caras) queda aislado detrás de
     \texttt{useChatChannel}, igual que en DC-04.
     \item \textbf{Fabricación pura:} \texttt{audit.ts} es un módulo dedicado
     exclusivamente a enviar eventos de auditoría, reutilizado sin cambios
@@ -662,9 +662,9 @@ ningún dato de la sesión atendida. \\
 \toprule
 \textbf{Objeto} & \textbf{Ubicación real} \\
 \midrule
-\texttt{RecepcionPage (botón Finalizar atención)} & Componente $\rightarrow$ \texttt{web/app/recepcion/page.tsx} \\
-\texttt{clearHistory() : useChatChannel (Recepción)} & Hook $\rightarrow$ \texttt{web/hooks/useChatChannel.ts} \\
-\texttt{BroadcastChannel} & API nativa del navegador (canal de sincronización entre estaciones) \\
+\texttt{RecepcionPage} & Componente con el botón ``Finalizar atención'' $\rightarrow$ \texttt{web/app/recepcion/page.tsx} \\
+\texttt{useChatChannel (Recepción)} & Hook (\texttt{clearHistory()}) $\rightarrow$ \texttt{web/hooks/useChatChannel.ts} \\
+\texttt{BroadcastChannel} & API nativa del navegador (canal de sincronización entre las dos caras de la estación) \\
 \texttt{useChatChannel (Paciente)} & Hook $\rightarrow$ \texttt{web/hooks/useChatChannel.ts} \\
 \texttt{sendAudit()} & Función $\rightarrow$ \texttt{web/lib/audit.ts} \\
 \texttt{audit\_event} & Handler FastAPI (\texttt{POST /audit}) $\rightarrow$ \texttt{app.py} \\

@@ -46,9 +46,9 @@ borde fino, y los tres actores como figuras de palito fuera del límite,
 unidos por líneas rectas. Los casos de uso se ordenan en tres columnas: a la
 izquierda, los que inicia el Paciente (CU-09, CU-01 y sus inclusiones CU-02
 y CU-03); en el centro, los compartidos por ambas estaciones (CU-10, que
-extiende a CU-01 y CU-04; CU-12, que cierra la atención iniciada por CU-04;
-y CU-11, incluido por ambos); a la derecha, los del Personal de Recepción o
-Enfermería (CU-04 y su extensión CU-05) y los del Desarrollador de IA /
+extiende a CU-01 y CU-04, y CU-11, incluido por CU-01, CU-04 y CU-12); a la
+derecha, los del Personal de Recepción o Enfermería (CU-04 y su extensión
+CU-05, y CU-12, que cierra la atención) y los del Desarrollador de IA /
 Equipo de Proyecto (CU-06 a CU-08). El Paciente se ubica a la izquierda del
 límite y los demás actores a la derecha.
 
@@ -81,9 +81,9 @@ límite y los demás actores a la derecha.
     desde la de CU-04 (Estación de Recepción, que también muestra esos
     mensajes), en el punto de extensión ``revisión de mensaje'' de cada
     uno.
-    \item \textbf{CU-01 y CU-04 «include» CU-11:} registrar el evento de
+    \item \textbf{CU-01, CU-04 y CU-12 «include» CU-11:} registrar el evento de
     auditoría anónimo (RF-04 oficial) es una subrutina obligatoria de
-    ambos casos de uso, sin
+    los tres casos de uso, sin
     comportamiento opcional ni actor humano que la dispare --- de ahí que se
     modele como \texttt{include} y no como \texttt{extend}.
     \item \textbf{CU-06 «include» CU-07:} capturar una muestra de
@@ -97,8 +97,9 @@ límite y los demás actores a la derecha.
     captura individual. La relación entre ambos se documenta como
     precondición en el Modelo de Casos de Uso (Entregable de Modelos de
     Casos de Uso), no como flecha de inclusión.
-    \item \textbf{CU-12 es un caso de uso base, sin \texttt{include} ni
-    \texttt{extend}:} el personal de recepción o enfermería lo inicia
+    \item \textbf{CU-12 es un caso de uso base, sin \texttt{extend}:} solo
+    incluye a CU-11 para registrar el fin de la atención. El personal de
+    recepción o enfermería lo inicia
     directamente para cerrar la atención en curso; no depende de qué camino
     haya seguido CU-01/CU-04, por lo que se asocia solo con su actor
     principal y no se modela como extensión de ninguno de los dos.
