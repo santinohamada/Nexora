@@ -22,7 +22,7 @@ docs/
 │   ├── _estilo.iuml            # skinparams compartidos (incluir con !include _estilo.iuml)
 │   ├── 0N_*.puml                # Fuente de cada diagrama PlantUML (salvo casos de uso y colaboración)
 │   ├── casos_uso/
-│   │   ├── gen_casos_uso.py     # Genera 02_casos_uso.drawio (formato de la cátedra)
+│   │   ├── gen_casos_uso.py     # Genera 02_casos_uso.drawio
 │   │   └── 02_casos_uso.drawio  # Fuente editable en draw.io
 │   └── colaboracion/
 │       ├── gen_drawio.py        # Genera los 8 .drawio de colaboración (DC-01..DC-08)
@@ -55,9 +55,9 @@ Entregables (numeración según el orden del Documento Maestro):
 de uso, requisito, concepto de dominio, pantalla, operación de sistema,
 diagrama de colaboración) reutilizado entre entregables: cualquier cambio de
 nombre o numeración se hace primero ahí. También documenta la trazabilidad
-completa hacia la matriz de requisitos oficial de la cátedra (`RF-01..06`,
+completa hacia la matriz de requisitos (`RF-01..06`,
 `RNF-01..07`, reservados para su texto literal) y la realización de los
-requisitos oficiales **RF-03 (consentimiento), RF-04 (auditoría) y RF-06
+requisitos **RF-03 (consentimiento), RF-04 (auditoría) y RF-06
 (reporte de traducción)** (CU-09, CU-10, CU-11; Diálogo de Consentimiento
 P-05 dentro de `PacientePage`; DC-06, DC-07, DC-08; funciones
 `_log_audit`/`_append_jsonl` dentro de `app.py` en Arquitectura; eventos de
@@ -117,10 +117,9 @@ con `@startuml NN_nombre` seguido de `!include _estilo.iuml`, correr
 `\diagrama{NN_nombre}{ancho}{caption}{label}` (macro definida en
 `lsasalud.sty`, ya apunta a `img/NN_nombre.pdf`).
 
-### Diagramas de casos de uso: formato de referencia de cátedra
+### Diagramas de casos de uso: formato de referencia
 
-El diagrama de casos de uso sigue el formato provisto por la cátedra
-(`docs/referencias/formato Diag caso de uso.jpeg`): un único rectángulo de
+El diagrama de casos de uso usa el siguiente formato: un único rectángulo de
 límite del sistema titulado "LSA Salud", sin paquetes, casos de uso como
 elipses de fondo amarillo pálido (`#FFF2CC`) organizadas en columnas, y
 actores como figuras de palito fuera del límite (paciente a la izquierda,
@@ -134,7 +133,7 @@ relaciones y escribe `02_casos_uso.drawio` (editable en draw.io), que
 ### Diagramas de colaboración (DC-01..DC-09): draw.io, no PlantUML
 
 Los 9 diagramas de colaboración de `contenido/08_diagramas_colaboracion.tex`
-(DC-06 a DC-08 cubren RF-03/04/06 oficiales; DC-09 cubre RNF-03 oficial) son un caso aparte: PlantUML
+(DC-06 a DC-08 cubren RF-03/04/06; DC-09 cubre RNF-03) son un caso aparte: PlantUML
 no permite expresar la notación exacta de Larman/UML 2.5 (enlace sin punta
 de flecha + una flechita propia y paralela por cada mensaje). Por eso se
 generan como archivos **draw.io** (`.drawio`, XML editable) en
@@ -200,13 +199,14 @@ generan como archivos **draw.io** (`.drawio`, XML editable) en
   `render.sh` a partir del `.puml` correspondiente.
 - `\portada{título}{código}` (definida en `lsasalud.sty`) recibe el título
   del entregable y su código de documento (`LSASALUD-G9-<sigla>`, esquema
-  propio del equipo); imprime el bloque oficial de encabezado (ID de
+  propio del equipo); imprime el bloque de encabezado (ID de
   proyecto, cliente, preparado por, director, tutor, cotutor, fecha,
   versión) sin logo, según decisión del equipo de retirar el logo de
   "Nexora" de las portadas.
 - Los entregables describen el sistema LSA Salud completo, tal como se
-  construirá: RF-03, RF-04 y RF-06 oficiales (consentimiento, auditoría,
+  construirá: RF-03, RF-04 y RF-06 (consentimiento, auditoría,
   reporte de traducción) se describen igual que el resto de los requisitos,
   en presente/futuro declarativo. Ningún entregable usa lenguaje de avance de
-  código; las excepciones explícitas del alcance de TP2 se documentan
-  únicamente en la sección "Exclusiones del alcance" de la ERS.
+  código.
+- `docs/referencias/` contiene material de contexto académico que este
+  documento no referencia.

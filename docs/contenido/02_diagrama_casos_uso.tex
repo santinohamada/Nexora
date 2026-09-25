@@ -8,8 +8,8 @@
 La Tabla~\ref{tab:actores-cu} identifica los actores del sistema LSA Salud,
 siguiendo la notación UML~2.5. Todos son actores primarios: cada uno
 persigue un objetivo propio al interactuar con el sistema. ACT-02 y ACT-03
-son decisiones de modelado explícitas frente al Registro de Interesados
-oficial: se justifican en detalle en \texttt{IDS.md}, Sección~1.
+son decisiones de modelado explícitas: se justifican en detalle en
+\texttt{IDS.md}, Sección~1.
 
 \begin{table}[H]
     \centering
@@ -19,9 +19,9 @@ oficial: se justifican en detalle en \texttt{IDS.md}, Sección~1.
         \toprule
         \textbf{ID} & \textbf{Actor} & \textbf{Descripción} \\
         \midrule
-        ACT-01 & Paciente & Persona sorda o hipoacúsica que se comunica mediante LSA frente a la cámara de la Estación del Paciente. Corresponde al interesado oficial ``Personas que se comunican con LSA''. \\
-        ACT-02 & Personal de Recepción o Enfermería & Personal de recepción o enfermería que lee la traducción del paciente y responde por texto o por voz. Generaliza a los interesados oficiales ``Recepcionista'' y ``Enfermero/a'', que comparten requisito, interés y estrategia de gestión en el Registro de Interesados. \\
-        ACT-03 & Desarrollador de IA / Equipo de Proyecto & Personal técnico que amplía el vocabulario de señas y reentrena el modelo de reconocimiento. Decisión de diseño del equipo: el Registro de Interesados no define un rol de usuario final equivalente; el trabajo de dataset y entrenamiento figura en el EDT como tarea del equipo del proyecto. \\
+        ACT-01 & Paciente & Persona sorda o hipoacúsica que se comunica mediante LSA frente a la cámara de la Estación del Paciente. Corresponde al interesado ``Personas que se comunican con LSA''. \\
+        ACT-02 & Personal de Recepción o Enfermería & Personal de recepción o enfermería que lee la traducción del paciente y responde por texto o por voz. Generaliza a los interesados ``Recepcionista'' y ``Enfermero/a'', que comparten requisito, interés y estrategia de gestión. \\
+        ACT-03 & Desarrollador de IA / Equipo de Proyecto & Personal técnico que amplía el vocabulario de señas y reentrena el modelo de reconocimiento. Decisión de diseño del equipo: no existe un rol de usuario final equivalente; el trabajo de dataset y entrenamiento es una tarea del equipo del proyecto. \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -34,7 +34,7 @@ invocados de forma sincrónica por el propio backend como parte de la
 implementación de los casos de uso. Se documentan como dependencias
 tecnológicas en la Especificación de Requisitos de Software (secciones 2.4
 y 3.4), no como actores del diagrama. Tampoco se modela un actor para el
-consumo de las métricas de auditoría de CU-11 (RF-04 oficial): la
+consumo de las métricas de auditoría de CU-11 (RF-04): la
 justificación completa está en \texttt{IDS.md}, Sección~1.
 
 \subsection{Diagrama}
@@ -63,7 +63,7 @@ límite y los demás actores a la derecha.
     subrutinas obligatorias del flujo principal de CU-01, no
     comportamiento opcional, por lo que se modelan con \texttt{include}.
     \item \textbf{CU-09 es precondición de CU-01:} el paciente debe otorgar
-    el consentimiento explícito de cámara (RF-03 oficial) antes de que
+    el consentimiento explícito de cámara (RF-03) antes de que
     exista cualquier sesión de
     reconocimiento. Se modela como precondición y no como \texttt{include}
     porque ocurre una sola vez por sesión, no en cada ejecución de CU-01.
@@ -75,14 +75,14 @@ límite y los demás actores a la derecha.
     variante opcional del comportamiento base, corresponde \texttt{extend}
     y no \texttt{include}.
     \item \textbf{CU-10 «extend» CU-01 y CU-04:} reportar una traducción
-    incorrecta o ambigua (RF-06 oficial) es opcional y solo aplica a
+    incorrecta o ambigua (RF-06) es opcional y solo aplica a
     mensajes del paciente (los únicos traducidos por el sistema); puede
     dispararse tanto desde la vista de CU-01 (Estación del Paciente) como
     desde la de CU-04 (Estación de Recepción, que también muestra esos
     mensajes), en el punto de extensión ``revisión de mensaje'' de cada
     uno.
     \item \textbf{CU-01, CU-04 y CU-12 «include» CU-11:} registrar el evento de
-    auditoría anónimo (RF-04 oficial) es una subrutina obligatoria de
+    auditoría anónimo (RF-04) es una subrutina obligatoria de
     los tres casos de uso, sin
     comportamiento opcional ni actor humano que la dispare --- de ahí que se
     modele como \texttt{include} y no como \texttt{extend}.

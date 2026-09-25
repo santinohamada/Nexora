@@ -29,7 +29,7 @@ class ArchivoDeVoz {
     configuracion
 }
 
-' --- Entidades de consentimiento, auditoría y reporte (RF-03/04/06 oficiales) ---
+' --- Entidades de consentimiento, auditoría y reporte (RF-03/04/06) ---
 class EventoDeAuditoría {
     tipo {prediction | sentence | report |\nconsent | translation_displayed |\nfin_atencion}
     marcaTemporal
@@ -63,7 +63,7 @@ note bottom of ArchivoDeVoz
 end note
 
 note bottom of ReporteDeTraducción
-  RF-03/04/06 oficiales. Sin relacion
+  RF-03/04/06. Sin relacion
   con el resto: cada una es independiente,
   anonima, sin datos de imagen/video.
   El consentimiento (RF-03) no es una

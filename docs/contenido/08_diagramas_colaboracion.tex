@@ -13,7 +13,7 @@ Esta sección documenta, siguiendo la técnica descripta por Craig Larman en
 \textbf{diagramas de colaboración} (\textit{communication diagrams} en UML
 2.5) correspondientes a las nueve operaciones de sistema identificadas en
 \texttt{docs/IDS.md}: SO-01 a SO-09 (SO-06 a SO-08 cubren RF-03, RF-04 y
-RF-06 oficiales; SO-09 cubre RNF-03 oficial). Cada operación de sistema es un mensaje
+RF-06; SO-09 cubre RNF-03). Cada operación de sistema es un mensaje
 que un actor le envía al sistema considerado como una caja negra durante el
 diseño de la interacción; el diagrama de colaboración muestra cómo el
 sistema, ya descompuesto en sus objetos de diseño reales (\textit{hooks} de
@@ -407,7 +407,7 @@ informado al Modo Captura. \\
 \end{table}
 
 \subsection{SO-06: otorgarConsentimiento(paciente) --- DC-06}
-\textit{Cubre el requisito oficial RF-03.}
+\textit{Cubre el requisito RF-03.}
 
 \subsubsection{Contrato de operación}
 
@@ -476,7 +476,7 @@ habilitando la cámara y la Pantalla P-02. \\
 \end{table}
 
 \subsection{SO-07: registrarEventoAuditoria(operacion) --- DC-07}
-\textit{Cubre el requisito oficial RF-04.}
+\textit{Cubre el requisito RF-04.}
 
 \subsubsection{Contrato de operación}
 
@@ -538,7 +538,7 @@ datos identificatorios ni imágenes, video o texto de la conversación. \\
 \end{table}
 
 \subsection{SO-08: reportarTraduccion(mensaje) --- DC-08}
-\textit{Cubre el requisito oficial RF-06.}
+\textit{Cubre el requisito RF-06.}
 
 \subsubsection{Contrato de operación}
 
@@ -608,7 +608,7 @@ botón de \texttt{ChatBubble} pasó a estado ``Reportado''. \\
 \end{table}
 
 \subsection{SO-09: limpiarConversacion() --- DC-09}
-\textit{Cubre el requisito oficial RNF-03.}
+\textit{Cubre el requisito RNF-03.}
 
 \subsubsection{Contrato de operación}
 
@@ -617,7 +617,7 @@ botón de \texttt{ChatBubble} pasó a estado ``Reportado''. \\
 \begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
 \toprule
 \textbf{Operación} & \texttt{limpiarConversacion()} \\
-\textbf{Referencias cruzadas} & Realiza CU-12 completo; RNF-03 oficial;
+\textbf{Referencias cruzadas} & Realiza CU-12 completo; RNF-03;
 RF-04.1. \\
 \textbf{Precondiciones} & Hay una atención en curso o recién finalizada en
 la estación (la conversación no está vacía en al menos una de sus dos

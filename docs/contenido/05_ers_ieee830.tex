@@ -12,9 +12,8 @@ pacientes que usan Lengua de Señas Argentina (LSA) y personal de recepción
 o enfermería, desplegado en el Sanatorio 9 de Julio, en entornos de
 atención médica donde no hay un intérprete humano disponible. Sigue la
 estructura recomendada por el estándar IEEE Std 830-1998. Los requisitos
-oficiales (RF-01 a RF-06, RNF-01 a RNF-07) provienen de la matriz de
-trazabilidad de requisitos de la cátedra (TP2); este documento los
-desarrolla en sub-requisitos técnicos trazables (ver Sección~3.2 y
+(RF-01 a RF-06, RNF-01 a RNF-07) se desarrollan en sub-requisitos técnicos
+trazables a lo largo de este documento (ver Sección~3.2 y
 \texttt{IDS.md}).
 
 Este documento está dirigido a:
@@ -69,17 +68,6 @@ académico.
     vocabulario clínico del dataset del proyecto, ampliable de forma
     continua mediante el Modo Captura (CU-06, CU-07).
 \end{itemize}
-
-\subsubsection{Exclusiones de alcance (TP2)}
-
-La Declaración de Alcance oficial (TP2) excluye explícitamente del proyecto:
-capacitación general en LSA al personal del sanatorio; desarrollo de
-hardware a medida (solo ensamblaje de hardware comercial, ver E07 en el
-EDT); integración con la Historia Clínica Electrónica (HCE) del sanatorio;
-interpretación de modismos regionales complejos en esta primera versión;
-mantenimiento técnico posterior a la entrega (15/11/2026); y
-reestructuración de redes o cableado del sanatorio. Estas exclusiones
-delimitan el alcance de este documento y de los entregables 01 a 09.
 
 \subsubsection{Beneficios, objetivos y metas}
 \begin{itemize}
@@ -141,7 +129,6 @@ delimitan el alcance de este documento y de los entregables 01 a 09.
     \item Ollama --- \url{https://ollama.ai}
     \item Piper TTS --- \url{https://github.com/rhasspy/piper}
     \item \texttt{README.md} y código fuente del repositorio ``Nexora'' (nombre interno del repositorio de código; \texttt{app.py}, \texttt{train\_lstm.py}, \texttt{src/\allowbreak model/\allowbreak lstm.py}, \texttt{web/}).
-    \item TP0 --- Traductor LSA Salud (documento de tema); TP1 --- Acta de Constitución del Proyecto; TP2 --- Declaración de Alcance del Proyecto; Estructura de Desglose de Trabajo (EDT); Matriz de Trazabilidad de Requisitos; Registro de Interesados; Registro de Riesgos (documentos oficiales de cátedra, UTN-FRT).
 \end{enumerate}
 
 \subsection{Visión general del documento}
@@ -175,7 +162,7 @@ del Paciente (cámara, predicción y chat) y la Estación de Recepción
 (historial de chat y respuesta por texto o voz), sincronizadas mediante
 BroadcastChannel. Como se detalla en la
 Sección~2.5, estas dos caras son, a la vez, el diseño de la estación fija
-de guardia/triaje exigida por los requisitos oficiales RNF-04 y RNF-07.
+de guardia/triaje exigida por los requisitos RNF-04 y RNF-07.
 
 El sistema completo se despliega como \textbf{N estaciones fijas
 independientes}, una por cada punto de atención del sanatorio (admisión,
@@ -246,7 +233,7 @@ se muestra en la Vista Física (Entregable 06, Arquitectura).
     \item \textbf{Ejecución local obligatoria:} ningún dato de la conversación sale de la máquina; el único tráfico de red es hacia procesos locales (Ollama en \texttt{localhost:11434}).
     \item \textbf{Dependencia de Ollama:} el servicio debe estar corriendo localmente para la reconstrucción gramatical por LLM; si no está disponible, se degrada a texto sin reconstruir (RF-01.5, extensión 3a.2a).
     \item \textbf{Navegador:} Google Chrome es necesario para Web Speech API (dictado) y para un soporte confiable de MediaPipe.
-    \item \textbf{Vocabulario clínico:} el modelo reconoce el vocabulario LSA clínico del dataset del proyecto (dataset ampliado desde LSA64, adaptado a síntomas, triaje, dolor y admisión/recepción/guardia, validado por intérpretes oficiales --- RNF-05/RNF-06), con señas como \texttt{cabeza}, \texttt{dolor}, \texttt{respirar} o \texttt{yo} como ejemplos; el vocabulario se amplía de forma continua mediante el Modo Captura y el reentrenamiento (CU-06, CU-07, CU-08).
+    \item \textbf{Vocabulario clínico:} el modelo reconoce el vocabulario LSA clínico del dataset del proyecto (dataset ampliado desde LSA64, adaptado a síntomas, triaje, dolor y admisión/recepción/guardia, validado por intérpretes de LSA --- RNF-05/RNF-06), con señas como \texttt{cabeza}, \texttt{dolor}, \texttt{respirar} o \texttt{yo} como ejemplos; el vocabulario se amplía de forma continua mediante el Modo Captura y el reentrenamiento (CU-06, CU-07, CU-08).
     \item \textbf{Sin persistencia de conversaciones:} todo el historial de chat es volátil (memoria del navegador + BroadcastChannel).
     \item \textbf{Lenguajes:} Python 3.9+ en el backend; TypeScript/React en el frontend.
     \item \textbf{Hardware mínimo:} PC con cámara web; GPU opcional para acelerar la inferencia del LSTM (funciona sobre CPU).
@@ -255,38 +242,12 @@ se muestra en la Vista Física (Entregable 06, Arquitectura).
 \subsection{Suposiciones y dependencias}
 
 \begin{itemize}
-    \item Se asume que el sanatorio dispone, por cada punto de atención desplegado (admisión, recepción, triaje, guardia), de una PC con dos pantallas (o dos dispositivos) y una cámara web: las dos caras sincronizadas (Paciente y Recepción) implementan las dos caras de la estación fija de guardia/triaje exigida por RNF-04/RNF-07 oficiales (ver \texttt{IDS.md}, Sección~4.2); su ensamblaje físico sobre hardware comercial y su calibración se realizan durante la instalación de cada estación (EDT, paquete 5.5.1).
+    \item Se asume que el sanatorio dispone, por cada punto de atención desplegado (admisión, recepción, triaje, guardia), de una PC con dos pantallas (o dos dispositivos) y una cámara web: las dos caras sincronizadas (Paciente y Recepción) implementan las dos caras de la estación fija de guardia/triaje exigida por RNF-04/RNF-07 (ver \texttt{IDS.md}, Sección~4.2); su ensamblaje físico sobre hardware comercial y su calibración se realizan durante la instalación de cada estación.
     \item Se asume que Ollama y el modelo \texttt{qwen2:1.5b} están instalados y descargados de antemano.
     \item Se asume que el modelo de voz Piper (\texttt{es\_AR-daniela-high.onnx}) está disponible en la carpeta \texttt{voices/}.
     \item Se asume que el paciente conoce LSA y puede realizar señas de forma clara frente a la cámara.
     \item Se asume conexión eléctrica estable; no se contempla operación a batería.
     \item Si cambia el sistema operativo (probado en Windows), puede requerirse revalidar la compatibilidad de MediaPipe y Piper.
-\end{itemize}
-
-\subsection{Riesgos relevantes al diseño}
-\label{sec:riesgos-diseno}
-
-El Registro de Riesgos oficial (TP5) identifica riesgos con impacto directo
-en requisitos de este documento; se listan los de calificación
-\textit{Inaceptable} más relevantes al software:
-
-\begin{itemize}
-    \item \textbf{Riesgo \#1} (falta de disponibilidad de intérpretes
-    oficiales de LSA para validar el dataset clínico, 30\%): afecta
-    RNF-06.1 (validación lingüística).
-    \item \textbf{Riesgo \#4} (iluminación deficiente en boxes que impida
-    la captura de gestos, 25\%): afecta RF-01.1 (captura de landmarks).
-    \item \textbf{Riesgo \#5} (latencia de procesamiento de video superior
-    al umbral de 1 s, 35\%): afecta RNF-01.1 (rendimiento).
-    \item \textbf{Riesgo \#9} (dificultad para compilar suficientes
-    muestras de vocabulario médico, 30\%): afecta RNF-05.1 (especialización
-    de datos).
-    \item \textbf{Riesgo \#16} (falla del modelo al capturar gestos
-    faciales/no manuales vitales en la sintaxis de LSA, 30\%): LSA Salud
-    captura 52 \textit{blendshapes} faciales por frame junto con los
-    landmarks de manos y pose (ver Sección~2.4, Definiciones), y el
-    modelo LSTM los usa como parte de sus características de entrada para
-    clasificar la seña; esta es la mitigación de diseño frente al riesgo.
 \end{itemize}
 
 % ============================================================================
@@ -354,7 +315,7 @@ Apéndice~A).
         \midrule
         POST & \texttt{/report} & Registra un reporte de traducción incorrecta o ambigua (CU-10, RF-06.1); invocado por \texttt{ChatBubble}. \\
         POST & \texttt{/audit} & Registra un evento de auditoría anónimo (CU-11, RF-04.1). Los tipos \texttt{consent} y \texttt{translation\_displayed} los envía el frontend (\texttt{PacientePage}, \texttt{useSentenceBuilder}); los tipos \texttt{prediction}, \texttt{sentence} y \texttt{report} los registra el propio backend al completar la operación correspondiente. \\
-        GET & \texttt{/metrics?since=} & Agrega los eventos de \texttt{logs/audit.jsonl}: conteos por tipo, consentimientos aceptados/declinados, fuente de traducción y latencias p50/p95/máx.\ por campo (E05). \\
+        GET & \texttt{/metrics?since=} & Agrega los eventos de \texttt{logs/audit.jsonl}: conteos por tipo, consentimientos aceptados/declinados, fuente de traducción y latencias p50/p95/máx.\ por campo. \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -373,11 +334,10 @@ También hay una dependencia de software externa: el servicio Ollama
 
 \subsection{Requisitos funcionales}
 
-Los seis requisitos funcionales oficiales (RF-01 a RF-06, matriz de
-trazabilidad TP2) se desarrollan aquí como sub-requisitos técnicos
-trazables, numerados \texttt{RF-<oficial>.<n>} (ver \texttt{IDS.md},
-Sección~3, para el texto literal de cada RF oficial y la tabla de
-trazabilidad completa). Los requisitos sin contraparte oficial --- decisión
+Los seis requisitos funcionales base (RF-01 a RF-06) se desarrollan aquí
+como sub-requisitos técnicos trazables, numerados \texttt{RF-<base>.<n>}
+(ver \texttt{IDS.md}, Sección~3, para el texto literal de cada RF y la
+tabla de trazabilidad completa). Los requisitos sin RF base --- decisión
 de diseño del equipo para CU-06/07/08 --- usan el prefijo \texttt{RF-T-}.
 CU-06, CU-07 y CU-08 son, en conjunto, las herramientas de administración
 del modelo y del dataset con las que cuenta el Equipo de Proyecto (Modo
@@ -389,7 +349,7 @@ es utilizable sin él; \textit{Deseable}: conveniencia menor) y los casos
 de uso relacionados (ver Entregable de Modelos de Casos de Uso). Al final
 de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 
-\subsubsection{RF-01.1: Captura de landmarks en tiempo real (RF-01 oficial)}
+\subsubsection{RF-01.1: Captura de landmarks en tiempo real (RF-01)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -405,7 +365,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-01.2: Envío de frames para predicción (RF-01 oficial)}
+\subsubsection{RF-01.2: Envío de frames para predicción (RF-01)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -421,14 +381,14 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-01.3: Clasificación de la seña mediante LSTM (RF-01 oficial; realiza también RF-05 oficial)}
+\subsubsection{RF-01.3: Clasificación de la seña mediante LSTM (RF-01; realiza también RF-05)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
 \toprule
 \textbf{ID} & RF-01.3 \\
 \textbf{Prioridad} & Esencial \\
-\textbf{Descripción} & El backend debe clasificar la ventana de frames recibida en una de las clases de seña conocidas, con un nivel de confianza. El umbral de confianza (ver ``Umbral'' más abajo) es, a la vez, el mecanismo que realiza el requisito oficial RF-05 (``detectar cuando una seña no pueda interpretarse con confianza y evitar mostrar una traducción incorrecta''). \\
+\textbf{Descripción} & El backend debe clasificar la ventana de frames recibida en una de las clases de seña conocidas, con un nivel de confianza. El umbral de confianza (ver ``Umbral'' más abajo) es, a la vez, el mecanismo que realiza el requisito RF-05 (``detectar cuando una seña no pueda interpretarse con confianza y evitar mostrar una traducción incorrecta''). \\
 \textbf{Entrada} & Tensor de dimensiones $(1, 45, 300)$, recortado o relleno con ceros según haga falta. \\
 \textbf{Proceso} & Red LSTM (2 capas, 128 unidades ocultas) seguida de una capa totalmente conectada y \textit{softmax}; se calcula la clase de mayor probabilidad y el top-3. \\
 \textbf{Salida} & Seña predicha, confianza (\%) y top-3 de predicciones. \\
@@ -438,14 +398,14 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-01.4: Construcción de la secuencia y cierre de oración (RF-01 oficial; realiza también RF-05 oficial)}
+\subsubsection{RF-01.4: Construcción de la secuencia y cierre de oración (RF-01; realiza también RF-05)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
 \toprule
 \textbf{ID} & RF-01.4 \\
 \textbf{Prioridad} & Esencial \\
-\textbf{Descripción} & El sistema debe acumular las palabras reconocidas en una secuencia y detectar cuándo el paciente terminó de expresar su idea, descartando las señas de baja confianza o de reposo (mecanismo que también realiza RF-05 oficial). \\
+\textbf{Descripción} & El sistema debe acumular las palabras reconocidas en una secuencia y detectar cuándo el paciente terminó de expresar su idea, descartando las señas de baja confianza o de reposo (mecanismo que también realiza RF-05). \\
 \textbf{Entrada} & Predicciones sucesivas del LSTM y magnitud de movimiento entre frames consecutivos. \\
 \textbf{Proceso} & Se agrega una palabra a la secuencia cuando su confianza es $\geq$70\% y no es la clase de reposo (\texttt{idle}) ni domina el top-3 con más de 50\%. La secuencia se cierra cuando la magnitud media de movimiento de los últimos 6 frames es menor a 0.05 y pasaron al menos 800 ms desde la última predicción distinta de reposo. \\
 \textbf{Salida} & Secuencia de palabras cerrada, lista para traducirse (dispara CU-02). \\
@@ -454,7 +414,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-01.5: Traducción de la secuencia a oración natural (RF-01 oficial)}
+\subsubsection{RF-01.5: Traducción de la secuencia a oración natural (RF-01)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -470,7 +430,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-01.6: Síntesis de voz (RF-01 oficial)}
+\subsubsection{RF-01.6: Síntesis de voz (RF-01)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -486,14 +446,14 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-01.7: Sincronización de la conversación entre estaciones (RF-01 oficial; soporta también RF-02 oficial)}
+\subsubsection{RF-01.7: Sincronización de la conversación entre estaciones (RF-01; soporta también RF-02)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
 \toprule
 \textbf{ID} & RF-01.7 \\
 \textbf{Prioridad} & Esencial \\
-\textbf{Descripción} & Los mensajes del paciente y del personal de recepción o enfermería deben sincronizarse instantáneamente entre las dos estaciones. Es el canal que entrega el mensaje del profesional en un formato accesible para el paciente sordo (RF-02 oficial). \\
+\textbf{Descripción} & Los mensajes del paciente y del personal de recepción o enfermería deben sincronizarse instantáneamente entre las dos estaciones. Es el canal que entrega el mensaje del profesional en un formato accesible para el paciente sordo (RF-02). \\
 \textbf{Entrada} & Mensaje nuevo (del paciente, generado por CU-02/CU-03, o del personal, generado por CU-04). \\
 \textbf{Proceso} & El mensaje se agrega al historial local y se publica por BroadcastChannel; cada estación deduplica por identificador antes de mostrarlo. \\
 \textbf{Salida} & Historial de conversación actualizado en ambas estaciones. \\
@@ -502,7 +462,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-01.8: Verificación de fidelidad clínica de la traducción (RF-01 oficial; realiza también RF-05 oficial)}
+\subsubsection{RF-01.8: Verificación de fidelidad clínica de la traducción (RF-01; realiza también RF-05)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -518,7 +478,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-02.1: Respuesta del personal por texto (RF-02 oficial)}
+\subsubsection{RF-02.1: Respuesta del personal por texto (RF-02)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -534,7 +494,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-02.2: Dictado por voz del personal (RF-02 oficial)}
+\subsubsection{RF-02.2: Dictado por voz del personal (RF-02)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -551,7 +511,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-T-01: Selección o creación de etiqueta de seña (sin RF oficial; decisión de diseño del equipo)}
+\subsubsection{RF-T-01: Selección o creación de etiqueta de seña (decisión de diseño del equipo)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -567,7 +527,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-T-02: Consulta de clases y estadísticas del dataset (sin RF oficial; decisión de diseño del equipo)}
+\subsubsection{RF-T-02: Consulta de clases y estadísticas del dataset (decisión de diseño del equipo)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -583,7 +543,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-T-03: Grabación de muestras de entrenamiento (sin RF oficial; decisión de diseño del equipo)}
+\subsubsection{RF-T-03: Grabación de muestras de entrenamiento (decisión de diseño del equipo)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -599,7 +559,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-T-04: Persistencia de muestras de entrenamiento (sin RF oficial; decisión de diseño del equipo)}
+\subsubsection{RF-T-04: Persistencia de muestras de entrenamiento (decisión de diseño del equipo)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -615,7 +575,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-T-05: Reentrenamiento del modelo LSTM (sin RF oficial; decisión de diseño del equipo)}
+\subsubsection{RF-T-05: Reentrenamiento del modelo LSTM (decisión de diseño del equipo)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -631,7 +591,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-T-06: Selección de estación de trabajo (sin RF oficial; decisión de diseño del equipo)}
+\subsubsection{RF-T-06: Selección de estación de trabajo (decisión de diseño del equipo)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -647,7 +607,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-03.1: Consentimiento explícito de cámara (RF-03 oficial)}
+\subsubsection{RF-03.1: Consentimiento explícito de cámara (RF-03)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -663,14 +623,14 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-04.1: Registro de eventos de auditoría (RF-04 oficial)}
+\subsubsection{RF-04.1: Registro de eventos de auditoría (RF-04)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
 \toprule
 \textbf{ID} & RF-04.1 \\
 \textbf{Prioridad} & Condicional (no bloquea el flujo de comunicación; es una subfunción de auditoría). \\
-\textbf{Descripción} & El sistema registra, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción/síntesis, reporte, consentimiento, traducción mostrada, fin de atención), sin datos identificatorios ni imágenes, video o texto de la conversación, para habilitar métricas operativas de uso (E08, Informe de Impacto Operativo). \\
+\textbf{Descripción} & El sistema registra, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción/síntesis, reporte, consentimiento, traducción mostrada, fin de atención), sin datos identificatorios ni imágenes, video o texto de la conversación, para habilitar métricas operativas de uso . \\
 \textbf{Entrada} & Finalización de una operación de sistema (SO-01 a SO-05, ver Entregable 08) o un evento anónimo enviado por el frontend (\texttt{consent}, \texttt{translation\_displayed}). \\
 \textbf{Proceso} & El backend (helpers \texttt{\_log\_audit} / \texttt{\_append\_jsonl} en \texttt{app.py}, protegidos por un \texttt{threading.Lock}) arma un registro con tipo de evento, marca temporal UTC y campos propios del tipo, y lo agrega a \texttt{logs/audit.jsonl}. En la ruta WebSocket (\texttt{/ws/predict}) la escritura se despacha con \texttt{asyncio.to\_thread} para no bloquear el bucle de eventos. \texttt{GET /metrics} agrega el archivo (conteos por tipo, consentimientos, fuente de traducción, p50/p95/máx.\ de latencia). \\
 \textbf{Salida} & Evento de auditoría anónimo persistido en \texttt{logs/audit.jsonl}. \\
@@ -679,7 +639,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsubsection{RF-06.1: Reporte de traducción incorrecta o ambigua (RF-06 oficial)}
+\subsubsection{RF-06.1: Reporte de traducción incorrecta o ambigua (RF-06)}
 \begin{table}[H]
 \centering
 \begin{tabularx}{\textwidth}{l X}
@@ -695,11 +655,11 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \end{tabularx}
 \end{table}
 
-\subsection{Requisitos de rendimiento (RNF-01.1, sub-requisito de RNF-01 oficial)}
+\subsection{Requisitos de rendimiento (RNF-01.1, sub-requisito de RNF-01)}
 
-Los siguientes valores son metas de diseño, expresadas en p50/p95 como
-exige la metodología del proyecto, y trazables al requisito oficial
-RNF-01 (``latencia <1 segundo'', CRIT-01). El sistema mide cada etapa de
+Los siguientes valores son metas de diseño, expresadas en p50/p95, y
+trazables al requisito RNF-01 (latencia percibida menor a 1 segundo). El
+sistema mide cada etapa de
 forma continua: cada predicción y cada oración procesada registra su
 latencia por etapa (\texttt{lstm\_ms}, \texttt{translation\_ms},
 \texttt{tts\_ms}, \texttt{total\_ms}) como evento de auditoría en
@@ -707,7 +667,7 @@ latencia por etapa (\texttt{lstm\_ms}, \texttt{translation\_ms},
 p50/p95/máx.\ bajo demanda; el frontend también reporta \texttt{e2e\_ms}
 (latencia percibida, desde el cierre de la oración hasta que se muestra
 en pantalla) vía \texttt{POST /audit} (\texttt{translation\_displayed}).
-El criterio de aceptación oficial CRIT-01 se verifica mediante esta
+Este criterio de verificación de RNF-01 se comprueba mediante esta
 medición continua de p50/p95 sobre las métricas operativas del sistema.
 
 \begin{table}[H]
@@ -728,19 +688,19 @@ medición continua de p50/p95 sobre las métricas operativas del sistema.
     \end{tabularx}
 \end{table}
 
-\textbf{RNF-02.1 (sub-requisito de RNF-02 oficial, precisión):} la
+\textbf{RNF-02.1 (sub-requisito de RNF-02, precisión):} la
 exactitud de validación del modelo LSTM (\texttt{ModeloDeReconocimiento.exactitudDeValidación},
 ver Entregable 01) se calcula durante \texttt{train\_lstm.py} sobre el 20\%
 de validación. Además, el script \texttt{eval\_model.py <directorio>}
-(E05) evalúa el modelo cargado por \texttt{app.py} sobre un directorio de
+evalúa el modelo cargado por \texttt{app.py} sobre un directorio de
 muestras \texttt{.npy}, reportando accuracy global, precisión/recall por
 clase, matriz de confusión y cantidad de muestras bajo el umbral de
 confianza; advierte si el directorio evaluado es el mismo usado para
 entrenar (\texttt{dataset/custom}), ya que en ese caso la accuracy no mide
-generalización real. El criterio de aceptación oficial RNF-02/CRIT-02 se
-verifica corriendo \texttt{eval\_model.py} sobre una sesión de grabación
-independiente del conjunto de entrenamiento, como parte del entregable de
-gestión E05 (Informe de Pruebas Controladas).
+generalización real. El criterio de verificación de RNF-02 (accuracy
+$\geq$ 90\% en entornos controlados y $\geq$ 85\% en operación real) se
+comprueba corriendo \texttt{eval\_model.py} sobre una sesión de grabación
+independiente del conjunto de entrenamiento.
 
 \subsection{Restricciones de diseño}
 
@@ -757,10 +717,10 @@ gestión E05 (Informe de Pruebas Controladas).
 Los requisitos de rendimiento se documentan en la sección 3.3 (RNF-01.1).
 Esta sección cubre los restantes atributos de calidad: los primeros tres
 (RNF-03.1, RNF-04.1/RNF-07.1, RNF-05.1/RNF-06.1) son sub-requisitos
-trazables a la matriz oficial; los seis siguientes (RNF-T-01 a RNF-T-06)
-son requisitos técnicos sin contraparte oficial.
+trazables a la matriz de requisitos; los seis siguientes (RNF-T-01 a
+RNF-T-06) son requisitos técnicos definidos por el equipo, sin RNF base.
 
-\subsubsection{Seguridad y privacidad (RNF-03.1, sub-requisito de RNF-03 oficial)}
+\subsubsection{Seguridad y privacidad (RNF-03.1, sub-requisito de RNF-03)}
 \begin{itemize}
     \item \textbf{Privacidad de datos de salud:} todo el procesamiento y almacenamiento ocurre en la máquina local; no hay persistencia de conversaciones (estado en memoria más BroadcastChannel); al finalizar cada atención (CU-12), el sistema borra explícitamente la conversación en las dos caras de la estación.
     \item \textbf{Configuración de CORS:} el backend admite conexiones únicamente desde los orígenes configurados para la red local del sanatorio (ver RNF-T-06, Sección~3.4).
@@ -768,19 +728,19 @@ son requisitos técnicos sin contraparte oficial.
     \item \textbf{Eventos de auditoría (RF-04.1) y reportes de traducción (RF-06.1):} se registran sin datos identificatorios ni imágenes, video o texto de la conversación (salvo el propio texto reportado en \texttt{logs/reports.jsonl}, necesario para priorizar el reentrenamiento), consistentes con esta restricción.
 \end{itemize}
 
-\subsubsection{Compatibilidad de hardware y estación fija (RNF-04.1 / RNF-07.1, sub-requisitos de RNF-04 y RNF-07 oficiales)}
+\subsubsection{Compatibilidad de hardware y estación fija (RNF-04.1 / RNF-07.1, sub-requisitos de RNF-04 y RNF-07)}
 \begin{itemize}
-    \item Las dos caras sincronizadas de la estación (Paciente y Recepción), sobre el mismo navegador y canal BroadcastChannel, con doble monitor, implementan las dos caras de la estación fija de guardia/triaje que exigen RNF-04 y RNF-07 oficiales (cámara, pantalla doble cara, micrófono, altavoces, componentes comerciales estándar).
-    \item \textbf{Calibración e instalación:} durante la instalación de cada estación (EDT, paquete 5.5.1), se realiza el ensamblaje físico de las dos pantallas y la cámara sobre un mostrador o box existente, con hardware comercial, y su calibración (encuadre de cámara, alineación de pantallas), antes de que la estación entre en servicio. Este procedimiento operativo es una restricción de instalación del sistema completo, no una pantalla de software.
+    \item Las dos caras sincronizadas de la estación (Paciente y Recepción), sobre el mismo navegador y canal BroadcastChannel, con doble monitor, implementan las dos caras de la estación fija de guardia/triaje que exigen RNF-04 y RNF-07 (cámara, pantalla doble cara, micrófono, altavoces, componentes comerciales estándar).
+    \item \textbf{Calibración e instalación:} durante la instalación de cada estación, se realiza el ensamblaje físico de las dos pantallas y la cámara sobre un mostrador o box existente, con hardware comercial, y su calibración (encuadre de cámara, alineación de pantallas), antes de que la estación entre en servicio. Este procedimiento operativo es una restricción de instalación del sistema completo, no una pantalla de software.
 \end{itemize}
 
-\subsubsection{Especialización y validación del dataset (RNF-05.1 / RNF-06.1, sub-requisitos de RNF-05 y RNF-06 oficiales)}
+\subsubsection{Especialización y validación del dataset (RNF-05.1 / RNF-06.1, sub-requisitos de RNF-05 y RNF-06)}
 \begin{itemize}
     \item El Modo Captura y el árbol de captura del dataset (\texttt{dataset/custom}) permiten ampliar de forma continua el vocabulario clínico LSA (síntomas, triaje, dolor, admisión/recepción/guardia) a partir de un conjunto inicial de referencia (RNF-05.1).
-    \item La validación lingüística del dataset por intérpretes oficiales de LSA es un procedimiento operativo del proyecto (EDT, paquete 3.2.5), realizado antes de incorporar cada ampliación del vocabulario al modelo en producción, y documentado mediante un acta de validación firmada por los intérpretes participantes (RNF-06.1); el riesgo \#1 del Registro de Riesgos aplica directamente a este procedimiento (ver Sección~2.6).
+    \item La validación lingüística del dataset por intérpretes de LSA es un procedimiento operativo del proyecto, realizado antes de incorporar cada ampliación del vocabulario al modelo en producción, y documentado mediante un acta de validación firmada por los intérpretes participantes (RNF-06.1).
 \end{itemize}
 
-\subsubsection{RNF-T-01: Fiabilidad (sin RNF oficial)}
+\subsubsection{RNF-T-01: Fiabilidad (requisito técnico del equipo)}
 \begin{itemize}
     \item El WebSocket de predicción se reconecta automáticamente cada 2 segundos ante un cierre de conexión.
     \item Si el modelo de lenguaje local falla o no responde a tiempo (8 s), se usa el texto original de la secuencia sin interrumpir el flujo.
@@ -788,13 +748,13 @@ son requisitos técnicos sin contraparte oficial.
     \item Un indicador de solicitud en curso evita enviar frames al WebSocket mientras una predicción anterior sigue pendiente.
 \end{itemize}
 
-\subsubsection{RNF-T-02: Disponibilidad (sin RNF oficial)}
+\subsubsection{RNF-T-02: Disponibilidad (requisito técnico del equipo)}
 \begin{itemize}
     \item El sistema no depende de conectividad a internet para el flujo crítico (captura, clasificación LSTM, síntesis de voz): todos esos componentes corren localmente.
     \item La disponibilidad de la traducción por modelo de lenguaje depende de que el proceso local de Ollama esté activo; su ausencia degrada la traducción pero no interrumpe el sistema (ver RNF-T-01).
 \end{itemize}
 
-\subsubsection{RNF-T-03: Mantenibilidad (sin RNF oficial)}
+\subsubsection{RNF-T-03: Mantenibilidad (requisito técnico del equipo)}
 \begin{itemize}
     \item Separación clara entre frontend (Next.js) y backend (FastAPI).
     \item Responsabilidades divididas en hooks de React independientes: captura de cámara, WebSocket de predicción, construcción de oraciones, canal de chat y reconocimiento de voz.
@@ -802,21 +762,21 @@ son requisitos técnicos sin contraparte oficial.
     \item Las plantillas médicas están centralizadas en una estructura de datos del backend, fácil de extender.
 \end{itemize}
 
-\subsubsection{RNF-T-04: Portabilidad (sin RNF oficial)}
+\subsubsection{RNF-T-04: Portabilidad (requisito técnico del equipo)}
 \begin{itemize}
     \item Probado en Windows; el stack (Next.js, FastAPI/Uvicorn, PyTorch, ONNX) es multiplataforma en principio.
     \item Requiere Node.js 18 o superior y Python 3.9 o superior.
     \item Navegador soportado: Google Chrome, requerido por la Web Speech API que usa RF-02.2 (dictado); el resto del pipeline (MediaPipe, WebSocket, TTS local) no depende de APIs propietarias de un navegador en particular.
 \end{itemize}
 
-\subsubsection{RNF-T-05: Usabilidad y accesibilidad (sin RNF oficial)}
+\subsubsection{RNF-T-05: Usabilidad y accesibilidad (requisito técnico del equipo)}
 \begin{itemize}
     \item Conversación fluida, sin botones de confirmación manual: la ventana de exhibición del texto antes de reproducir el audio actúa como confirmación automática (excepción deliberada: el consentimiento de cámara de P-05/CU-09 y el reporte de traducción de CU-10 sí requieren una acción explícita, ver Entregable 04).
     \item Interfaz en español, con indicadores visuales de estado (``EN VIVO'', ``GRABANDO'', cuenta regresiva, barras de confianza en tiempo real).
     \item Arquitectura de doble cara pensada para separar visualmente el rol del paciente y el del profesional de salud.
 \end{itemize}
 
-\subsubsection{RNF-T-06: Seguridad de red (sin RNF oficial)}
+\subsubsection{RNF-T-06: Seguridad de red (requisito técnico del equipo)}
 \begin{itemize}
     \item El backend admite conexiones únicamente desde los orígenes configurados para la red local del sanatorio (restricción de CORS); no expone el servicio a redes externas.
 \end{itemize}
@@ -871,14 +831,14 @@ son requisitos técnicos sin contraparte oficial.
 
 \small
 \begin{longtable}{>{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}p{10.2cm}}
-    \caption{Matriz de trazabilidad RNF oficiales -- sub-requisitos}
+    \caption{Matriz de trazabilidad RNF -- sub-requisitos}
     \label{tab:trazabilidad-rnf} \\
     \toprule
-    \textbf{RNF oficial} & \textbf{Sub-requisitos técnicos} \\
+    \textbf{RNF} & \textbf{Sub-requisitos técnicos} \\
     \midrule
     \endfirsthead
     \toprule
-    \textbf{RNF oficial} & \textbf{Sub-requisitos técnicos} \\
+    \textbf{RNF} & \textbf{Sub-requisitos técnicos} \\
     \midrule
     \endhead
     RNF-01 (latencia) & RNF-01.1 \\
