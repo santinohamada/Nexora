@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { ChatMessage, Frame } from "../types";
+import { sendAudit } from "../lib/audit";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -101,6 +102,7 @@ export function useSentenceBuilder(
     const sentence = transcriptRef.current;
     if (sentence.trim().length === 0) return;
 
+    const closeTs = performance.now();
     setTranscript("");
     transcriptRef.current = "";
     lastWordRef.current = "";
@@ -125,6 +127,11 @@ export function useSentenceBuilder(
               hour: "2-digit",
               minute: "2-digit",
             }),
+          });
+          sendAudit({
+            type: "translation_displayed",
+            station: "paciente",
+            e2e_ms: performance.now() - closeTs,
           });
         }
 
