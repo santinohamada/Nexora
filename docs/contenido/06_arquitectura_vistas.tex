@@ -12,9 +12,8 @@ Este documento describe la arquitectura de software de \textbf{LSA Salud}
 mediante el modelo de vistas \textbf{4+1} de Kruchten, aplicando la
 metodología de diseño usada en el resto de los entregables (Larman / Proceso
 Unificado, notación UML 2.5 --- ver Referencias de la ERS, Entregable 05).
-Incluye los componentes que cubren los requisitos oficiales RF-03, RF-04 y
-RF-06 (consentimiento, auditoría y reporte de traducción), todos
-implementados. Mientras que el Modelo de Dominio (Entregable 01) describe los conceptos del
+Incluye los componentes que realizan los requisitos oficiales RF-03, RF-04 y
+RF-06 (consentimiento, auditoría y reporte de traducción). Mientras que el Modelo de Dominio (Entregable 01) describe los conceptos del
 \emph{problema}, este documento describe las decisiones de \emph{diseño} del
 software que lo resuelve: módulos, procesos concurrentes, organización del
 código fuente y despliegue físico.
@@ -77,11 +76,13 @@ Puntos relevantes del diagrama:
     \item Las páginas \texttt{paciente/page} (P-02) y \texttt{recepcion/page}
     (P-03) son los únicos consumidores directos de los \texttt{hooks} y de
     los \texttt{components}; \texttt{page} (P-01) solo navega hacia ellas.
-    \item \texttt{useMediaPipe} y \texttt{useMediaPipeTasks} son
-    implementaciones alternativas del mismo rol (captura de landmarks):
-    ambas dependen de las funciones puras de \texttt{lib/mediapipe.ts}, pero
-    solo una está activa por sesión, según el parámetro \texttt{?mp=tasks}
-    (ver decisión arquitectónica en la sección~\ref{sec:decisiones}).
+    \item \texttt{useMediaPipe} extrae, en cada frame, los landmarks de
+    manos, pose y rostro (\textit{blendshapes}) mediante MediaPipe, apoyado
+    en las funciones puras de \texttt{lib/mediapipe.ts}. Los
+    \textit{blendshapes} faciales aportan los marcadores no manuales de la
+    LSA (preguntas, negación, intensidad) que forman parte de las
+    características de reconocimiento (ver decisión arquitectónica en la
+    sección~\ref{sec:decisiones}).
     \item Solo tres \texttt{hooks} cruzan la frontera hacia el backend:
     \texttt{useSignWebSocket} (WebSocket de predicción),
     \texttt{useSentenceBuilder} (traducción de oraciones) y
@@ -194,39 +195,55 @@ Puntos relevantes:
 
 La Vista Física muestra los nodos de despliegue, los procesos en ejecución
 y los protocolos y puertos entre ellos, sobre la arquitectura de
-\textbf{doble estación} descripta en la ERS (2.1 y 3.3): un único par
-paciente--personal por instancia del backend, típicamente sobre una
-misma PC con dos pantallas (o dos dispositivos en la misma red local). Esa
-doble estación es, por diseño, la materialización de las dos caras de la
-estación fija de guardia/triaje exigida por RNF-04/RNF-07 oficiales (ver
-ERS, Sección~3.4.2); su ensamblaje físico sobre hardware comercial
-corresponde al entregable E07 (EDT), fuera de alcance de software.
+\textbf{estaciones fijas múltiples} descripta en la ERS (2.1 y 3.3): el
+sistema completo despliega tantas estaciones independientes como puntos de
+atención tenga el sanatorio --- admisión, recepción, triaje, guardia ---,
+cada una con su propio par de caras paciente--personal (doble pantalla)
+sobre una misma PC. Cada estación es, por diseño, la materialización de las
+dos caras de la estación fija de guardia/triaje exigida por RNF-04/RNF-07
+oficiales (ver ERS, Sección~3.4.2); su ensamblaje físico sobre hardware
+comercial y su calibración se realizan durante la instalación de cada
+estación (EDT, paquete 5.5.1; entregable E07), fuera de alcance de software.
 
-\diagrama{06_vista_fisica}{\textwidth}{Vista Física de LSA Salud: nodos, procesos y protocolos de despliegue}{fig:arq-vista-fisica}
+\diagrama{06_vista_fisica}{\textwidth}{Vista Física de LSA Salud: nodos, procesos y protocolos de despliegue de cada estación, replicados de forma independiente en admisión, recepción, triaje y guardia}{fig:arq-vista-fisica}
+
+El diagrama detalla por completo una estación de referencia (Estación de
+Admisión) y resume las demás (Recepción, Triaje, Guardia) como instancias
+con la misma estructura interna, para mantener la figura legible: las
+cuatro son, en tiempo de ejecución, despliegues idénticos y completamente
+independientes entre sí.
 
 Puntos relevantes:
 \begin{itemize}
-    \item Todos los procesos corren en la misma PC (o red local): el
-    servidor de desarrollo Next.js en el puerto 3000, el backend FastAPI
-    sobre Uvicorn en el puerto 8000, y Ollama en el puerto 11434. No hay
-    ningún nodo ni proceso externo a la máquina local (RNF-T-02, RNF-03.1).
+    \item Cada estación es una instancia local autocontenida: navegador,
+    servidor Next.js (puerto 3000), backend FastAPI sobre Uvicorn (puerto
+    8000) y Ollama (puerto 11434) corren en la misma PC de esa estación. No
+    hay ningún nodo ni proceso externo a esa máquina, ni un servidor
+    central compartido entre estaciones (RNF-T-02, RNF-03.1).
+    \item Las estaciones no comparten datos entre sí: cada una conserva su
+    propia conversación en memoria únicamente mientras dura la atención en
+    curso, y la borra por completo al finalizarla (CU-12), sin persistirla
+    en ningún momento (RNF-03). El backend de una estación restringe además
+    los orígenes HTTP permitidos a la red local del sanatorio (RNF-T-06).
     \item Piper TTS \textbf{no} es un proceso separado con puerto propio: se
     carga como modelo ONNX embebido dentro del mismo proceso Python que
     corre \texttt{app.py}, a diferencia de Ollama, que sí es un servicio
     HTTP independiente.
-    \item Las dos pestañas del navegador (Estación Paciente y Estación
-    Recepción) se comunican entre sí exclusivamente por
-    \texttt{BroadcastChannel}, sin cruzar ningún límite de nodo ni de
-    proceso: es tráfico intra-navegador, no tráfico de red.
-    \item El sistema de archivos local (\texttt{dataset/}, \texttt{models/},
-    \texttt{voices/}) es leído y escrito únicamente por el proceso del
-    backend; no hay motor de base de datos en ningún nodo. La carpeta
-    \texttt{logs/} (eventos de auditoría y consentimiento en
-    \texttt{audit.jsonl}, reportes de traducción en \texttt{reports.jsonl})
-    también es escrita únicamente por ese proceso (RF-03, RF-04, RF-06).
-    \item La Estación Paciente usa WebSocket (\texttt{/ws/predict}) y HTTP
-    REST contra el backend; la Estación Recepción solo HTTP REST. El backend
-    invoca a Ollama por HTTP (\texttt{POST /api/generate}).
+    \item Las dos pestañas del navegador de una misma estación (cara
+    Paciente y cara Recepción) se comunican entre sí mediante un canal de
+    sincronización intra-navegador, sin cruzar ningún límite de nodo ni de
+    proceso y sin tráfico de red.
+    \item El sistema de archivos local de cada estación (\texttt{dataset/},
+    \texttt{models/}, \texttt{voices/}) es leído y escrito únicamente por el
+    proceso del backend de esa estación; no hay motor de base de datos ni
+    almacenamiento compartido entre estaciones. La carpeta \texttt{logs/}
+    (eventos de auditoría y consentimiento en \texttt{audit.jsonl}, reportes
+    de traducción en \texttt{reports.jsonl}) también es escrita únicamente
+    por ese proceso (RF-03, RF-04, RF-06).
+    \item Dentro de cada estación, la cara Paciente usa WebSocket
+    (\texttt{/ws/predict}) y HTTP REST contra su backend; la cara Recepción
+    solo HTTP REST. El backend invoca a su propio Ollama local por HTTP
+    (\texttt{POST /api/generate}).
 \end{itemize}
 
 % ============================================================================
@@ -245,7 +262,7 @@ indica, para cada paso del escenario, qué elemento de cada vista participa.
     \midrule
     \endhead
     Captura de landmarks &
-    \texttt{useMediaPipe} / \texttt{useMediaPipe\allowbreak Tasks}, \texttt{lib/\allowbreak mediapipe.ts} &
+    \texttt{useMediaPipe}, \texttt{lib/\allowbreak mediapipe.ts} &
     Bucle de captura (hilo principal del navegador) &
     \texttt{web/hooks}, \texttt{web/lib} &
     Pestaña Estación Paciente (nodo navegador) &
@@ -335,27 +352,36 @@ vistas anteriores.
     explícito; controlar el flag \texttt{enabled} del hook de captura desde
     la propia página evita introducir un componente y un árbol de render
     adicionales para un estado que ya vive en \texttt{PacientePage}. &
-    \texttt{useMediaPipe} y \texttt{useMediaPipe\-Tasks} solo invocan
-    \texttt{getUserMedia()} cuando \texttt{enabled === true}; ningún otro
-    \texttt{hook} necesita conocer el estado de consentimiento. \\
+    \texttt{useMediaPipe} solo invoca \texttt{getUserMedia()} cuando
+    \texttt{enabled === true}; ningún otro \texttt{hook} necesita conocer el
+    estado de consentimiento. \\
 
-    Protocolo binario v2 opcional en el WebSocket de predicción, además del
-    JSON v1 &
-    Reducir el tamaño de los mensajes y la latencia de serialización en el
-    canal más sensible al rendimiento (RNF-01.1). &
-    \texttt{useSignWebSocket} y \texttt{/ws/predict} deben soportar ambos
-    formatos; el binario redondea coordenadas, priorizando latencia sobre
-    precisión decimal. \\
+    Streaming de frames al backend por WebSocket (\texttt{/ws/predict}) &
+    Minimizar la latencia de ida y vuelta en el canal más sensible al
+    rendimiento (RNF-01.1), evitando el costo de abrir una conexión HTTP por
+    frame. &
+    \texttt{useSignWebSocket} mantiene una única conexión persistente por
+    sesión; el backend reconecta y descarta envíos obsoletos según
+    RNF-T-01. \\
 
-    MediaPipe Holistic como backend de captura por defecto, con MediaPipe
-    Tasks como alternativa explícita (\texttt{?mp=tasks}) &
-    Mantener el flujo probado (Holistic) como opción estable, mientras se
-    evalúa Tasks (landmarkers independientes, con \textit{blendshapes}
-    faciales) sin obligar la migración de todos los usuarios. &
-    Duplica el \texttt{hook} de captura (\texttt{useMediaPipe} /
-    \texttt{useMediaPipeTasks}) y el árbol de datos de entrenamiento
-    (\texttt{dataset/custom} vs.\ \texttt{dataset/custom\_tasks} +
-    \texttt{dataset/custom\_blendshapes}). \\
+    MediaPipe como único backend de captura, extrayendo landmarks de manos,
+    pose y rostro (\textit{blendshapes}) en un mismo paso por frame &
+    Los \textit{blendshapes} faciales son necesarios para capturar los
+    marcadores no manuales gramaticales de la LSA (preguntas, negación,
+    intensidad), imprescindibles para la fidelidad clínica del vocabulario
+    (RNF-05). &
+    Un único \texttt{hook} de captura (\texttt{useMediaPipe}) y un único
+    árbol de datos de entrenamiento (\texttt{dataset/custom}), sin
+    variantes que mantener en paralelo. \\
+
+    Restricción de CORS al origen de la red local del sanatorio en el
+    backend (RNF-T-06) &
+    Cada estación sirve únicamente a los dispositivos de su propia red
+    local; no hay razón de negocio para aceptar conexiones desde otros
+    orígenes, y restringirlas reduce la superficie de ataque. &
+    El backend rechaza solicitudes con un origen no configurado; agregar un
+    nuevo dispositivo a una estación requiere sumar su origen a la
+    configuración local de esa estación. \\
 
     Persistencia basada en archivos (\texttt{.npy}, \texttt{.pth},
     \texttt{.onnx}) en lugar de una base de datos &
@@ -431,26 +457,30 @@ arquitectónico que lo atiende.
 
     RNF-01.1 (RNF-01 oficial) & Rendimiento &
     Vista de Procesos: separación event loop / \textit{threadpool}, y
-    decisiones arquitectónicas de protocolo binario v2 y cachés LRU
+    decisiones arquitectónicas de streaming por WebSocket y cachés LRU
     (secciones~\ref{sec:vista-procesos} y~\ref{sec:decisiones}). \\
 
     RNF-02.1 (RNF-02 oficial) & Precisión &
-    Sin mecanismo arquitectónico dedicado todavía: la exactitud de
-    validación se calcula en \texttt{train\_lstm.py} (fuera del proceso del
-    backend, ver Vista de Desarrollo), sin un componente de monitoreo en
-    producción (ver ERS, Sección~3.3). \\
+    Vista de Desarrollo: la exactitud de validación se calcula en
+    \texttt{train\_lstm.py} y se evalúa con \texttt{eval\_model.py} (E05),
+    ambos fuera del proceso del backend (ver ERS, Sección~3.3). \\
 
     RNF-04.1 / RNF-07.1 (RNF-04 / RNF-07 oficiales) & Hardware / estación fija &
-    Vista Física: las dos estaciones sincronizadas materializan las dos
-    caras de la estación fija (sección~\ref{sec:vista-fisica}); el
-    ensamblaje físico queda fuera de esta arquitectura de software (E07,
-    EDT). \\
+    Vista Física: cada estación sincroniza sus dos caras y materializa la
+    estación fija (sección~\ref{sec:vista-fisica}); el ensamblaje físico y
+    la calibración se realizan durante la instalación de cada estación
+    (E07, EDT paquete 5.5.1). \\
 
     RNF-05.1 / RNF-06.1 (RNF-05 / RNF-06 oficiales) & Dataset clínico &
-    Vista de Desarrollo: árboles \texttt{dataset/custom(\_tasks/\_blendshapes)}
-    (sección~\ref{sec:vista-desarrollo}); la validación lingüística es un
-    proceso organizacional sin componente de software (ver ERS,
-    Sección~2.6, riesgo \#1). \\
+    Vista de Desarrollo: árbol único \texttt{dataset/custom}, con landmarks
+    y \textit{blendshapes} en la misma muestra (sección~\ref{sec:vista-desarrollo});
+    la validación lingüística es un procedimiento operativo del proyecto
+    (ver ERS, Sección~2.6, riesgo \#1). \\
+
+    RNF-T-06 & Seguridad de red &
+    Vista Física y decisión arquitectónica de restricción de CORS: cada
+    backend admite únicamente los orígenes de la red local de su propia
+    estación (secciones~\ref{sec:vista-fisica} y~\ref{sec:decisiones}). \\
     \bottomrule
     \caption{Trazabilidad entre requisitos no funcionales y vistas arquitectónicas}
     \label{tab:arq-rnf}

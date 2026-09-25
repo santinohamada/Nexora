@@ -22,6 +22,9 @@
       Respuesta por voz:
       { [Hablar] | (6) }
       <i>Presione para hablar / Escuchando...</i>  (7)
+      --
+      { [Finalizar atención] | (9) }
+      <i>Borra la conversación en ambas caras de la estación y la deja lista para el próximo paciente</i>
     }
   }
 }

@@ -1,7 +1,7 @@
-"""gen_drawio.py — genera los 8 diagramas de colaboracion UML (DC-01..DC-08)
+"""gen_drawio.py — genera los 9 diagramas de colaboracion UML (DC-01..DC-09)
 como archivos .drawio editables, con notacion Larman/UML 2.5 estricta.
-Los 8 estan implementados; DC-06, DC-07 y DC-08 cubren RF-03, RF-04 y RF-06
-oficiales respectivamente:
+DC-06, DC-07 y DC-08 cubren RF-03, RF-04 y RF-06 oficiales respectivamente;
+DC-09 cubre RNF-03 oficial:
 
 - objetos como rectangulos con nombre subrayado (instancia : Clase o :Clase)
 - UN enlace sin flecha entre cada par de objetos que colabora, SIEMPRE
@@ -22,7 +22,7 @@ oficiales respectivamente:
   que no cruza ningun otro objeto
 
 Uso: C:\\Nexora\\venv\\Scripts\\python.exe gen_drawio.py
-Escribe docs/diagramas/colaboracion/08_colaboracion_dc0N.drawio (N=1..8).
+Escribe docs/diagramas/colaboracion/08_colaboracion_dc0N.drawio (N=1..9).
 """
 from __future__ import annotations
 
@@ -477,7 +477,7 @@ def dc01() -> Diagram:
             "ws",
             "backend",
             [
-                Msg("2.1", "frames (JSON/binario)", "ab"),
+                Msg("2.1", "frames", "ab"),
                 Msg("2.1.3", "enviarPrediccion({sign, confidence, top3})", "ba"),
             ],
         ),
@@ -496,7 +496,7 @@ def dc01() -> Diagram:
             "mp",
             250,
             60,
-            "useMediaPipeTasks es intercambiable\ncon ?mp=tasks (mismo contrato\nonFrame); useMediaPipe legado\nes el pipeline por defecto.",
+            "Extrae landmarks de manos, pose\ny rostro (blendshapes) en cada\nframe mediante MediaPipe.",
             210,
             70,
         )
@@ -648,7 +648,7 @@ def dc05() -> Diagram:
         Obj("handler", "captureHandlerRef (frame handler)", 380, 80, 250, 46),
         Obj("backend", "capture : app.py", 60, 380, 190, 46),
         Obj("validation", "capture_validation", 380, 380, 230, 46),
-        Obj("fs", "dataset/custom(_tasks)/<etiqueta>/*.npy", 20, 650, 280, 46),
+        Obj("fs", "dataset/custom/<etiqueta>/*.npy", 20, 650, 280, 46),
     ]
     links = [
         Link("capture", "handler", [Msg("1", "recordOneSample()", "ab")]),
@@ -659,7 +659,7 @@ def dc05() -> Diagram:
             "validation",
             [
                 Msg("2.1", "ok := validate_capture_label(label)", "ab"),
-                Msg("2.2", "blendshapes := validate_capture_blendshapes(mode, T, blendshapes)", "ab"),
+                Msg("2.2", "blendshapes := validate_capture_blendshapes(T, blendshapes)", "ab"),
             ],
         ),
         Link("backend", "fs", [Msg("2.3", "np.save(frames)", "ab")]),
@@ -794,8 +794,49 @@ def dc08() -> Diagram:
     )
 
 
+# ---------------------------------------------------------------------------
+# DC-09 — limpiarConversacion() — realiza CU-12 (RNF-03 oficial)
+# 2-row layout, misma familia que DC-04/DC-06: fila 1 controls->chatRec->
+# sendAudit->backend en cadena horizontal recta; fila 2 bc/fileAudit debajo
+# de chatRec/backend (mismo centro x, enlace vertical directo, sin
+# quiebres); chatPac a la izquierda de bc en la fila 2 (horizontal recto).
+# ---------------------------------------------------------------------------
+def dc09() -> Diagram:
+    objects = [
+        Obj("controls", "RecepcionPage", 0, 60, 230, 56),
+        Obj("chatRec", "useChatChannel (Recepción)", 0, 230, 230, 56),
+        Obj("bc", "BroadcastChannel", 0, 400, 230, 56),
+        Obj("chatPac", "useChatChannel (Paciente)", 0, 570, 230, 56),
+        Obj("sendAudit", "sendAudit() : audit.ts", 360, 230, 200, 56),
+        Obj("backend", "audit_event : app.py", 360, 400, 200, 56),
+        Obj("fileAudit", "logs/audit.jsonl", 360, 570, 200, 56),
+    ]
+    links = [
+        Link("controls", "chatRec", [Msg("1", "clearHistory()", "ab")]),
+        Link("chatRec", "bc", [Msg("1.1", "postMessage({type:'CLEAR'})", "ab")]),
+        Link("bc", "chatPac", [Msg("1.1.1", "onmessage(CLEAR)", "ab")]),
+        Link("chatRec", "sendAudit", [Msg("1.2", "sendAudit('fin_atencion')", "ab")]),
+        Link("sendAudit", "backend", [Msg("1.2.1", "POST /audit(payload)", "ab")]),
+        Link(
+            "backend",
+            "backend",
+            [Msg("1.2.2", "_log_audit('fin_atencion')", "ab")],
+            self_loop=True,
+            self_side="right",
+        ),
+        Link("backend", "fileAudit", [Msg("1.2.3", "_append_jsonl(record)", "ab")]),
+    ]
+    return Diagram(
+        "08_colaboracion_dc09",
+        "DC-09 — limpiarConversacion() — realiza CU-12",
+        objects,
+        links,
+        title_w=560,
+    )
+
+
 def main():
-    for build in (dc01, dc02, dc03, dc04, dc05, dc06, dc07, dc08):
+    for build in (dc01, dc02, dc03, dc04, dc05, dc06, dc07, dc08, dc09):
         d = build()
         xml = render(d)
         out_path = os.path.join(OUT_DIR, f"{d.name}.drawio")

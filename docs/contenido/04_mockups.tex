@@ -12,14 +12,12 @@ Esta sección presenta los \textbf{mockups} (bocetos de interfaz) de las
 cinco pantallas de LSA Salud, en fidelidad baja a media, sin colores de
 marca ni tipografía definitiva: el objetivo es comunicar la disposición de
 la información y las interacciones disponibles, no el diseño visual final
-(que sí existe en la implementación real, \texttt{web/app/**/page.tsx} y
-\texttt{web/components/**}, con estilos de Tailwind CSS, para las cuatro
-pantallas ya implementadas). Los wireframes se generaron con la notación
-\textbf{Salt} de PlantUML a partir de una lectura directa de esos
-componentes, de modo que cada elemento mostrado corresponde a un elemento
-real de la interfaz implementada, incluida P-05 (Diálogo de
-Consentimiento, RF-03 oficial), leída directamente de
-\texttt{web/app/paciente/page.tsx}.
+(que corresponde a la interfaz construida en \texttt{web/app/**/page.tsx} y
+\texttt{web/components/**}, con estilos de Tailwind CSS). Los wireframes se
+generan con la notación \textbf{Salt} de PlantUML a partir de la estructura
+real de esos componentes, de modo que cada elemento mostrado corresponde a
+un elemento real de la interfaz, incluida P-05 (Diálogo de Consentimiento,
+RF-03 oficial), definida en \texttt{web/app/paciente/page.tsx}.
 
 Cada elemento relevante de una pantalla está marcado con un \textbf{callout}
 numerado entre paréntesis --(1), (2), (3)...--, único dentro de esa pantalla.
@@ -160,6 +158,11 @@ dictado de voz.
         solo sobre las burbujas del paciente en el panel (3); dispara CU-10
         (Reportar Traducción Incorrecta o Ambigua, RF-06.1), con los mismos
         estados que en P-02. \\
+        (9) & Botón ``Finalizar atención''. Lo presiona el personal de
+        recepción o enfermería al terminar la atención de un paciente;
+        borra la conversación mostrada en las dos caras de la estación
+        (Paciente y Recepción) y la deja lista para el próximo paciente,
+        sin dejar datos persistidos (CU-12, RNF-03 oficial). \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -214,7 +217,7 @@ nuevas muestras de entrenamiento para el modelo de reconocimiento.
 
 % ============================================================================
 \subsection{P-05 --- Diálogo de Consentimiento}
-\textit{Implementado. Cubre el requisito oficial RF-03.}
+\textit{Cubre el requisito oficial RF-03.}
 
 Diálogo modal renderizado dentro de \texttt{PacientePage}
 (\texttt{web/app/paciente/page.tsx}), superpuesto a \texttt{/paciente}

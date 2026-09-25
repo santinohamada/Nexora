@@ -35,7 +35,7 @@ fi
 (
   cd diagramas/colaboracion
   "$PYTHON" gen_drawio.py
-  for n in 01 02 03 04 05 06 07 08; do
+  for n in 01 02 03 04 05 06 07 08 09; do
     "$DRAWIO" --export --format pdf --crop \
       --output "../../img/08_colaboracion_dc$n.pdf" \
       "08_colaboracion_dc$n.drawio"
@@ -57,6 +57,9 @@ fi
   "$PYTHON" gen_vista_desarrollo.py
   "$DRAWIO" --export --format pdf --crop \
     --output "../../img/06_vista_desarrollo.pdf" "06_vista_desarrollo.drawio"
+  "$PYTHON" gen_vista_fisica.py
+  "$DRAWIO" --export --format pdf --crop \
+    --output "../../img/06_vista_fisica.pdf" "06_vista_fisica.drawio"
 )
 
 (

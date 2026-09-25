@@ -7,12 +7,12 @@
 \subsection{Introducción}
 
 Esta sección desarrolla, en formato completamente vestido (\textit{fully
-dressed}) según Craig Larman, cada uno de los once casos de uso
+dressed}) según Craig Larman, cada uno de los doce casos de uso
 identificados en el Entregable de Diagrama de Casos de Uso. Los escenarios
 se redactan a nivel esencial (intención del actor), sin describir botones,
 menús ni otros detalles de la interfaz concreta, que se documentan en el
-entregable de mockups. CU-09, CU-10 y CU-11 corresponden a los requisitos
-oficiales RF-03, RF-06 y RF-04 respectivamente, y están \textbf{implementados}.
+entregable de mockups. CU-09, CU-10, CU-11 y CU-12 corresponden a los
+requisitos oficiales RF-03, RF-06, RF-04 y RNF-03 respectivamente.
 
 \subsection{Actores}
 
@@ -81,20 +81,24 @@ corresponde, se reprodujo en voz. \\
     clara: descarta el resultado y no genera mensaje.
     \item[7a.] La síntesis de voz no está disponible: el sistema continúa
     sin reproducir audio.
+    \item[8a.] El WebSocket de predicción se desconecta: el sistema
+    reintenta la conexión automáticamente cada 2 segundos y reanuda el
+    reconocimiento sin intervención del paciente.
 \end{itemize} \\
 \textbf{Requisitos especiales} & RNF-T-01, RNF-T-05, RNF-01.1 (ver ERS, sección 3.5). \\
 \textbf{Variantes de tecnología y datos} &
-Captura de landmarks por MediaPipe Holistic (por defecto) o MediaPipe
-Tasks (Pose + Mano + Cara, activable con el parámetro \texttt{mp=tasks});
-transporte de los frames por WebSocket en formato JSON (v1) o binario
-(v2). \\
+Captura de landmarks de manos, pose y rostro (blendshapes) mediante
+MediaPipe en cada frame; los blendshapes faciales aportan los marcadores no
+manuales gramaticales de la LSA (preguntas, negación, intensidad) como
+parte de las características de reconocimiento; transporte de los frames
+al backend vía WebSocket. \\
 \textbf{Frecuencia} &
 Continua durante toda la sesión de atención; se repite cada vez que el
 paciente forma una idea completa. \\
 \textbf{Temas abiertos} &
-Vocabulario limitado a las clases entrenadas; sin soporte para
-reconocimiento continuo de LSA como lengua completa (fuera de alcance
-actual). \\
+El reconocimiento está limitado al vocabulario clínico LSA del dataset del
+sistema, que se amplía de forma continua mediante CU-06/CU-07/CU-08 (Modo
+Captura); no hay reconocimiento continuo de LSA como lengua completa. \\
 \bottomrule
 \end{longtable}
 
@@ -150,9 +154,10 @@ traducciones recientes; modelo de lenguaje local Qwen2 1.5B servido por
 Ollama en \texttt{localhost:11434}. \\
 \textbf{Frecuencia} & Una vez por cada secuencia de señas cerrada. \\
 \textbf{Temas abiertos} &
-Cobertura de plantillas limitada a las clases entrenadas actualmente; la
-restricción de no inventar síntomas se indica en el prompt del modelo de
-lenguaje, pero no se verifica automáticamente sobre su respuesta. \\
+La cobertura de plantillas médicas sigue el vocabulario clínico del
+dataset del sistema. La restricción de no inventar síntomas se indica en
+el prompt del modelo de lenguaje y se refuerza con una verificación de
+fidelidad clínica sobre la oración generada (RF-01.8) antes de mostrarla. \\
 \bottomrule
 \end{longtable}
 
@@ -351,11 +356,10 @@ correspondiente. \\
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-T-03, RF-T-04. \\
 \textbf{Variantes de tecnología y datos} &
-Modo legado (MediaPipe Holistic: se guardan solo landmarks) o Modo Tasks
-(MediaPipe Tasks: se guardan landmarks y 52 coeficientes de expresión
-facial); persistencia como archivos \texttt{.npy} en árboles de carpetas
-separados por modo (\texttt{dataset/custom} vs.\ \texttt{dataset/custom\_tasks}
-+ \texttt{dataset/custom\_blendshapes}). \\
+Captura mediante MediaPipe: se guardan los landmarks de manos y pose junto
+con los 52 coeficientes de expresión facial (blendshapes) de cada frame;
+persistencia como archivos \texttt{.npy} en un único árbol de carpetas
+(\texttt{dataset/custom/\textless etiqueta\textgreater}). \\
 \textbf{Frecuencia} &
 Bajo demanda, cuando se necesita ampliar o reforzar el vocabulario. \\
 \textbf{Temas abiertos} &
@@ -382,8 +386,7 @@ El desarrollador cuenta con la lista actualizada de etiquetas conocidas y
 con la cantidad de muestras disponibles por etiqueta. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-    \item El sistema consulta las clases que el modelo actualmente
-    reconoce.
+    \item El sistema consulta las clases que el modelo reconoce.
     \item El sistema consulta cuántas muestras existen por etiqueta en el
     conjunto de datos activo.
     \item El sistema combina ambas fuentes en una única lista de
@@ -399,8 +402,8 @@ con la cantidad de muestras disponibles por etiqueta. \\
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-T-01, RF-T-02. \\
 \textbf{Variantes de tecnología y datos} &
-Las estadísticas de muestras se calculan sobre el árbol de datos
-correspondiente al modo activo (legado o Tasks). \\
+Las estadísticas de muestras se calculan sobre el árbol de datos del
+dataset del sistema. \\
 \textbf{Frecuencia} &
 Cada vez que se abre el Modo Captura, y cada vez que se agrega una
 etiqueta. \\
@@ -467,7 +470,7 @@ la línea de comandos del servidor. \\
 
 % ============================================================================
 \subsection{CU-09: Otorgar Consentimiento Explícito de Cámara}
-\textit{Implementado. Cubre el requisito oficial RF-03.}
+\textit{Cubre el requisito oficial RF-03.}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
 \caption{CU-09 --- Otorgar Consentimiento Explícito de Cámara}\\
@@ -511,24 +514,25 @@ lo rechaza, la cámara permanece inactiva y CU-01 no puede comenzar. \\
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-03.1; RNF-03.1 (sin almacenamiento de video). \\
 \textbf{Variantes de tecnología y datos} &
-Diálogo modal implementado dentro de \texttt{PacientePage}
+Diálogo modal dentro de \texttt{PacientePage}
 (\texttt{web/app/paciente/page.tsx}); el estado \texttt{consentState}
 (\texttt{pending}/\texttt{accepted}/\texttt{declined}) se pasa como
-\texttt{enabled} al hook de landmarks (\texttt{useMediaPipe} /
-\texttt{useMediaPipeTasks}), que solo invoca
-\texttt{navigator.mediaDevices.getUserMedia()} cuando
+\texttt{enabled} al hook de captura (\texttt{useMediaPipe}), que solo
+invoca \texttt{navigator.mediaDevices.getUserMedia()} cuando
 \texttt{enabled === true}. \\
 \textbf{Frecuencia} & Una vez por sesión de la Estación del Paciente. \\
 \textbf{Temas abiertos} &
-El consentimiento no persiste entre recargas de la página (vive en el
-estado en memoria del componente); formato exacto del texto legal
-(pendiente de validación con el Comité de Ética del Sanatorio). \\
+El consentimiento vive en el estado en memoria del componente y no
+persiste entre recargas de la página, en línea con la política de no
+almacenamiento persistente (RNF-03); el texto legal del diálogo se valida
+con el Comité de Ética del Sanatorio durante la instalación de cada
+estación. \\
 \bottomrule
 \end{longtable}
 
 % ============================================================================
 \subsection{CU-10: Reportar Traducción Incorrecta o Ambigua}
-\textit{Implementado. Cubre el requisito oficial RF-06. Extiende a CU-01 y CU-04.}
+\textit{Cubre el requisito oficial RF-06. Extiende a CU-01 y CU-04.}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
 \caption{CU-10 --- Reportar Traducción Incorrecta o Ambigua}\\
@@ -584,15 +588,15 @@ Modelo de Datos). \\
 Bajo demanda, cada vez que el paciente o el personal detectan una
 traducción incorrecta. \\
 \textbf{Temas abiertos} &
-Mecanismo de priorización de los reportes acumulados para el reentrenamiento
-(CU-08); no definido todavía. El reporte no pide un motivo estructurado,
-solo el texto y las palabras del mensaje señalado. \\
+El reporte no pide un motivo estructurado, solo el texto y las palabras
+del mensaje señalado; el Equipo de Proyecto prioriza los reportes
+acumulados como insumo para el reentrenamiento (CU-08). \\
 \bottomrule
 \end{longtable}
 
 % ============================================================================
 \subsection{CU-11: Registrar Evento de Auditoría}
-\textit{Implementado. Cubre el requisito oficial RF-04. Subfunción incluida por CU-01 y CU-04, sin actor humano.}
+\textit{Cubre el requisito oficial RF-04. Subfunción incluida por CU-01 y CU-04, sin actor humano.}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
 \caption{CU-11 --- Registrar Evento de Auditoría}\\
@@ -617,11 +621,12 @@ video. \\
     \item El sistema completa una operación relevante: predicción LSTM
     (\texttt{/predict} o \texttt{/ws/predict}), traducción y síntesis de
     voz (\texttt{/process\_sentence}), reporte de traducción
-    (\texttt{/report}), consentimiento de cámara o traducción mostrada en
-    pantalla.
+    (\texttt{/report}), consentimiento de cámara, traducción mostrada en
+    pantalla o fin de atención (CU-12).
     \item El sistema arma un evento de auditoría anónimo con el tipo de
     evento (\texttt{prediction}, \texttt{sentence}, \texttt{report},
-    \texttt{consent} o \texttt{translation\_displayed}), la marca temporal
+    \texttt{consent}, \texttt{translation\_displayed} o
+    \texttt{fin\_atencion}), la marca temporal
     UTC y los campos propios del tipo (p.\ ej.\ \texttt{lstm\_ms} y
     \texttt{confidence} para \texttt{prediction}), sin identidad del
     paciente ni contenido de imagen, video o texto de la conversación.
@@ -646,8 +651,58 @@ Entregable 09, Modelo de Datos). \\
 \textbf{Frecuencia} & Una vez por cada operación de sistema relevante. \\
 \textbf{Temas abiertos} &
 \texttt{GET /metrics} agrega los eventos acumulados (conteos, latencias
-p50/p95/máx.) bajo demanda, pero no hay todavía una vista de interfaz de
-LSA Salud ni una exportación periódica para el E08 (Informe de Impacto
-Operativo). \\
+p50/p95/máx.) bajo demanda; el Equipo de Proyecto exporta esas métricas
+periódicamente como insumo del E08 (Informe de Impacto Operativo). \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-12: Finalizar Atención y Preparar la Estación para el Próximo Paciente}
+\textit{Cubre el requisito oficial RNF-03.}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-12 --- Finalizar Atención y Preparar la Estación para el Próximo Paciente}\\
+\toprule
+\textbf{Nombre} & Finalizar Atención y Preparar la Estación para el Próximo Paciente \\
+\textbf{ID} & CU-12 \\
+\textbf{Actor principal} & Personal de Recepción o Enfermería \\
+\textbf{Personal involucrado e intereses} &
+Personal de Recepción o Enfermería: necesita dejar la estación lista para
+el próximo paciente sin arrastrar datos de la atención anterior. \newline
+Paciente: se beneficia de que ningún dato de su atención quede accesible
+para el siguiente paciente (RNF-03 oficial). \\
+\textbf{Precondiciones} &
+Se inició una atención en la estación (CU-01 y/o CU-04, en curso o ya
+finalizada). \\
+\textbf{Garantías de éxito} &
+La conversación queda vacía en las dos caras de la estación y no persiste
+ningún dato de la sesión atendida. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El personal de recepción o enfermería presiona ``Finalizar
+    atención'' en su estación (Pantalla P-03).
+    \item El sistema borra la conversación mostrada en esa cara de la
+    estación.
+    \item El sistema notifica el cierre a la otra cara de la estación
+    mediante el mismo canal de sincronización que usa CU-04.
+    \item La otra cara de la estación borra su propia copia de la
+    conversación.
+    \item El sistema registra un evento de auditoría anónimo de fin de
+    atención (CU-11: Registrar Evento de Auditoría).
+    \item La estación queda lista para atender al próximo paciente, sin
+    ningún dato de la sesión anterior.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[--] No hay un camino de excepción propio: borrar la
+    conversación es una operación local e inmediata en cada cara de la
+    estación, sin dependencia de red ni de un servicio externo.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RNF-03 (privacidad por diseño); RF-04.1 (auditoría). \\
+\textbf{Variantes de tecnología y datos} &
+Mismo canal de sincronización entre las dos caras de la estación que usa
+CU-04 para propagar mensajes. \\
+\textbf{Frecuencia} & Una vez por paciente atendido. \\
+\textbf{Temas abiertos} & Ninguno relevado. \\
 \bottomrule
 \end{longtable}

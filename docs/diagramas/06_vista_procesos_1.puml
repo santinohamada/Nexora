@@ -9,10 +9,10 @@ participant "Navegador\nEstación Paciente" as NavP
 participant "FastAPI\n(event loop)" as EventLoop
 participant "LSTM" as LSTM
 
-== Captura y predicción (RF-01 a RF-04) ==
+== Captura y predicción (RF-01, RF-05) ==
 Paciente -> NavP : realiza una seña
 loop mientras la cámara está activa
-  NavP -> NavP : captura frame\n(MediaPipe Holistic / Tasks)
+  NavP -> NavP : captura frame\n(landmarks + blendshapes, MediaPipe)
   NavP -> NavP : acumula en buffer (hasta 45)
 end
 NavP -> EventLoop : WS /ws/predict\n(cada 8 frames)

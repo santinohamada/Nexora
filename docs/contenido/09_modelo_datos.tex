@@ -14,13 +14,15 @@ Esta decisión de diseño responde a las siguientes razones, verificables
 contra el código y contra la ERS de Fase 1:
 
 \begin{itemize}
-    \item \textbf{Escala de despliegue.} RNF-T-02 establece que el sistema
-    opera de forma autónoma en una única PC local, con un par
-    paciente-personal por instancia de backend. No existe un escenario
-    de múltiples instancias concurrentes escribiendo sobre el mismo
-    dataset, por lo que los problemas que una base de datos relacional
-    resuelve (control de concurrencia entre muchos escritores, replicación,
-    transacciones distribuidas) no se presentan en este contexto.
+    \item \textbf{Escala de despliegue.} RNF-T-02 establece que cada
+    estación fija opera de forma autónoma en su propia PC local, con un
+    par paciente-personal por instancia de backend y sin datos
+    compartidos con las demás estaciones del sistema (admisión, recepción,
+    triaje, guardia). No existe un escenario de múltiples instancias
+    concurrentes escribiendo sobre el mismo dataset, por lo que los
+    problemas que una base de datos relacional resuelve (control de
+    concurrencia entre muchos escritores, replicación, transacciones
+    distribuidas) no se presentan en este contexto.
 
     \item \textbf{Formato nativo del modelo.} Las muestras de entrenamiento
     se capturan y se consumen como arreglos \texttt{numpy}
@@ -74,17 +76,20 @@ lo que efectivamente queda grabado en disco.
 
 \diagrama{09_er_conceptual}{\textwidth}{Diagrama Entidad-Relación conceptual de la persistencia de LSA Salud}{fig:dat-er-conceptual}
 
-Se agregan tres conceptos sin equivalente directo en el Modelo de Dominio,
+Se agregan dos conceptos sin equivalente directo en el Modelo de Dominio,
 porque pertenecen al diseño de persistencia y no al problema de negocio:
-\textit{MuestraDeBlendshapes} (los coeficientes faciales que MediaPipe Tasks
-captura junto con cada muestra de landmarks), \textit{VocabularioDelModelo}
-(la lista ordenada de clases que un \textit{ModeloDeReconocimiento} concreto
-es capaz de reconocer) y \textit{ArchivoDeVoz} (el modelo de síntesis de voz
-Piper, un activo de terceros pre-entrenado, sin relación con el resto de las
-entidades). Quedan fuera de este modelo, por no persistirse, los conceptos
-\textit{Conversación}, \textit{Mensaje} y los cachés de traducción y de
-audio; se documentan igualmente en la Sección~\ref{sec:dat-mapeo-fisico}
-para dejar constancia explícita de que fueron considerados y descartados.
+\textit{VocabularioDelModelo} (la lista ordenada de clases que un
+\textit{ModeloDeReconocimiento} concreto es capaz de reconocer) y
+\textit{ArchivoDeVoz} (el modelo de síntesis de voz Piper, un activo de
+terceros pre-entrenado, sin relación con el resto de las entidades). Cada
+\textit{MuestraDeEntrenamiento} persiste, en un mismo registro, tanto los
+landmarks de manos y pose como los blendshapes faciales del gesto: MediaPipe
+extrae ambas señales en una única pasada por frame, por lo que no existe una
+entidad de blendshapes separada. Quedan fuera de este modelo, por no
+persistirse, los conceptos \textit{Conversación}, \textit{Mensaje} y los
+cachés de traducción y de audio; se documentan igualmente en la
+Sección~\ref{sec:dat-mapeo-fisico} para dejar constancia explícita de que
+fueron considerados y descartados.
 
 Se agregan además dos entidades que cubren los requisitos oficiales RF-03,
 RF-04 y RF-06: \textit{EventoDeAuditoría} (RF-04.1, cuyo campo \texttt{tipo}
@@ -113,16 +118,16 @@ directorio del sistema de archivos local:
 \begin{itemize}
     \item La clave primaria compuesta de \textit{MuestraDeEntrenamiento}
     (\texttt{etiqueta} + \texttt{timestamp\_ms}) se materializa como la ruta
-    física \texttt{<árbol>/<etiqueta>/<timestamp\_ms>.npy}: \texttt{etiqueta}
-    es el nombre del subdirectorio y \texttt{timestamp\_ms} es el nombre del
-    archivo, sin extensión adicional.
-    \item \textit{MuestraDeBlendshapes} comparte la misma clave
-    (\texttt{etiqueta} + \texttt{timestamp\_ms}) con la muestra de landmarks
-    que complementa: ambos archivos \texttt{.npy} se emparejan por convención
-    de nombre, no por una clave foránea explícita almacenada en ningún lado.
+    física \texttt{dataset/\allowbreak{}custom/\allowbreak{}<etiqueta>/\allowbreak{}<timestamp\_ms>.npy}
+    para los landmarks, con los blendshapes del mismo gesto en el archivo
+    hermano
+    \texttt{dataset/\allowbreak{}custom/\allowbreak{}<etiqueta>/\allowbreak{}<timestamp\_ms>.blendshapes.npy}:
+    \texttt{etiqueta} es el nombre del subdirectorio y \texttt{timestamp\_ms}
+    es el nombre base compartido por ambos archivos, emparejados por
+    convención de nombre y no por una clave foránea almacenada en ningún
+    lado.
     \item \textit{ClaseDeSeña} no tiene un archivo propio: es un valor
-    derivado (el nombre de cada subdirectorio bajo \texttt{dataset/custom/}
-    o \texttt{dataset/custom\_tasks/}).
+    derivado (el nombre de cada subdirectorio bajo \texttt{dataset/custom/}).
     \item \textit{VocabularioDelModelo} es el arreglo JSON completo de
     \texttt{models/custom\_classes.json}; el ``índice'' de cada fila es la
     posición dentro del arreglo, que a su vez es el índice de salida de la
@@ -158,11 +163,9 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
     timestamp\_ms & \texttt{int64} & epoch ms (nombre de archivo) &
     Generado por el backend como \texttt{int(time.time() * 1000)}; único
     dentro de la carpeta de la etiqueta (dos capturas en el mismo
-    milisegundo sobrescribirían el archivo previo). \\
-
-    arbol & \texttt{str} & \texttt{"legacy"} \textbar\ \texttt{"tasks"} &
-    Determina la carpeta raíz: \texttt{dataset/custom/} o
-    \texttt{dataset/custom\_tasks/}. \\
+    milisegundo sobrescribirían el archivo previo); es el nombre base
+    compartido por el archivo de landmarks y el de blendshapes de la misma
+    muestra. \\
 
     frames & \texttt{float32} & \texttt{(45, 75, 4)} & El backend exige un
     mínimo de 5 frames por muestra (\texttt{len(frames) < 5} rechaza la
@@ -170,33 +173,18 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
     por lo que en la práctica la forma es \texttt{(45, 75, 4)}. Todos los
     valores deben ser finitos (\texttt{np.isfinite}); cada frame tiene 75
     landmarks con 4 componentes (\texttt{x, y, z, visibility}). \\
-    \bottomrule
-    \caption{Diccionario de datos — MuestraDeEntrenamiento (landmarks)}
-    \label{tab:dat-dic-muestra}
-\end{longtable}
 
-\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
-    \toprule
-    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
-    \midrule
-    \endhead
-    etiqueta & \texttt{str} & directorio &
-    Igual a la etiqueta de la muestra de landmarks que complementa; misma
-    expresión regular. \\
-
-    timestamp\_ms & \texttt{int64} & epoch ms (nombre de archivo) &
-    Debe coincidir exactamente con el \texttt{timestamp\_ms} de la muestra
-    de landmarks emparejada (mismo valor generado en la misma petición). \\
-
-    blendshapes & \texttt{float32} & \texttt{(45, 52)} & Solo existe cuando
-    \texttt{modo == "tasks"}. La cantidad de filas debe igualar la cantidad
-    de frames de landmarks (\texttt{frame\_count}); cada fila debe tener
-    exactamente 52 coeficientes (\texttt{BLENDSHAPE\_COUNT}); todos los
-    valores deben ser finitos (validado por
+    blendshapes & \texttt{float32} & \texttt{(45, 52)} &
+    Coeficientes faciales capturados en la misma pasada de MediaPipe que los
+    landmarks, con los marcadores no manuales gramaticales de la LSA
+    (preguntas, negación, intensidad); la cantidad de filas debe igualar la
+    cantidad de frames de landmarks (\texttt{frame\_count}), cada fila debe
+    tener exactamente 52 coeficientes (\texttt{BLENDSHAPE\_COUNT}), y todos
+    los valores deben ser finitos (validado por
     \texttt{validate\_capture\_blendshapes}). \\
     \bottomrule
-    \caption{Diccionario de datos — MuestraDeBlendshapes (solo modo Tasks)}
-    \label{tab:dat-dic-blendshapes}
+    \caption{Diccionario de datos — MuestraDeEntrenamiento (landmarks y blendshapes)}
+    \label{tab:dat-dic-muestra}
 \end{longtable}
 
 \begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
@@ -223,10 +211,7 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
     \midrule
     \endhead
     archivo & \texttt{str} & nombre de archivo \texttt{.pth} &
-    \texttt{lstm\_v1\_<N>frames.pth} (por defecto, N = 45),
-    \texttt{lstm\_v2\_24frames.pth} (si \texttt{LSTM\_MAX\_FRAMES=24}), o
-    \texttt{lstm.pth} (modelo legado, usado solo si no existe ninguno de
-    los anteriores). \\
+    \texttt{models/lstm.pth}: mejor checkpoint del último reentrenamiento. \\
 
     contenido & binario & \texttt{state\_dict} serializado &
     Escrito con \texttt{torch.save} al finalizar el entrenamiento, sobre el
@@ -234,9 +219,7 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
     con PyTorch. \\
 
     frames\-Por\-Muestra & \texttt{int} & escalar &
-    45 por defecto, o 24 si la variable de entorno
-    \texttt{LSTM\_MAX\_FRAMES=24}; determina cuántos frames espera el
-    modelo por muestra al predecir. \\
+    45 (ventana fija de reconocimiento, ver RF-01.3). \\
     \bottomrule
     \caption{Diccionario de datos — ModeloDeReconocimiento}
     \label{tab:dat-dic-modelo}
@@ -302,7 +285,9 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
     \texttt{chatHistory} vive solo como estado de React de cada pestaña y
     se sincroniza entre pestañas del mismo navegador mediante
     \texttt{Broadcast\allowbreak Channel("nexora-chat")}; no hay backend ni disco
-    involucrados, y se pierde al cerrar o recargar la pestaña. \\
+    involucrados. Se pierde al cerrar o recargar la pestaña, y el personal
+    de recepción o enfermería lo borra explícitamente en ambas caras de la
+    estación al finalizar cada atención (CU-12). \\
     \bottomrule
     \caption{Diccionario de datos — Conversación / Mensaje (no persistido)}
     \label{tab:dat-dic-conversacion}
@@ -311,7 +296,7 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
 \subsubsection{Entidades de consentimiento, auditoría y reporte (RF-03/04/06 oficiales)}
 
 Las Tablas~\ref{tab:dat-dic-auditoria} y~\ref{tab:dat-dic-reporte} detallan
-las dos entidades implementadas. A diferencia de \textit{MuestraDeEntrenamiento}
+estas dos entidades. A diferencia de \textit{MuestraDeEntrenamiento}
 (un archivo \texttt{.npy} por muestra), cada una es una \textbf{línea JSON}
 dentro de un único archivo compartido y de solo anexado
 (\texttt{logs/audit.jsonl}, \texttt{logs/reports.jsonl}): no hay clave
@@ -324,9 +309,10 @@ archivos (\texttt{\_append\_jsonl} en \texttt{app.py}).
     \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
     \midrule
     \endhead
-    tipo & \texttt{str} & \texttt{"prediction"} \textbar\ \texttt{"sentence"} \textbar\ \texttt{"report"} \textbar\ \texttt{"consent"} \textbar\ \texttt{"translation\_displayed"} &
+    tipo & \texttt{str} & \texttt{"prediction"} \textbar\ \texttt{"sentence"} \textbar\ \texttt{"report"} \textbar\ \texttt{"consent"} \textbar\ \texttt{"translation\_displayed"} \textbar\ \texttt{"fin\_atencion"} &
     Identifica el evento; \texttt{"consent"} cubre RF-03.1 (no existe una
-    entidad ni un archivo de consentimiento separados). \\
+    entidad ni un archivo de consentimiento separados) y
+    \texttt{"fin\_atencion"} cubre el cierre de atención de CU-12. \\
 
     timestamp & \texttt{str} & ISO 8601 UTC &
     Generado por \texttt{\_log\_audit} con
@@ -343,7 +329,8 @@ archivos (\texttt{\_append\_jsonl} en \texttt{app.py}).
     (\texttt{"accepted"}\textbar\texttt{"declined"}).
     \texttt{translation\_displayed}: \texttt{station}, \texttt{e2e\_ms}
     (validado finito, $0 \leq$ e2e\_ms $\leq$ 60000, por
-    \texttt{validate\_audit\_payload}). \\
+    \texttt{validate\_audit\_payload}).
+    \texttt{fin\_atencion}: \texttt{station}. \\
     \bottomrule
     \caption{Diccionario de datos — EventoDeAuditoría}
     \label{tab:dat-dic-auditoria}
@@ -392,16 +379,12 @@ intencionalmente sin persistir).
     \textbf{Entidad lógica} & \textbf{Patrón de ruta física} & \textbf{Formato de archivo} \\
     \midrule
     \endhead
-    Muestra\-De\-Entrenamiento (legado) &
+    Muestra\-De\-Entrenamiento (landmarks) &
     \texttt{dataset/\allowbreak custom/\allowbreak<etiqueta>/\allowbreak<timestamp\_ms>.npy} &
     numpy \texttt{float32} \texttt{(45,75,4)} \\
 
-    Muestra\-De\-Entrenamiento (Tasks, landmarks) &
-    \texttt{dataset/\allowbreak custom\_tasks/\allowbreak<etiqueta>/\allowbreak<timestamp\_ms>.npy} &
-    numpy \texttt{float32} \texttt{(45,75,4)} \\
-
-    Muestra\-De\-Blendshapes (Tasks) &
-    \texttt{dataset/\allowbreak custom\_blendshapes/\allowbreak<etiqueta>/\allowbreak<timestamp\_ms>.npy} &
+    Muestra\-De\-Entrenamiento (blendshapes) &
+    \texttt{dataset/\allowbreak custom/\allowbreak<etiqueta>/\allowbreak<timestamp\_ms>.blendshapes.npy} &
     numpy \texttt{float32} \texttt{(45,52)} \\
 
     Vocabulario\-Del\-Modelo &
@@ -409,9 +392,7 @@ intencionalmente sin persistir).
     JSON --- arreglo de strings \\
 
     Modelo\-De\-Reconocimiento &
-    \texttt{models/lstm\_v1\_<N>frames.pth} \textbar\
-    \texttt{models/lstm\_v2\_24frames.pth} \textbar\
-    \texttt{models/lstm.pth} (legado) &
+    \texttt{models/lstm.pth} &
     PyTorch \texttt{state\_dict} serializado \\
 
     Archivo\-De\-Voz &
@@ -447,19 +428,18 @@ intencionalmente sin persistir).
 \subsection{Migración futura a base de datos relacional (fuera de alcance)}
 
 El esquema basado en archivos descripto en este entregable cubre las
-necesidades actuales de LSA Salud (una instancia local, sin consultas
-relacionales, sin historial persistente de conversaciones). Si en el futuro
-el proyecto necesitara desplegar múltiples instancias concurrentes
+necesidades de LSA Salud (una instancia local por estación, sin consultas
+relacionales, sin historial persistente de conversaciones). Si el proyecto
+necesitara en algún momento desplegar múltiples instancias concurrentes
 compartiendo el mismo vocabulario y dataset, ofrecer reportes o consultas
 sobre las muestras capturadas (por ejemplo, filtrar por rango de fechas o
 por desarrollador que capturó cada muestra), o conservar un historial de
 conversaciones entre sesiones, esos requisitos sí justificarían introducir
 una base de datos relacional: los metadatos de cada muestra
-(\textit{etiqueta}, \textit{timestamp}, \textit{árbol}, quién la capturó)
-y el registro de \textit{Conversación}/\textit{Mensaje} son los candidatos
-naturales para migrar a tablas, mientras que los arreglos \texttt{.npy} y
-los pesos del modelo probablemente seguirían viviendo como archivos
-referenciados desde esas tablas (un patrón híbrido común para datos
-binarios de gran tamaño). Este análisis queda explícitamente fuera del
-alcance del sistema actual y no implica ningún compromiso de
-implementación.
+(\textit{etiqueta}, \textit{timestamp}, quién la capturó) y el registro de
+\textit{Conversación}/\textit{Mensaje} son los candidatos naturales para
+migrar a tablas, mientras que los arreglos \texttt{.npy} y los pesos del
+modelo probablemente seguirían viviendo como archivos referenciados desde
+esas tablas (un patrón híbrido común para datos binarios de gran tamaño).
+Este análisis queda explícitamente fuera del alcance del sistema descripto
+en este entregable y no implica ningún compromiso de implementación.

@@ -9,7 +9,7 @@ participant "FastAPI\n(threadpool Starlette)" as ThreadPool
 participant "Ollama\n(proceso local :11434)" as Ollama
 participant "Piper TTS\n(embebido, ONNX)" as Piper
 
-== Cierre de oración y traducción (RF-05, RF-06) ==
+== Cierre de oración y traducción (RF-01) ==
 NavP -> NavP : detectar cierre\n(idle >= 800 ms + quietud)
 NavP -> ThreadPool : POST /process_sentence
 note over ThreadPool
