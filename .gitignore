@@ -28,6 +28,8 @@ voices/
 web/public/models/
 web/public/mediapipe/
 
+# Runtime logs
+logs/
 docs/tools/*.jar
 docs/build/
 docs/_legacy/

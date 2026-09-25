@@ -120,6 +120,7 @@ export function useSentenceBuilder(
             id: Date.now(),
             role: "PACIENTE",
             text: data.natural_sentence,
+            words: sentence.split(" ").filter(Boolean),
             time: new Date().toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",

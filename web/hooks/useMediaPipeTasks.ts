@@ -23,6 +23,7 @@ declare global {
 type UseMediaPipeTasksOptions = {
   onFrame?: (frame: Frame, blendshapes?: number[]) => void;
   drawLandmarksOnCanvas?: boolean;
+  enabled?: boolean;
 };
 
 const MEDIAPIPE_STRIDE = 2;
@@ -30,7 +31,7 @@ const FPS_WINDOW = 60;
 const CAPTURE_WIDTH = 640;
 const CAPTURE_HEIGHT = 360;
 
-export function useMediaPipeTasks({ onFrame }: UseMediaPipeTasksOptions = {}) {
+export function useMediaPipeTasks({ onFrame, enabled = true }: UseMediaPipeTasksOptions = {}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const onFrameRef = useRef(onFrame);
@@ -106,6 +107,7 @@ export function useMediaPipeTasks({ onFrame }: UseMediaPipeTasksOptions = {}) {
 
   useEffect(() => {
     if (typeof navigator === "undefined") return;
+    if (!enabled) return;
     let cancelled = false;
     navigator.mediaDevices
       .getUserMedia({
@@ -116,7 +118,10 @@ export function useMediaPipeTasks({ onFrame }: UseMediaPipeTasksOptions = {}) {
         },
       })
       .then((s) => {
-        if (cancelled) return;
+        if (cancelled) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
         streamRef.current = s;
         setStream(s);
         if (videoRef.current) {
@@ -138,7 +143,7 @@ export function useMediaPipeTasks({ onFrame }: UseMediaPipeTasksOptions = {}) {
         streamRef.current = null;
       }
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     let cancelled = false;

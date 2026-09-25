@@ -18,9 +18,10 @@ const DRAWING_UTILS_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/drawin
 type UseMediaPipeOptions = {
   onFrame?: (frame: Frame) => void;
   drawLandmarksOnCanvas?: boolean;
+  enabled?: boolean;
 };
 
-export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMediaPipeOptions = {}) {
+export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true, enabled = true }: UseMediaPipeOptions = {}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const holisticRef = useRef<any>(null);
@@ -59,6 +60,8 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
   }, [drawLandmarksOnCanvas]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     let isComponentMounted = true;
     let retryTimeout: NodeJS.Timeout;
 
@@ -257,6 +260,10 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
             },
           })
           .then((stream) => {
+            if (!isComponentMounted) {
+              stream.getTracks().forEach((t) => t.stop());
+              return;
+            }
             streamRef.current = stream;
             setStream(stream);
             if (videoRef.current) {
@@ -302,7 +309,7 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true }: UseMedia
         streamRef.current = null;
       }
     };
-  }, []);
+  }, [enabled]);
 
   return { videoRef: setVideoNode, canvasRef, status, setStatus, error, stream };
 }
