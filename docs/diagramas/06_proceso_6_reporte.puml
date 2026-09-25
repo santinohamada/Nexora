@@ -1,0 +1,28 @@
+@startuml 06_proceso_6_reporte
+!include _estilo.iuml
+hide footbox
+skinparam maxMessageSize 160
+
+title Proceso 6 — Reporte de una traducción incorrecta (CU-10, RF-06)
+
+actor Paciente
+participant "Estación\ndel Paciente" as NavP
+participant "FastAPI\n(threadpool)" as API
+participant "Estación\nde Recepción" as NavR
+actor "Personal de\nRecepción o\nEnfermería" as Personal
+
+alt reporta el paciente
+  Paciente -> NavP : "Reportar traducción"\nen un mensaje traducido
+  NavP -> API : POST /report\n(texto, estación, palabras)
+  API --> NavP : ok
+  NavP -> Paciente : marca el mensaje\ncomo reportado
+else reporta el personal
+  Personal -> NavR : "Reportar traducción"\nen un mensaje traducido
+  NavR -> API : POST /report\n(texto, estación, palabras)
+  API --> NavR : ok
+  NavR -> Personal : marca el mensaje\ncomo reportado
+end
+API -> API : valida y agrega el caso\na logs/reports.jsonl
+API -> API : registra el evento 'report'
+
+@enduml

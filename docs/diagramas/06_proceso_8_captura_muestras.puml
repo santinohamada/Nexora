@@ -1,0 +1,25 @@
+@startuml 06_proceso_8_captura_muestras
+!include _estilo.iuml
+hide footbox
+skinparam maxMessageSize 160
+
+title Proceso 8 — Captura de muestras de entrenamiento (CU-06, CU-07)
+
+participant "Estación\n(modo captura)" as NavP
+participant "FastAPI\n(threadpool)" as API
+database "Archivos locales\n(dataset/)" as FS
+actor "Desarrollador de IA /\nEquipo de Proyecto" as Dev
+
+Dev -> NavP : selecciona o crea\nla seña a grabar
+Dev -> NavP : inicia la grabación\n(N repeticiones)
+loop por cada repetición
+  NavP -> NavP : cuenta regresiva y captura\nde 45 frames con blendshapes
+  NavP -> API : POST /capture\n(seña, frames, blendshapes)
+  API -> API : valida la etiqueta\ny la forma de los datos
+  API -> FS : guarda la muestra (.npy)
+end
+NavP -> API : GET /dataset_stats
+API --> NavP : muestras por seña
+NavP -> Dev : actualiza los contadores
+
+@enduml
