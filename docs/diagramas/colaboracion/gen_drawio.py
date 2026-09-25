@@ -436,69 +436,43 @@ def render(diagram: Diagram) -> str:
 # ---------------------------------------------------------------------------
 def dc01() -> Diagram:
     objects = [
-        Obj("buf", "recordedFrames : PacientePage (buffer)", 0, 60, 150, 56),
-        Obj("mp", ":useMediaPipe", -10, 140, 120, 44),
-        Obj("page", "handleFrame : PacientePage", 0, 270, 100, 64),
-        Obj("ws", "useSignWebSocket", 138, 270, 150, 64),
-        Obj("backend", "websocket_predict : app.py", 326, 270, 155, 64),
-        Obj("builder", "useSentenceBuilder", -35, 560, 170, 50),
-        Obj("top3", "TopPredictions", 180, 565, 110, 46),
-        Obj("lstm", "model : SignLanguageLSTM", 331, 560, 145, 64),
+        Obj("mp", ":useMediaPipe", 290, 60, 170, 56),
+        Obj("buf", "recordedFrames :\nPacientePage (buffer)", 0, 240, 160, 70),
+        Obj("page", "handleFrame :\nPacientePage", 290, 200, 170, 150),
+        Obj("builder", "useSentenceBuilder", 660, 239, 160, 56),
+        Obj("top3", "TopPredictions", 660, 307, 160, 56),
+        Obj("ws", "useSignWebSocket", 290, 470, 170, 56),
+        Obj("backend", "websocket_predict :\napp.py", 290, 650, 170, 64),
+        Obj("lstm", "model :\nSignLanguageLSTM", 290, 860, 170, 64),
     ]
-    page = next(o for o in objects if o.id == "page")
-    buf = next(o for o in objects if o.id == "buf")
     links = [
         Link("mp", "page", [Msg("1", "onFrame(frame)", "ab")]),
-        Link(
-            "page",
-            "buf",
-            [Msg("1.1", "push(frame)", "ab", seg=2)],
-            waypoints=[(85, 250), (190, 250), (190, 88)],
-            a_exit=("top", 0.85),
-            b_entry=("right", 0.5),
-        ),
+        Link("page", "buf", [Msg("1.1", "push(frame)", "ab")], a_exit=("left", 0.5), b_entry=("right", 0.5)),
         Link(
             "page",
             "builder",
-            [
-                Msg("1.2", "onFrameTick(frame)", "ab"),
-                Msg("2.2.2", "addWord(sign)", "ab"),
-            ],
+            [Msg("1.2", "onFrameTick(frame)", "ab"), Msg("2.2.2", "addWord(sign)", "ab")],
+            a_exit=("right", 0.45),
+            b_entry=("left", 0.5),
         ),
-        Link(
-            "page",
-            "ws",
-            [
-                Msg("2", "sendFrames(buffer)", "ab"),
-                Msg("2.2", "onMessage(prediction)", "ba"),
-            ],
-        ),
+        Link("page", "top3", [Msg("2.2.1", "actualizarDOM(top3)", "ab")], a_exit=("right", 0.9), b_entry=("left", 0.5)),
+        Link("page", "ws", [Msg("2", "sendFrames(buffer)", "ab"), Msg("2.2", "onMessage(prediction)", "ba")]),
         Link(
             "ws",
             "backend",
-            [
-                Msg("2.1", "frames", "ab"),
-                Msg("2.1.3", "enviarPrediccion({sign, confidence, top3})", "ba"),
-            ],
+            [Msg("2.1", "frames", "ab"), Msg("2.1.3", "enviarPrediccion({sign, confidence, top3})", "ba")],
         ),
-        Link("backend", "backend", [Msg("2.1.1", "data := _prepare_input(data)", "ab")], self_loop=True, self_side="top"),
+        Link("backend", "backend", [Msg("2.1.1", "data := _prepare_input(data)", "ab")], self_loop=True, self_side="right"),
         Link("backend", "lstm", [Msg("2.1.2", "logits := model(input_tensor)", "ab")]),
-        Link(
-            "page",
-            "top3",
-            [Msg("2.2.1", "actualizarDOM(top3)", "ab", seg=1)],
-            waypoints=[(10, 530), (235, 530)],
-            a_exit=("bottom", 0.1),
-        ),
     ]
     notes = [
         Note(
             "mp",
-            250,
-            60,
-            "Extrae landmarks de manos, pose\ny rostro (blendshapes) en cada\nframe mediante MediaPipe.",
-            210,
-            70,
+            520,
+            56,
+            "Extrae landmarks de manos, pose<br>y rostro (blendshapes) en cada<br>frame mediante MediaPipe.",
+            230,
+            64,
         )
     ]
     return Diagram(
@@ -511,50 +485,48 @@ def dc01() -> Diagram:
     )
 
 
-# ---------------------------------------------------------------------------
-# DC-02 — cerrarOracionYTraducir(secuencia) — realiza CU-01 / CU-02
-#
-# grid: backend is a cross-hub — templates straight N, ollama straight S,
-# cache straight E, builder straight W; self-loop tucked in the free
-# top-right corner (offset away from templates' centered N line).
-# ---------------------------------------------------------------------------
 def dc02() -> Diagram:
     objects = [
-        Obj("templates", "MEDICAL_TEMPLATES", 270, 60, 230, 46),
-        Obj("builder", "useSentenceBuilder", 70, 380, 180, 56),
-        Obj("backend", "process_sentence : app.py", 295, 380, 180, 56),
-        Obj("cache", "_translation_cache", 520, 380, 210, 56),
-        Obj("ollama", "Ollama (qwen2:1.5b)", 295, 700, 180, 46),
-        Obj("chat", "useChatChannel (Paciente)", 80, 700, 160, 46),
+        Obj("chat", "useChatChannel (Paciente)", 0, 60, 190, 56),
+        Obj("builder", "useSentenceBuilder", 0, 230, 190, 56),
+        Obj("backend", "process_sentence :\napp.py", 0, 420, 190, 340),
+        Obj("templates", "MEDICAL_TEMPLATES", 460, 419, 190, 56),
+        Obj("cache", "_translation_cache", 460, 494, 190, 56),
+        Obj("ollama", "Ollama (qwen2:1.5b)", 0, 960, 190, 56),
     ]
     links = [
+        Link("builder", "chat", [Msg("2", "sendMessage(mensaje)", "ab")]),
         Link("builder", "backend", [Msg("1", "POST /process_sentence({words})", "ab")]),
+        Link(
+            "backend",
+            "templates",
+            [Msg("1.2", "frase := _match_template(words)", "ab")],
+            a_exit=("right", 0.08),
+            b_entry=("left", 0.5),
+        ),
+        Link(
+            "cache",
+            "backend",
+            [Msg("1.3", "traduccion := _cache_get(clave)", "ba"), Msg("1.5", "_cache_put(clave, oracion)", "ba")],
+            a_exit=("left", 0.5),
+            b_entry=("right", 0.3),
+        ),
         Link(
             "backend",
             "backend",
             [Msg("1.1", "words := _normalize_words(words)", "ab")],
             self_loop=True,
-            self_side="bottom",
-            self_frac=(0.05, 0.30),
-        ),
-        Link("backend", "templates", [Msg("1.2", "frase := _match_template(words)", "ab")]),
-        Link(
-            "backend",
-            "cache",
-            [
-                Msg("1.3", "traduccion := _cache_get(clave)", "ab"),
-                Msg("1.5", "_cache_put(clave, oracion)", "ab"),
-            ],
+            self_side="right",
+            self_frac=(0.86, 0.97),
         ),
         Link("backend", "ollama", [Msg("1.4", "oracion := generate(prompt)", "ab")]),
-        Link("builder", "chat", [Msg("2", "sendMessage(mensaje)", "ab")]),
     ]
     return Diagram(
         "08_colaboracion_dc02",
         "DC-02 — cerrarOracionYTraducir(secuencia) — realiza CU-01 / CU-02",
         objects,
         links,
-        title_w=660,
+        title_w=610,
     )
 
 

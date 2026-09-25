@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -54,8 +55,17 @@ EDGES = [
 ]
 
 
+
+def fit_tab(value, style):
+    if not style.startswith("shape=folder") or "tabPosition=left" not in style:
+        return style
+    size = int(re.search(r"fontSize=(\d+)", style).group(1))
+    text = re.sub(r"<[^>]+>", "", value)
+    width = round(len(text) * size * 0.62 + 24)
+    return re.sub(r"tabWidth=\d+", f"tabWidth={width}", style)
+
 def vertex(cid, value, style, x, y, w, h, parent="1"):
-    return (f'<mxCell id="{cid}" value="{escape(value)}" style="{style}" vertex="1" parent="{parent}">'
+    return (f'<mxCell id="{cid}" value="{escape(value)}" style="{fit_tab(value, style)}" vertex="1" parent="{parent}">'
             f'<mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/></mxCell>')
 
 
