@@ -13,7 +13,7 @@ académico.
 docs/
 ├── lsasalud.sty                # Estilo compartido (portada, tablas, \diagrama, etc.)
 ├── IDS.md                      # Registro canónico de IDs (actores, CU, RF, RNF, pantallas...)
-├── Documento_Maestro_LSA_Salud.tex   # Documento único con los 9 entregables (\part por entregable)
+├── TP7_Análisis y Diseño.tex        # Documento maestro con los 9 entregables (\part por entregable)
 ├── 0N_Nombre_Entregable.tex    # Wrapper standalone de cada entregable (portada + \input propio)
 ├── contenido/
 │   └── 0N_nombre_entregable.tex   # Cuerpo de cada entregable (sin preámbulo, se reutiliza
@@ -49,7 +49,7 @@ Entregables (numeración según el orden del Documento Maestro):
 | 07 | Casos de Uso Reales | `LSASALUD-G9-CUR` | `07_Casos_Uso_Reales.tex` | `contenido/07_casos_uso_reales.tex` |
 | 08 | Diagramas de Colaboración | `LSASALUD-G9-DCO` | `08_Diagramas_Colaboracion.tex` | `contenido/08_diagramas_colaboracion.tex` |
 | 09 | Modelo de Base de Datos | `LSASALUD-G9-MBD` | `09_Modelo_Datos.tex` | `contenido/09_modelo_datos.tex` |
-| — | Documento Maestro | `LSASALUD-G9-DM` | `Documento_Maestro_LSA_Salud.tex` | (agrupa los 9 anteriores) |
+| — | TP7 Análisis y Diseño (documento maestro) | `LSASALUD-G9-DM` | `TP7_Análisis y Diseño.tex` | (agrupa los 9 anteriores) |
 
 `IDS.md` es la fuente única de verdad para todo identificador (actor, caso
 de uso, requisito, concepto de dominio, pantalla, operación de sistema,
@@ -176,7 +176,7 @@ generan como archivos **draw.io** (`.drawio`, XML editable) en
 2. Compilador: **pdfLaTeX** (el paquete usa `babel[spanish]`, `hyperref`,
    `booktabs`, `longtable`, `tabularx`, `titlesec`, `tocloft`, `listings`,
    todos estándar en TeX Live/Overleaf; no se requiere XeLaTeX ni LuaLaTeX).
-3. Documento principal: `Documento_Maestro_LSA_Salud.tex` (los nueve
+3. Documento principal: `TP7_Análisis y Diseño.tex` (los nueve
    entregables juntos, con tabla de contenidos, lista de figuras y lista de
    tablas), o cualquier `0N_Nombre_Entregable.tex` individual si solo se
    necesita compilar un entregable suelto.

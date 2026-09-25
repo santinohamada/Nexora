@@ -45,7 +45,7 @@ Registro de Riesgos).
 | 07 — Casos de Uso Reales | `LSASALUD-G9-CUR` |
 | 08 — Diagramas de Colaboración | `LSASALUD-G9-DCO` |
 | 09 — Modelo de Datos | `LSASALUD-G9-MBD` |
-| Documento Maestro | `LSASALUD-G9-DM` |
+| TP7 Análisis y Diseño (documento maestro) | `LSASALUD-G9-DM` |
 
 ---
 
