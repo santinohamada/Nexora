@@ -12,10 +12,7 @@ identificados en el Entregable de Diagrama de Casos de Uso. Los escenarios
 se redactan a nivel esencial (intención del actor), sin describir botones,
 menús ni otros detalles de la interfaz concreta, que se documentan en el
 entregable de mockups. CU-09, CU-10 y CU-11 corresponden a los requisitos
-oficiales RF-03, RF-06 y RF-04 respectivamente, y están marcados como
-\textbf{diseñado --- pendiente de implementación}: no existe código que los
-materialice, pero se especifican con el mismo nivel de detalle que el
-resto para que el diseño quede completo.
+oficiales RF-03, RF-06 y RF-04 respectivamente, y están \textbf{implementados}.
 
 \subsection{Actores}
 
@@ -470,7 +467,7 @@ la línea de comandos del servidor. \\
 
 % ============================================================================
 \subsection{CU-09: Otorgar Consentimiento Explícito de Cámara}
-\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-03.}
+\textit{Implementado. Cubre el requisito oficial RF-03.}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
 \caption{CU-09 --- Otorgar Consentimiento Explícito de Cámara}\\
@@ -491,40 +488,47 @@ La cámara se activa únicamente si el paciente otorgó el consentimiento; si
 lo rechaza, la cámara permanece inactiva y CU-01 no puede comenzar. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-    \item El sistema muestra la pantalla de consentimiento antes de
-    solicitar permiso de cámara al navegador (Pantalla P-05, diseño
-    nuevo).
-    \item El sistema explica, en lenguaje simple, qué captura la cámara,
+    \item Al entrar a \texttt{/paciente}, el sistema muestra un diálogo
+    modal de consentimiento (P-05) sobre el resto de la página, que queda
+    inerte, antes de solicitar permiso de cámara al navegador.
+    \item El diálogo explica, en lenguaje simple, qué captura la cámara,
     para qué se usa y que no se guarda video ni imágenes (RNF-03 oficial).
-    \item El paciente otorga el consentimiento.
-    \item El sistema registra el consentimiento (marca temporal, sin
-    datos identificatorios) y activa la cámara.
+    \item El paciente presiona ``Acepto y continúo''.
+    \item El sistema registra el consentimiento como evento de auditoría
+    anónimo (\texttt{type: "consent"}, \texttt{consent: "accepted"}, sin
+    datos identificatorios) y habilita la captura de cámara.
     \item El flujo continúa en el paso 1 de CU-01.
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[3a.] El paciente rechaza el consentimiento: el sistema no
-    activa la cámara y muestra una alternativa (por ejemplo, solicitar
-    asistencia del personal); CU-01 no puede iniciar.
+    \item[3a.] El paciente presiona ``No acepto'': el sistema registra el
+    evento de auditoría con \texttt{consent: "declined"}, no activa la
+    cámara y muestra un mensaje con la opción ``Reconsiderar'' para volver
+    al diálogo; CU-01 no puede iniciar.
     \item[3b.] El navegador deniega el permiso de cámara después de un
-    consentimiento otorgado: el sistema informa el error sin activar el
-    flujo de reconocimiento.
+    consentimiento otorgado: el hook de captura informa el error
+    (\texttt{status: "error"}) sin activar el flujo de reconocimiento.
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-03.1; RNF-03.1 (sin almacenamiento de video). \\
 \textbf{Variantes de tecnología y datos} &
-Diseño nuevo, sin componente real todavía; se prevé una pantalla modal
-previa a \texttt{navigator.mediaDevices.getUserMedia()}. \\
+Diálogo modal implementado dentro de \texttt{PacientePage}
+(\texttt{web/app/paciente/page.tsx}); el estado \texttt{consentState}
+(\texttt{pending}/\texttt{accepted}/\texttt{declined}) se pasa como
+\texttt{enabled} al hook de landmarks (\texttt{useMediaPipe} /
+\texttt{useMediaPipeTasks}), que solo invoca
+\texttt{navigator.mediaDevices.getUserMedia()} cuando
+\texttt{enabled === true}. \\
 \textbf{Frecuencia} & Una vez por sesión de la Estación del Paciente. \\
 \textbf{Temas abiertos} &
-Persistencia del consentimiento entre recargas de la misma sesión;
-formato exacto del texto legal a mostrar (pendiente de validación con el
-Comité de Ética del Sanatorio). \\
+El consentimiento no persiste entre recargas de la página (vive en el
+estado en memoria del componente); formato exacto del texto legal
+(pendiente de validación con el Comité de Ética del Sanatorio). \\
 \bottomrule
 \end{longtable}
 
 % ============================================================================
 \subsection{CU-10: Reportar Traducción Incorrecta o Ambigua}
-\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-06. Extiende a CU-01 y CU-04.}
+\textit{Implementado. Cubre el requisito oficial RF-06. Extiende a CU-01 y CU-04.}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
 \caption{CU-10 --- Reportar Traducción Incorrecta o Ambigua}\\
@@ -546,38 +550,49 @@ El reporte queda registrado, asociado al mensaje señalado y con su motivo,
 sin exponer datos identificatorios del paciente. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-    \item El actor revisa un mensaje de la conversación (punto de
-    extensión ``revisión de mensaje'' de CU-01 o CU-04).
-    \item El actor marca el mensaje como incorrecto o ambiguo.
-    \item El sistema solicita un motivo breve (por ejemplo: ``seña mal
-    reconocida'', ``oración no tiene sentido'', ``palabra faltante'').
-    \item El actor confirma el reporte.
-    \item El sistema registra el reporte, asociado al mensaje señalado, y
-    confirma al actor que el caso quedó registrado.
+    \item El actor revisa un mensaje del paciente en la conversación
+    (punto de extensión ``revisión de mensaje'' de CU-01 o CU-04); cada
+    burbuja de mensaje del paciente muestra el botón ``Reportar
+    traducción''.
+    \item El actor presiona el botón.
+    \item El sistema pasa el botón a estado ``Enviando...'' y envía
+    \texttt{POST /report} con el texto del mensaje, la estación de origen
+    y, si están disponibles, las palabras crudas reconocidas.
+    \item El backend valida el payload y lo registra, asociado al mensaje
+    señalado (texto, estación, palabras, marca temporal).
+    \item El sistema confirma al actor: el botón pasa a estado
+    ``Reportado''.
     \item El flujo vuelve al punto de extensión de origen (CU-01 o
     CU-04).
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[4a.] El actor cancela antes de confirmar: el sistema descarta
-    el reporte y no lo persiste.
+    \item[3a.] La petición \texttt{POST /report} falla (red o validación):
+    el botón vuelve a estado disponible y se muestra el mensaje ``No se
+    pudo enviar el reporte. Probá de nuevo.''; el actor puede reintentar.
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-06.1; RNF-03.1 (reporte sin datos identificatorios ni imágenes). \\
 \textbf{Variantes de tecnología y datos} &
-Diseño nuevo; se prevé un ícono de reporte sobre cada burbuja de la
-conversación en P-02 y P-03 (ver Entregable 04, mockups). \\
+Botón ``Reportar traducción'' en \texttt{ChatBubble}
+(\texttt{web/components/chat/ChatBubble.tsx}), visible solo en mensajes
+del paciente; la estación (\texttt{paciente}/\texttt{recepcion}) se
+deriva de la ruta actual con \texttt{usePathname}. El backend valida el
+payload con \texttt{validate\_report\_payload} y lo persiste en
+\texttt{logs/reports.jsonl} (ver Entregable 04, mockups, y Entregable 09,
+Modelo de Datos). \\
 \textbf{Frecuencia} &
 Bajo demanda, cada vez que el paciente o el personal detectan una
 traducción incorrecta. \\
 \textbf{Temas abiertos} &
 Mecanismo de priorización de los reportes acumulados para el reentrenamiento
-(CU-08); no definido todavía. \\
+(CU-08); no definido todavía. El reporte no pide un motivo estructurado,
+solo el texto y las palabras del mensaje señalado. \\
 \bottomrule
 \end{longtable}
 
 % ============================================================================
 \subsection{CU-11: Registrar Evento de Auditoría}
-\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-04. Subfunción incluida por CU-01 y CU-04, sin actor humano.}
+\textit{Implementado. Cubre el requisito oficial RF-04. Subfunción incluida por CU-01 y CU-04, sin actor humano.}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
 \caption{CU-11 --- Registrar Evento de Auditoría}\\
@@ -599,28 +614,40 @@ marca temporal y resultado, sin datos identificatorios ni imágenes o
 video. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-    \item El sistema completa una operación relevante (predicción,
-    traducción, síntesis de voz, respuesta del personal o captura de
-    muestra).
+    \item El sistema completa una operación relevante: predicción LSTM
+    (\texttt{/predict} o \texttt{/ws/predict}), traducción y síntesis de
+    voz (\texttt{/process\_sentence}), reporte de traducción
+    (\texttt{/report}), consentimiento de cámara o traducción mostrada en
+    pantalla.
     \item El sistema arma un evento de auditoría anónimo con el tipo de
-    operación, la marca temporal y el resultado (éxito o error), sin
-    identidad del paciente ni contenido de imagen o video.
-    \item El sistema persiste el evento en el registro de auditoría.
+    evento (\texttt{prediction}, \texttt{sentence}, \texttt{report},
+    \texttt{consent} o \texttt{translation\_displayed}), la marca temporal
+    UTC y los campos propios del tipo (p.\ ej.\ \texttt{lstm\_ms} y
+    \texttt{confidence} para \texttt{prediction}), sin identidad del
+    paciente ni contenido de imagen, video o texto de la conversación.
+    \item El sistema persiste el evento agregándolo a
+    \texttt{logs/audit.jsonl}.
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[3a.] La operación original terminó en error: el evento se
-    registra igual, con resultado ``error'', para que la métrica
-    operativa lo refleje.
+    \item[--] No hay un camino de excepción propio: si el payload de un
+    evento enviado por el frontend (\texttt{consent},
+    \texttt{translation\_displayed}) no pasa la validación, \texttt{POST
+    /audit} responde 400 y el evento simplemente no se registra; el
+    envío es \textit{fire-and-forget} desde el frontend (no bloquea la
+    operación que lo originó).
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-04.1; RNF-03.1 (anonimato, sin imágenes ni video). \\
 \textbf{Variantes de tecnología y datos} &
-Diseño nuevo; se prevé persistencia basada en archivos, consistente con el
-resto del sistema (ver Entregable 09, Modelo de Datos). \\
+Persistencia basada en archivos: helpers \texttt{\_log\_audit} /
+\texttt{\_append\_jsonl} en \texttt{app.py}, con un \texttt{threading.Lock}
+para escritura concurrente, consistente con el resto del sistema (ver
+Entregable 09, Modelo de Datos). \\
 \textbf{Frecuencia} & Una vez por cada operación de sistema relevante. \\
 \textbf{Temas abiertos} &
-Mecanismo de exportación o consulta de las métricas acumuladas (E08,
-Informe de Impacto Operativo); no forma parte de la interfaz de LSA Salud
-en esta fase. \\
+\texttt{GET /metrics} agrega los eventos acumulados (conteos, latencias
+p50/p95/máx.) bajo demanda, pero no hay todavía una vista de interfaz de
+LSA Salud ni una exportación periódica para el E08 (Informe de Impacto
+Operativo). \\
 \bottomrule
 \end{longtable}

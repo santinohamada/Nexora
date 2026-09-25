@@ -58,11 +58,11 @@ nombre o numeración se hace primero ahí. También documenta la trazabilidad
 completa hacia la matriz de requisitos oficial de la cátedra (`RF-01..06`,
 `RNF-01..07`, reservados para su texto literal) y el estado de los
 requisitos oficiales **RF-03 (consentimiento), RF-04 (auditoría) y RF-06
-(reporte de traducción)**, marcados como **diseñados, pendientes de
-implementación** en todos los entregables (CU-09, CU-10, CU-11; Pantalla
-P-05; DC-06, DC-07, DC-08; componentes `ConsentGate`/`audit_log` en
-Arquitectura; entidades `EventoDeConsentimiento`, `EventoDeAuditoría` y
-`ReporteDeTraducción` en el Modelo de Datos).
+(reporte de traducción)**, todos **implementados** (CU-09, CU-10, CU-11;
+Diálogo de Consentimiento P-05 dentro de `PacientePage`; DC-06, DC-07,
+DC-08; funciones `_log_audit`/`_append_jsonl` dentro de `app.py` en
+Arquitectura; eventos de auditoría y reportes en `logs/audit.jsonl` y
+`logs/reports.jsonl` en el Modelo de Datos).
 
 ## Regenerar los diagramas
 
@@ -134,8 +134,7 @@ relaciones y escribe `02_casos_uso.drawio` (editable en draw.io), que
 ### Diagramas de colaboración (DC-01..DC-08): draw.io, no PlantUML
 
 Los 8 diagramas de colaboración de `contenido/08_diagramas_colaboracion.tex`
-(DC-01 a DC-05 implementados; DC-06 a DC-08 diseñados, pendientes de
-implementación, cubren RF-03/04/06 oficiales) son un caso aparte: PlantUML
+(los 8 implementados; DC-06 a DC-08 cubren RF-03/04/06 oficiales) son un caso aparte: PlantUML
 no permite expresar la notación exacta de Larman/UML 2.5 (enlace sin punta
 de flecha + una flechita propia y paralela por cada mensaje). Por eso se
 generan como archivos **draw.io** (`.drawio`, XML editable) en
@@ -205,7 +204,9 @@ generan como archivos **draw.io** (`.drawio`, XML editable) en
   proyecto, cliente, preparado por, director, tutor, cotutor, fecha,
   versión) sin logo, según decisión del equipo de retirar el logo de
   "Nexora" de las portadas.
-- Todo requisito, caso de uso, pantalla o diagrama marcado como
-  **"diseñado --- pendiente de implementación"** cubre uno de los
-  requisitos oficiales no implementados (RF-03, RF-04, RF-06); no se debe
-  quitar esa marca sin que exista código real que lo respalde.
+- RF-03, RF-04 y RF-06 oficiales (consentimiento, auditoría, reporte de
+  traducción) están implementados; si algún entregable vuelve a marcar un
+  requisito, caso de uso, pantalla o diagrama como
+  "diseñado --- pendiente de implementación", debe corresponder a una
+  funcionalidad realmente ausente del código, no reintroducirse por
+  desactualización.

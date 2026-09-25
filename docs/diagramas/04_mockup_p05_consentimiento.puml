@@ -1,17 +1,23 @@
 @startsalt 04_mockup_p05_consentimiento
 {+
-  <b>LSA SALUD</b>  (1)
-  ==
-  <b>Consentimiento para usar la cámara</b>  (2)
+  <&shield> <b>Consentimiento para usar la cámara</b>  (1) (2)
   .
   {+
-  Antes de comenzar, necesitamos su autorización para activar   (3)
-  la cámara. La cámara se usa únicamente para reconocer sus
-  señas y traducirlas a texto y voz. No se guarda video ni
-  imágenes: todo el procesamiento ocurre en este equipo y se
-  descarta al instante.
+  Usamos tu cámara solo para reconocer tus señas y   (3)
+  traducirlas a texto y voz. No se guarda ningún
+  video ni imagen: el procesamiento ocurre en
+  este dispositivo.
   }
   .
-  { [Acepto y continúo] | (4) | [No acepto] | (5) }
+  { [No acepto] | (4) | [Acepto y continúo] | (5) }
+  ==
+  <i>Estado "declined" (tras presionar "No acepto"): el texto</i>
+  <i>explicativo se reemplaza por una advertencia y queda un solo botón</i>
+  .
+  {+
+  El traductor necesita la cámara para funcionar.  (6)
+  Podés reconsiderar cuando quieras.
+  }
+  { [Reconsiderar] | (7) }
 }
 @endsalt

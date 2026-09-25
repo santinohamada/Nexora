@@ -45,13 +45,10 @@ Desarrollador de IA / Equipo de Proyecto.
 
 \diagrama{01_modelo_dominio_b}{\textwidth}{Modelo de Dominio de LSA Salud, vista B: reconocimiento y gestión del modelo}{fig:modelo-dominio-b}
 
-Los tres conceptos \textbf{diseñados y
-pendientes de implementación} cubren los requisitos oficiales RF-03, RF-04 y
-RF-06 (\textit{Consentimiento}, \textit{Auditoría} y \textit{Reporte de
-traducción}, ver Sección~\ref{sec:dom-pendientes}); en el diagrama, el
-concepto \textit{EventoDeAuditoría} lleva el estereotipo
-\textit{«diseñado»} y las asociaciones que involucran a los otros dos se
-señalan en la Tabla~\ref{tab:asociaciones-dominio}.
+Los tres conceptos de la Sección~\ref{sec:dom-pendientes} cubren los
+requisitos oficiales RF-03, RF-04 y RF-06 (\textit{Consentimiento},
+\textit{Auditoría} y \textit{Reporte de traducción}); las asociaciones que
+los involucran se señalan en la Tabla~\ref{tab:asociaciones-dominio}.
 
 \subsection{Diccionario de conceptos}
 
@@ -149,16 +146,18 @@ como corresponde a un modelo de dominio).
     \label{tab:diccionario-conceptos}
 \end{longtable}
 
-\subsection{Conceptos diseñados, pendientes de implementación}
+\subsection{Conceptos de consentimiento, auditoría y reporte}
 \label{sec:dom-pendientes}
 
 Los siguientes tres conceptos corresponden a los requisitos oficiales RF-03,
 RF-04 y RF-06 de la matriz de trazabilidad (RF-03.1, RF-04.1 y RF-06.1 en
-\texttt{IDS.md}), marcados como \textbf{diseñado --- pendiente de
-implementación}: hoy no existe código que los materialice, pero se modelan
-como parte del dominio para que su diseño quede completo desde esta primera
-fase. La Tabla~\ref{tab:diccionario-pendientes} los describe con el mismo
-nivel de detalle que el resto del diccionario.
+\texttt{IDS.md}, todos \textbf{implementados}). Se documentan aparte del
+resto del diccionario porque, a diferencia de los demás conceptos, no
+tienen una clase de software dedicada: \textit{Consentimiento\-De\-Cámara}
+se realiza como un evento de \textit{Evento\-De\-Auditoría} de tipo
+\texttt{consent} (no hay una entidad ni un archivo separados para el
+consentimiento). La Tabla~\ref{tab:diccionario-pendientes} los describe con
+el mismo nivel de detalle que el resto del diccionario.
 
 \begin{longtable}{p{3.6cm} p{5.4cm} p{5.4cm}}
     \toprule
@@ -185,7 +184,7 @@ nivel de detalle que el resto del diccionario.
     (RF-06 oficial). &
     motivo, marcaTemporal. \\
     \bottomrule
-    \caption{Diccionario de conceptos pendientes de implementación}
+    \caption{Diccionario de conceptos de consentimiento, auditoría y reporte}
     \label{tab:diccionario-pendientes}
 \end{longtable}
 
@@ -202,7 +201,7 @@ del diagrama, con su multiplicidad y una lectura sugerida.
     Paciente & utiliza & Estación\-De\-Atención & Un paciente utiliza una estación de atención. \\
     Personal de Recepción o Enfermería & utiliza & Estación\-De\-Atención & El personal de recepción o enfermería utiliza una estación de atención. \\
     Estación\-De\-Atención & muestra & Conversación & Las dos estaciones de una sesión muestran la misma conversación. \\
-    Paciente & otorga & Consentimiento\-De\-Cámara & Un paciente otorga el consentimiento antes de poder realizar señas (diseñado, pendiente). \\
+    Paciente & otorga & Consentimiento\-De\-Cámara & Un paciente otorga el consentimiento antes de poder realizar señas. \\
     Paciente & realiza & Secuencia\-De\-Señas & Un paciente realiza cero o más secuencias de señas a lo largo de la sesión, condicionado a tener un Consentimiento\-De\-Cámara otorgado. \\
     Secuencia\-De\-Señas & compuesta por & Palabra\-Reconocida & Una secuencia de señas está compuesta por una o más palabras reconocidas. \\
     Palabra\-Reconocida & corresponde a & Clase\-De\-Seña & Cada palabra reconocida corresponde a una clase de seña del catálogo. \\
@@ -211,16 +210,16 @@ del diagrama, con su multiplicidad y una lectura sugerida.
     Traducción & genera & Mensaje & Toda traducción genera exactamente un mensaje del paciente. \\
     Mensaje & tiene & Síntesis\-De\-Voz & Un mensaje puede tener una síntesis de voz asociada. \\
     Mensaje & pertenece a & Conversación & Todo mensaje pertenece a una conversación. \\
-    Mensaje & puede tener & Reporte\-De\-Traducción & Un mensaje puede tener cero o un reporte de traducción incorrecta (diseñado, pendiente). \\
-    Paciente & señala & Reporte\-De\-Traducción & Un paciente puede señalar cero o más reportes (diseñado, pendiente). \\
-    Personal de Recepción o Enfermería & señala & Reporte\-De\-Traducción & El personal puede señalar cero o más reportes (diseñado, pendiente). \\
+    Mensaje & puede tener & Reporte\-De\-Traducción & Un mensaje puede tener cero o un reporte de traducción incorrecta. \\
+    Paciente & señala & Reporte\-De\-Traducción & Un paciente puede señalar cero o más reportes. \\
+    Personal de Recepción o Enfermería & señala & Reporte\-De\-Traducción & El personal puede señalar cero o más reportes. \\
     Personal de Recepción o Enfermería & redacta & Mensaje & El personal de recepción o enfermería redacta cero o más mensajes. \\
     Desarrollador de IA / Equipo de Proyecto & captura & Muestra\-De\-Entrenamiento & Un desarrollador captura cero o más muestras de entrenamiento. \\
     Muestra\-De\-Entrenamiento & ejemplifica & Clase\-De\-Seña & Cada muestra ejemplifica una clase de seña. \\
     Desarrollador de IA / Equipo de Proyecto & entrena & Modelo\-De\-Reconocimiento & Un desarrollador entrena cero o más versiones del modelo. \\
     Modelo\-De\-Reconocimiento & reconoce & Clase\-De\-Seña & Un modelo reconoce una o más clases de seña. \\
     Modelo\-De\-Reconocimiento & clasifica & Palabra\-Reconocida & Un modelo clasifica cero o más palabras reconocidas. \\
-    Estación\-De\-Atención & origina & Evento\-De\-Auditoría & Cada operación relevante de una estación origina cero o más eventos de auditoría anónimos (diseñado, pendiente). \\
+    Estación\-De\-Atención & origina & Evento\-De\-Auditoría & Cada operación relevante de una estación origina cero o más eventos de auditoría anónimos. \\
     \bottomrule
     \caption{Asociaciones del Modelo de Dominio}
     \label{tab:asociaciones-dominio}

@@ -124,7 +124,7 @@ def vista_comunicacion():
     d.cls("reporte", "C", 2, ["ReporteDeTraducción"], ["motivo", "marcaTemporal"])
     d.cls("mensaje", "C", 3, ["Mensaje"], ["texto", "rolEmisor", "horaEnvío"])
     d.cls("sintesis", "C", 4, ["SíntesisDeVoz"], ["voz", "formatoAudio"])
-    d.cls("auditoria", "R", 0, ["EventoDeAuditoría"], ["tipoDeOperación", "marcaTemporal", "resultado"], stereo=True, dy=-10)
+    d.cls("auditoria", "R", 0, ["EventoDeAuditoría"], ["tipoDeOperación", "marcaTemporal", "resultado"], dy=-10)
     d.cls("personal", "R", 1, ["Personal de Recepción", "o Enfermería"])
     d.cls("conversacion", "R", 3, ["Conversación"], ["fechaInicio"])
 

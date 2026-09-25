@@ -12,9 +12,8 @@ Esta sección documenta, siguiendo la técnica descripta por Craig Larman en
 \textit{UML y Patrones}, los \textbf{contratos de operación de sistema} y los
 \textbf{diagramas de colaboración} (\textit{communication diagrams} en UML
 2.5) correspondientes a las ocho operaciones de sistema identificadas en
-\texttt{docs/IDS.md}: SO-01 a SO-05 (implementadas) y SO-06 a SO-08
-(\textbf{diseñadas, pendientes de implementación}, cubren RF-03, RF-04 y
-RF-06 oficiales). Cada operación de sistema es un mensaje
+\texttt{docs/IDS.md}: SO-01 a SO-08, todas \textbf{implementadas} (SO-06 a
+SO-08 cubren RF-03, RF-04 y RF-06 oficiales). Cada operación de sistema es un mensaje
 que un actor le envía al sistema considerado como una caja negra durante el
 diseño de la interacción; el diagrama de colaboración muestra cómo el
 sistema, ya descompuesto en sus objetos de diseño reales (\textit{hooks} de
@@ -407,7 +406,7 @@ informado al Modo Captura. \\
 \end{table}
 
 \subsection{SO-06: otorgarConsentimiento(paciente) --- DC-06}
-\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-03.}
+\textit{Implementado. Cubre el requisito oficial RF-03.}
 
 \subsubsection{Contrato de operación}
 
@@ -417,12 +416,15 @@ informado al Modo Captura. \\
 \toprule
 \textbf{Operación} & \texttt{otorgarConsentimiento(paciente)} \\
 \textbf{Referencias cruzadas} & Realiza CU-09 completo; RF-03.1. \\
-\textbf{Precondiciones} & La Estación del Paciente muestra la Pantalla
-P-05; la cámara todavía no fue activada. \\
-\textbf{Postcondiciones} & El consentimiento quedó registrado (sin datos
-identificatorios) en el registro de auditoría, y \texttt{ConsentGate}
-autorizó el montaje de los \textit{hooks} de captura (\texttt{useMediaPipe}
-/ \texttt{useMediaPipeTasks}), habilitando la Pantalla P-02. \\
+\textbf{Precondiciones} & \texttt{PacientePage} muestra el diálogo de
+consentimiento (P-05); la cámara todavía no fue activada
+(\texttt{consentState !== "accepted"}). \\
+\textbf{Postcondiciones} & El consentimiento quedó registrado como evento
+de auditoría anónimo (\texttt{type: "consent"}) en
+\texttt{logs/audit.jsonl}, y --- si fue aceptado --- \texttt{PacientePage}
+pasó \texttt{enabled: true} al hook de landmarks
+(\texttt{useMediaPipe}/\texttt{useMediaPipeTasks}), habilitando la cámara y
+la Pantalla P-02. \\
 \bottomrule
 \end{tabularx}
 \caption{Contrato de la operación SO-06 --- otorgarConsentimiento(paciente)}
@@ -431,26 +433,27 @@ autorizó el montaje de los \textit{hooks} de captura (\texttt{useMediaPipe}
 
 \subsubsection{Diagrama de colaboración DC-06}
 
-\diagrama{08_colaboracion_dc06}{0.9\textwidth}{DC-06 --- Colaboración para otorgarConsentimiento(paciente) --- diseñado, pendiente de implementación}{fig:col-dc06}
+\diagrama{08_colaboracion_dc06}{0.9\textwidth}{DC-06 --- Colaboración para otorgarConsentimiento(paciente)}{fig:col-dc06}
 
 \subsubsection{Patrones GRASP aplicados}
 
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item \textbf{Controlador:} \texttt{ConsentGate} recibe la confirmación
-    desde la Pantalla de Consentimiento y coordina el registro del evento
-    y la habilitación de la cámara, como único punto de entrada de la
-    operación en el frontend.
-    \item \textbf{Experto en información:} \texttt{audit\_log} es quien
-    conoce el formato de persistencia de los eventos anónimos, por lo que
-    es el responsable de escribirlos, en vez de que cada componente sepa
-    escribir su propio archivo.
-    \item \textbf{Indirección:} \texttt{audit\_log} media entre el
-    \textit{handler} \texttt{consent} y el archivo físico
-    \texttt{logs/consent.jsonl}, igual que \texttt{capture\_validation}
-    media entre \texttt{capture} y el sistema de archivos en DC-05.
-    \item \textbf{Bajo acoplamiento:} la Pantalla de Consentimiento no
-    conoce el contrato HTTP ni el formato de persistencia; solo invoca a
-    \texttt{ConsentGate} con la decisión del paciente.
+    \item \textbf{Controlador:} \texttt{PacientePage} recibe el clic del
+    diálogo de consentimiento y coordina tanto el envío del evento de
+    auditoría como la habilitación del hook de captura, como único punto
+    de entrada de la operación en el frontend.
+    \item \textbf{Experto en información:} \texttt{\_log\_audit} (dentro de
+    \texttt{app.py}) es quien conoce el formato de persistencia de los
+    eventos anónimos, por lo que es responsable de armarlos, en vez de que
+    cada \textit{handler} sepa escribir su propio registro.
+    \item \textbf{Indirección:} \texttt{sendAudit} (\texttt{audit.ts}) media
+    entre \texttt{PacientePage} y el endpoint \texttt{POST /audit}, igual
+    que \texttt{capture\_validation} media entre \texttt{capture} y el
+    sistema de archivos en DC-05.
+    \item \textbf{Bajo acoplamiento:} el diálogo de consentimiento no conoce
+    el contrato HTTP ni el formato de persistencia; \texttt{PacientePage}
+    solo invoca \texttt{sendAudit(\ldots)}, que es \textit{fire-and-forget}
+    (no bloquea la habilitación de la cámara).
 \end{itemize}
 
 \subsubsection{Objetos del diagrama y su ubicación en el código}
@@ -459,21 +462,21 @@ autorizó el montaje de los \textit{hooks} de captura (\texttt{useMediaPipe}
 \centering
 \begin{tabularx}{\textwidth}{@{}l X@{}}
 \toprule
-\textbf{Objeto} & \textbf{Ubicación real (diseñada)} \\
+\textbf{Objeto} & \textbf{Ubicación real} \\
 \midrule
-\texttt{PantallaConsentimiento (P-05)} & Componente nuevo $\rightarrow$ previsto en \texttt{web/components/consent/} \\
-\texttt{ConsentGate} & Componente de guardia nuevo $\rightarrow$ previsto antepuesto a \texttt{web/app/paciente/page.tsx} \\
-\texttt{consent} & Handler FastAPI nuevo $\rightarrow$ previsto en \texttt{app.py} (\texttt{POST /consent}) \\
-\texttt{audit\_log} & Módulo de persistencia de eventos nuevo $\rightarrow$ previsto en \texttt{audit\_log.py} \\
-\texttt{logs/consent.jsonl} & Archivo persistido en disco $\rightarrow$ previsto en \texttt{logs/} \\
+\texttt{PacientePage (diálogo de consentimiento)} & Componente $\rightarrow$ \texttt{web/app/paciente/page.tsx} \\
+\texttt{sendAudit()} & Función $\rightarrow$ \texttt{web/lib/audit.ts} \\
+\texttt{audit\_event} & Handler FastAPI (\texttt{POST /audit}) $\rightarrow$ \texttt{app.py} \\
+\texttt{:useMediaPipe} & Hook $\rightarrow$ \texttt{web/hooks/useMediaPipe.ts} (o \texttt{useMediaPipeTasks.ts}) \\
+\texttt{logs/audit.jsonl} & Archivo persistido en disco $\rightarrow$ \texttt{logs/} \\
 \bottomrule
 \end{tabularx}
-\caption{Trazabilidad de objetos --- DC-06 (diseñado, pendiente de implementación)}
+\caption{Trazabilidad de objetos --- DC-06}
 \label{tab:col-objetos-dc06}
 \end{table}
 
 \subsection{SO-07: registrarEventoAuditoria(operacion) --- DC-07}
-\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-04.}
+\textit{Implementado. Cubre el requisito oficial RF-04.}
 
 \subsubsection{Contrato de operación}
 
@@ -483,12 +486,13 @@ autorizó el montaje de los \textit{hooks} de captura (\texttt{useMediaPipe}
 \toprule
 \textbf{Operación} & \texttt{registrarEventoAuditoria(operacion)} \\
 \textbf{Referencias cruzadas} & Realiza CU-11, incluido por CU-01 y CU-04; RF-04.1. \\
-\textbf{Precondiciones} & Un \textit{handler} del backend (\texttt{websocket\_predict},
-\texttt{process\_sentence} o \texttt{capture}) completó una operación de
-sistema. \\
-\textbf{Postcondiciones} & Un evento anónimo (tipo de operación, marca
-temporal, resultado) quedó persistido en el registro de auditoría, sin
-datos identificatorios ni imágenes o video. \\
+\textbf{Precondiciones} & Un \textit{handler} del backend (\texttt{predict},
+\texttt{websocket\_predict}, \texttt{process\_sentence},
+\texttt{report\_translation} o \texttt{audit\_event}) completó una
+operación de sistema, o recibió un evento anónimo del frontend. \\
+\textbf{Postcondiciones} & Un evento anónimo (tipo, marca temporal UTC y
+campos propios del tipo) quedó agregado a \texttt{logs/audit.jsonl}, sin
+datos identificatorios ni imágenes, video o texto de la conversación. \\
 \bottomrule
 \end{tabularx}
 \caption{Contrato de la operación SO-07 --- registrarEventoAuditoria(operacion)}
@@ -497,22 +501,22 @@ datos identificatorios ni imágenes o video. \\
 
 \subsubsection{Diagrama de colaboración DC-07}
 
-\diagrama{08_colaboracion_dc07}{0.9\textwidth}{DC-07 --- Colaboración para registrarEventoAuditoria(operacion) --- diseñado, pendiente de implementación}{fig:col-dc07}
+\diagrama{08_colaboracion_dc07}{0.9\textwidth}{DC-07 --- Colaboración para registrarEventoAuditoria(operacion)}{fig:col-dc07}
 
 \subsubsection{Patrones GRASP aplicados}
 
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item \textbf{Experto en información:} \texttt{audit\_log} concentra el
-    conocimiento del formato del evento anónimo, por lo que es el único
-    responsable de armarlo y persistirlo.
-    \item \textbf{Bajo acoplamiento:} ningún \textit{handler} existente
-    (\texttt{websocket\_predict}, \texttt{process\_sentence},
-    \texttt{capture}) necesita conocer el formato de persistencia de
-    auditoría: cada uno invoca a \texttt{audit\_log} con el tipo de
-    operación y el resultado, igual para los tres.
-    \item \textbf{Alta cohesión:} toda la responsabilidad de anonimizar,
-    formatear y persistir el evento queda concentrada en
-    \texttt{audit\_log}, sin dispersarse entre los \textit{handlers}.
+    \item \textbf{Experto en información:} \texttt{\_log\_audit} concentra
+    el conocimiento del formato del evento anónimo (tipo, marca temporal),
+    por lo que es responsable de armarlo antes de delegar la escritura.
+    \item \textbf{Bajo acoplamiento:} ningún \textit{handler} necesita
+    conocer el formato de persistencia de auditoría ni el archivo de
+    destino: cada uno invoca \texttt{\_log\_audit(tipo, **campos)} con sus
+    propios campos.
+    \item \textbf{Alta cohesión:} \texttt{\_append\_jsonl} concentra la
+    única responsabilidad de escribir una línea JSON bajo el
+    \texttt{threading.Lock} compartido, reutilizada tanto por los eventos
+    de auditoría como por los reportes (DC-08).
 \end{itemize}
 
 \subsubsection{Objetos del diagrama y su ubicación en el código}
@@ -521,19 +525,20 @@ datos identificatorios ni imágenes o video. \\
 \centering
 \begin{tabularx}{\textwidth}{@{}l X@{}}
 \toprule
-\textbf{Objeto} & \textbf{Ubicación real (diseñada)} \\
+\textbf{Objeto} & \textbf{Ubicación real} \\
 \midrule
-\texttt{handler (websocket\_predict / process\_sentence / capture)} & Handlers FastAPI existentes $\rightarrow$ \texttt{app.py} (cada uno invocaría a \texttt{audit\_log} al finalizar) \\
-\texttt{audit\_log} & Módulo de persistencia de eventos nuevo $\rightarrow$ previsto en \texttt{audit\_log.py} \\
-\texttt{logs/audit.jsonl} & Archivo persistido en disco $\rightarrow$ previsto en \texttt{logs/} \\
+\texttt{handler} & Cualquiera de los \textit{handlers} FastAPI que completan una operación de sistema (\texttt{predict}, \texttt{websocket\_predict}, \texttt{process\_sentence}, \texttt{report}, \texttt{audit\_event}) $\rightarrow$ \texttt{app.py} \\
+\texttt{\_log\_audit()} & Función $\rightarrow$ \texttt{app.py} \\
+\texttt{\_append\_jsonl()} & Función $\rightarrow$ \texttt{app.py} \\
+\texttt{logs/audit.jsonl} & Archivo persistido en disco $\rightarrow$ \texttt{logs/} \\
 \bottomrule
 \end{tabularx}
-\caption{Trazabilidad de objetos --- DC-07 (diseñado, pendiente de implementación)}
+\caption{Trazabilidad de objetos --- DC-07}
 \label{tab:col-objetos-dc07}
 \end{table}
 
-\subsection{SO-08: reportarTraduccion(mensaje, motivo) --- DC-08}
-\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-06.}
+\subsection{SO-08: reportarTraduccion(mensaje) --- DC-08}
+\textit{Implementado. Cubre el requisito oficial RF-06.}
 
 \subsubsection{Contrato de operación}
 
@@ -541,40 +546,46 @@ datos identificatorios ni imágenes o video. \\
 \centering
 \begin{tabularx}{\textwidth}{@{}p{4.4cm} X@{}}
 \toprule
-\textbf{Operación} & \texttt{reportarTraduccion(mensaje, motivo)} \\
+\textbf{Operación} & \texttt{reportarTraduccion(mensaje)} \\
 \textbf{Referencias cruzadas} & Realiza CU-10, extiende a CU-01 y CU-04; RF-06.1. \\
-\textbf{Precondiciones} & Existe un mensaje visible en el panel de
-conversación de P-02 o P-03; el actor hizo clic en su ícono de reporte. \\
-\textbf{Postcondiciones} & El reporte (mensaje señalado y motivo) quedó
-persistido, sin datos identificatorios del paciente, y el actor recibió
-confirmación. \\
+\textbf{Precondiciones} & Existe un mensaje del paciente visible en el
+panel de conversación de P-02 o P-03; el actor hizo clic en su botón
+``Reportar traducción''. \\
+\textbf{Postcondiciones} & El reporte (texto, estación y palabras del
+mensaje señalado) quedó persistido en \texttt{logs/reports.jsonl}, sin
+datos identificatorios del paciente; también se registró un evento de
+auditoría \texttt{report} en \texttt{logs/audit.jsonl} (ver DC-07); el
+botón de \texttt{ChatBubble} pasó a estado ``Reportado''. \\
 \bottomrule
 \end{tabularx}
-\caption{Contrato de la operación SO-08 --- reportarTraduccion(mensaje, motivo)}
+\caption{Contrato de la operación SO-08 --- reportarTraduccion(mensaje)}
 \label{tab:col-contrato-so08}
 \end{table}
 
 \subsubsection{Diagrama de colaboración DC-08}
 
-\diagrama{08_colaboracion_dc08}{0.9\textwidth}{DC-08 --- Colaboración para reportarTraduccion(mensaje, motivo) --- diseñado, pendiente de implementación}{fig:col-dc08}
+\diagrama{08_colaboracion_dc08}{0.9\textwidth}{DC-08 --- Colaboración para reportarTraduccion(mensaje)}{fig:col-dc08}
 
 \subsubsection{Patrones GRASP aplicados}
 
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item \textbf{Controlador:} la página de estación (\texttt{PacientePage}
-    o \texttt{RecepcionPage}) recibe el evento de reporte desde
-    \texttt{ChatBubble} y lo delega al backend, sin conocer el formato de
-    persistencia.
-    \item \textbf{Creador:} el \textit{handler} \texttt{report} es
-    responsable de crear el registro persistido, porque es quien recibe el
-    mensaje señalado y el motivo ya validados.
-    \item \textbf{Bajo acoplamiento:} \texttt{ChatBubble} solo conoce un
-    \textit{callback} \texttt{onReport(mensaje, motivo)}; no sabe nada del
-    contrato HTTP ni de la persistencia.
-    \item \textbf{Indirección:} \texttt{audit\_log} media entre el
-    \textit{handler} \texttt{report} y el archivo
-    \texttt{logs/reports.jsonl}, reutilizando el mismo módulo de
-    persistencia que SO-06 y SO-07.
+    \item \textbf{Bajo acoplamiento:} \texttt{ChatBubble} llama
+    directamente a \texttt{POST /report} con el texto, la estación
+    (derivada de \texttt{usePathname}) y las palabras del mensaje; no hay
+    un componente de página intermediario, ni \texttt{ChatBubble} conoce el
+    formato de persistencia.
+    \item \textbf{Experto en información:} \texttt{validate\_report\_payload}
+    es quien conoce las reglas de validez del reporte (longitud, estación,
+    cantidad de palabras), por lo que es responsable de aplicarlas antes de
+    persistir.
+    \item \textbf{Alta cohesión:} \texttt{\_append\_jsonl} concentra la
+    única responsabilidad de escribir una línea JSON, reutilizada tanto
+    para \texttt{logs/reports.jsonl} (aquí) como para
+    \texttt{logs/audit.jsonl} (DC-07).
+    \item \textbf{Indirección:} \texttt{report\_translation} media entre
+    \texttt{ChatBubble} y el sistema de archivos, igual que
+    \texttt{capture} media entre \texttt{CaptureMode} y \texttt{dataset/}
+    en DC-05.
 \end{itemize}
 
 \subsubsection{Objetos del diagrama y su ubicación en el código}
@@ -583,15 +594,15 @@ confirmación. \\
 \centering
 \begin{tabularx}{\textwidth}{@{}l X@{}}
 \toprule
-\textbf{Objeto} & \textbf{Ubicación real (diseñada)} \\
+\textbf{Objeto} & \textbf{Ubicación real} \\
 \midrule
-\texttt{ChatBubble} & Componente existente, con ícono de reporte nuevo $\rightarrow$ \texttt{web/components/chat/ChatBubble.tsx} \\
-\texttt{PacientePage / RecepcionPage} & Componentes existentes $\rightarrow$ \texttt{web/app/paciente/page.tsx}, \texttt{web/app/recepcion/page.tsx} \\
-\texttt{report} & Handler FastAPI nuevo $\rightarrow$ previsto en \texttt{app.py} (\texttt{POST /report}) \\
-\texttt{audit\_log} & Módulo de persistencia de eventos nuevo $\rightarrow$ previsto en \texttt{audit\_log.py} \\
-\texttt{logs/reports.jsonl} & Archivo persistido en disco $\rightarrow$ previsto en \texttt{logs/} \\
+\texttt{ChatBubble} & Componente $\rightarrow$ \texttt{web/components/chat/ChatBubble.tsx} \\
+\texttt{report\_translation} & Handler FastAPI (\texttt{POST /report}) $\rightarrow$ \texttt{app.py} \\
+\texttt{validate\_report\_payload()} & Función de validación $\rightarrow$ \texttt{capture\_validation.py} \\
+\texttt{\_append\_jsonl()} & Función $\rightarrow$ \texttt{app.py} \\
+\texttt{logs/reports.jsonl} & Archivo persistido en disco $\rightarrow$ \texttt{logs/} \\
 \bottomrule
 \end{tabularx}
-\caption{Trazabilidad de objetos --- DC-08 (diseñado, pendiente de implementación)}
+\caption{Trazabilidad de objetos --- DC-08}
 \label{tab:col-objetos-dc08}
 \end{table}

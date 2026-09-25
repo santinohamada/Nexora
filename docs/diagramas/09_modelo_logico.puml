@@ -33,24 +33,25 @@ entity "ModeloDeReconocimiento" as MOD {
     framesPorMuestra : int
 }
 
-entity "EventoDeConsentimiento" as EDC <<diseñado>> {
-    * marcaTemporal : bigint <<PK>>
+entity "EventoDeAuditoría" as EDA {
+    (sin PK: una línea JSON más\nen logs/audit.jsonl, sin id)
     --
-    otorgado : boolean
+    tipo : varchar {prediction | sentence |\nreport | consent | translation_displayed}
+    timestamp : varchar (ISO 8601 UTC)
+    lstm_ms, confidence : float (tipo=prediction)
+    translation_ms, tts_ms, total_ms,\nsource, word_count : (tipo=sentence)
+    station : varchar (report | consent | translation_displayed)
+    consent : varchar {accepted | declined} (tipo=consent)
+    e2e_ms : float (tipo=translation_displayed)
 }
 
-entity "EventoDeAuditoría" as EDA <<diseñado>> {
-    * marcaTemporal : bigint <<PK>>
+entity "ReporteDeTraducción" as RDT {
+    (sin PK: una línea JSON más\nen logs/reports.jsonl, sin id)
     --
-    tipoOperacion : varchar
-    resultado : varchar {exito | error}
-}
-
-entity "ReporteDeTraducción" as RDT <<diseñado>> {
-    * marcaTemporal : bigint <<PK>>
-    --
-    mensajeId : int
-    motivo : varchar
+    texto : varchar(500)
+    estacion : varchar {paciente | recepcion}
+    palabras : varchar[] {nullable}
+    timestamp : varchar (ISO 8601 UTC)
 }
 
 CDS ||--o{ MDE : etiqueta
@@ -63,7 +64,6 @@ MBS -[hidden]-> MDE
 MDE -[hidden]-> CDS
 CDS -[hidden]-> VOC
 VOC -[hidden]-> MOD
-EDC -[hidden]-> EDA
 EDA -[hidden]-> RDT
 
 note top of MDE
@@ -78,12 +78,12 @@ note bottom of MOD
 end note
 
 note bottom of RDT
-  EventoDeConsentimiento, EventoDeAuditoría
-  y ReporteDeTraducción: diseñados,
-  pendientes de implementación.
-  Sin FK hacia el resto del modelo
+  EventoDeAuditoría y ReporteDeTraducción:
+  sin FK hacia el resto del modelo
   (persistencia independiente, anonima,
-  formato JSON Lines).
+  formato JSON Lines). El consentimiento
+  (RF-03) no tiene entidad propia: es
+  un EventoDeAuditoría con tipo="consent".
 end note
 
 @enduml

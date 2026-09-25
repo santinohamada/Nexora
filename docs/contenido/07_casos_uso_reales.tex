@@ -23,12 +23,11 @@ Se desarrollan aquí CU-01 (Comunicarse mediante Lengua de Señas Argentina),
 CU-04 (Responder al Paciente) con su extensión CU-05 (Dictar Respuesta por
 Voz), CU-06 (Capturar Muestra de Seña para Entrenamiento), CU-09 (Otorgar
 Consentimiento Explícito de Cámara) y CU-10 (Reportar Traducción Incorrecta
-o Ambigua). Estos dos últimos están marcados como \textbf{diseñados,
-pendientes de implementación}: se redactan a nivel real sobre el mockup
-correspondiente (P-05 y los callouts de reporte en P-02/P-03) para dejar
-constancia del diseño de interfaz, aunque no exista código todavía. Los IDs
-de actores, casos de uso y requisitos citados son los del registro
-canónico (\texttt{IDS.md}).
+o Ambigua). Todos están \textbf{implementados}: se redactan a nivel real
+sobre el mockup correspondiente (P-05 y los callouts de reporte en
+P-02/P-03), leído directamente del componente real. Los IDs de actores,
+casos de uso y requisitos citados son los del registro canónico
+(\texttt{IDS.md}).
 
 % ============================================================================
 \subsection{CU-01 (real): Comunicarse mediante Lengua de Señas Argentina}
@@ -268,12 +267,11 @@ Bajo demanda, cuando se necesita ampliar o reforzar el vocabulario. \\
 
 % ============================================================================
 \subsection{CU-09 (real): Otorgar Consentimiento Explícito de Cámara}
-\textit{Diseñado --- pendiente de implementación.}
+\textit{Implementado.}
 
 Especializa el caso de uso esencial \textbf{CU-09} (ver Entregable~03,
-sección 2.10) sobre la Pantalla \textbf{P-05 --- Pantalla de
-Consentimiento} (Figura~\ref{fig:cur-p05-cu09}), diseño nuevo sin
-componente real todavía.
+sección 2.10) sobre la Pantalla \textbf{P-05 --- Diálogo de
+Consentimiento} (Figura~\ref{fig:cur-p05-cu09}).
 
 \diagrama{04_mockup_p05_consentimiento}{0.75\textwidth}{Pantalla P-05, referenciada por CU-09 (real)}{fig:cur-p05-cu09}
 
@@ -285,26 +283,28 @@ componente real todavía.
 \textbf{ID} & CU-09 (real; esencial en Entregable 03) \\
 \textbf{Actor principal} & Paciente \\
 \textbf{Precondiciones} &
-El paciente abrió la Estación del Paciente; el sistema muestra la
-Pantalla P-05 antes de solicitar el permiso de cámara al navegador. \\
+El paciente abrió la Estación del Paciente; el sistema muestra el
+Diálogo P-05 antes de solicitar el permiso de cámara al navegador. \\
 \textbf{Garantías de éxito} &
-La cámara se activa solo si el botón (4) fue presionado; en caso
+La cámara se activa solo si el botón (5) fue presionado; en caso
 contrario, permanece inactiva. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
     \item El paciente lee el texto explicativo (3) sobre el uso de la
     cámara.
-    \item El paciente hace clic en ``Acepto y continúo'' (4).
-    \item El sistema registra el consentimiento (sin datos
-    identificatorios) y recién entonces solicita el permiso de cámara al
-    navegador.
-    \item El sistema cierra la Pantalla P-05 y muestra la Pantalla P-02,
-    con el indicador (3) en ``EN VIVO''.
+    \item El paciente hace clic en ``Acepto y continúo'' (5).
+    \item El sistema registra el consentimiento como evento de auditoría
+    anónimo (\texttt{consent: "accepted"}) y recién entonces habilita el
+    hook de captura, que solicita el permiso de cámara al navegador.
+    \item El sistema cierra el Diálogo P-05 y muestra la Pantalla P-02, con
+    el indicador (3) en ``EN VIVO''.
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[2a.] El paciente hace clic en ``No acepto'' (5): la Pantalla
-    P-05 permanece visible y la cámara no se activa.
+    \item[2a.] El paciente hace clic en ``No acepto'' (4): el sistema
+    registra \texttt{consent: "declined"}, la cámara no se activa y el
+    diálogo pasa al estado ``declined'' (6)--(7), con el botón
+    ``Reconsiderar'' (7) para volver al estado inicial.
     \item[3a.] El navegador deniega el permiso de cámara: el sistema
     informa el error y la Pantalla P-02 no llega a mostrar video.
 \end{itemize} \\
@@ -317,7 +317,7 @@ contrario, permanece inactiva. \\
 
 % ============================================================================
 \subsection{CU-10 (real): Reportar Traducción Incorrecta o Ambigua}
-\textit{Diseñado --- pendiente de implementación.}
+\textit{Implementado.}
 
 Especializa el caso de uso esencial \textbf{CU-10} (ver Entregable~03,
 sección 2.11) sobre las Pantallas P-02 y P-03, mediante el callout de
@@ -333,23 +333,28 @@ Figura~\ref{fig:cur-p03-cu04}).
 \textbf{ID} & CU-10 (real; esencial en Entregable 03) \\
 \textbf{Actor principal} & Paciente, Personal de Recepción o Enfermería \\
 \textbf{Precondiciones} &
-Existe al menos una burbuja en el panel de conversación de P-02 (7) o de
-P-03 (3). \\
+Existe al menos una burbuja del paciente en el panel de conversación de
+P-02 (7) o de P-03 (3); el botón de reporte solo aparece sobre mensajes
+del paciente. \\
 \textbf{Garantías de éxito} &
-El reporte queda asociado al mensaje señalado, con el motivo indicado. \\
+El reporte queda persistido en \texttt{logs/reports.jsonl}, asociado al
+texto y a las palabras del mensaje señalado. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-    \item El actor hace clic en el ícono de reporte de una burbuja
-    (callout (10) en P-02 o (8) en P-03).
-    \item El sistema despliega un campo breve para el motivo del reporte.
-    \item El actor escribe o selecciona el motivo y confirma.
-    \item El sistema muestra una confirmación breve (``Caso registrado'')
-    y cierra el campo.
+    \item El actor hace clic en el botón ``Reportar traducción'' de una
+    burbuja del paciente (callout (10) en P-02 o (8) en P-03).
+    \item El botón pasa a estado ``Enviando...'' y el sistema envía
+    \texttt{POST /report} con el texto del mensaje, la estación y las
+    palabras reconocidas.
+    \item El sistema valida y persiste el reporte.
+    \item El botón pasa a estado ``Reportado'' (con un ícono de check),
+    como confirmación visual.
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[3a.] El actor cierra el campo sin confirmar: el sistema no
-    registra ningún reporte.
+    \item[2a.] La petición falla (red o validación del backend): el botón
+    vuelve a estar disponible y se muestra ``No se pudo enviar el reporte.
+    Probá de nuevo.'' debajo de la burbuja; el actor puede reintentar.
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-06.1. \\
 \textbf{Frecuencia} &

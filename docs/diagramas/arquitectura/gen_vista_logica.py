@@ -27,8 +27,7 @@ PACKAGES = [
 CLASSES = [
     ("pLanding", "page (P-01)", 35, 130, 120),
     ("pRecepcion", "recepcion/page (P-03)", 170, 130, 175),
-    ("consent", "«diseñado»<br>ConsentGate (P-05)", 365, 124, 165, 44),
-    ("pPaciente", "paciente/page (P-02)", 600, 130, 170),
+    ("pPaciente", "paciente/page (P-02, incluye diálogo\nde consentimiento P-05)", 420, 124, 250, 44),
     ("uMP", "useMediaPipe", 35, 270),
     ("uMPT", "useMediaPipeTasks", 215, 270),
     ("uWS", "useSignWebSocket", 35, 315),
@@ -43,11 +42,9 @@ CLASSES = [
     ("appPy", "app.py", 315, 620),
     ("lstm", "SignLanguageLSTM", 60, 685),
     ("capVal", "capture_validation", 315, 685),
-    ("audit", "«diseñado»<br>audit_log", 570, 680, 180, 44),
 ]
 
 EDGES = [
-    ("consent", "pPaciente", DEP, "habilita"),
     ("app", "hooks", DEP, "usa"),
     ("app", "comp", DEP, "usa"),
     ("hooks", "lib", DEP, ""),
@@ -55,7 +52,6 @@ EDGES = [
     ("comp", "appPy", DEP, "HTTP"),
     ("appPy", "lstm", USE, ""),
     ("appPy", "capVal", USE, ""),
-    ("appPy", "audit", DEP, ""),
 ]
 
 
