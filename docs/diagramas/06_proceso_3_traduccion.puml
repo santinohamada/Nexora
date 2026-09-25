@@ -1,0 +1,27 @@
+@startuml 06_proceso_3_traduccion
+!include _estilo.iuml
+hide footbox
+skinparam maxMessageSize 160
+
+title Proceso 3 — Cierre de oración, traducción y voz (CU-02, CU-03)
+
+actor Paciente
+participant "Estación\ndel Paciente" as NavP
+participant "FastAPI\n(threadpool)" as API
+participant "Ollama\n(proceso local)" as Ollama
+participant "Piper TTS\n(embebido)" as Piper
+
+NavP -> NavP : detecta el fin\nde la oración\n(800 ms de inactividad)
+NavP -> API : POST /process_sentence
+alt sin plantilla ni caché
+  API -> Ollama : POST /api/generate
+  Ollama --> API : oración en español natural
+end
+API -> Piper : sintetizar el audio\n(si no está en caché)
+Piper --> API : audio WAV
+API -> API : registra el evento 'sentence'
+API --> NavP : oración y audio
+NavP -> Paciente : muestra la oración\n(1000 ms) y luego\nreproduce el audio
+NavP -> API : POST /audit\n(translation_displayed)
+
+@enduml

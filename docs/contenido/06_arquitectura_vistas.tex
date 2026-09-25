@@ -113,47 +113,106 @@ sistema: el bucle de captura del navegador, la comunicación asincrónica por
 WebSocket, el manejo diferenciado de solicitudes en el backend FastAPI, y la
 sincronización entre la Estación del Paciente y la Estación de Recepción por
 \texttt{BroadcastChannel}, que es completamente independiente del backend.
-Los tres diagramas siguen la misma disposición: el Paciente y la Estación del
-Paciente a la izquierda, los procesos del backend en el centro, y la Estación
-de Recepción y el Personal de Recepción o Enfermería a la derecha.
 
-\diagrama{06_vista_procesos_1}{\textwidth}{Vista de Procesos de LSA Salud (1/3): captura y predicción}{fig:arq-vista-procesos-1}
+Se presenta un diagrama por proceso. Todos siguen la misma disposición: el
+Paciente y la Estación del Paciente a la izquierda, los procesos del backend
+y el canal de la estación en el centro, y la Estación de Recepción y el
+Personal de Recepción o Enfermería a la derecha. En los procesos de gestión
+del modelo, el Desarrollador de IA / Equipo de Proyecto se ubica a la
+derecha. Cada actor y cada proceso aparece una sola vez por diagrama.
 
-\diagrama{06_vista_procesos_2}{\textwidth}{Vista de Procesos de LSA Salud (2/3): cierre de oración y traducción}{fig:arq-vista-procesos-2}
+\clearpage
+\subsection{Proceso 1: consentimiento de cámara}
 
-\diagrama{06_vista_procesos_3}{\textwidth}{Vista de Procesos de LSA Salud (3/3): sincronización, respuesta y fin de atención}{fig:arq-vista-procesos-3}
+Antes de activar la cámara, la Estación del Paciente muestra el diálogo de
+consentimiento (CU-09, RF-03). La cámara solo se habilita si el paciente
+acepta; en ambos casos la decisión se registra como evento anónimo de
+auditoría.
 
-Puntos relevantes de la concurrencia representada:
-\begin{itemize}
-    \item \textbf{Bucle de captura (hilo principal del navegador):} corre de
-    forma continua mientras la cámara está activa, independientemente de si
-    hay una predicción pendiente; el \texttt{hook} \texttt{useSignWebSocket}
-    descarta envíos mientras una predicción anterior sigue en curso, salvo
-    que esté obsoleta (más de 2000 ms), para no saturar el WebSocket.
-    \item \textbf{\texttt{/ws/predict} en el \emph{event loop}:} el
-    \textit{handler} es asincrónico y atiende el WebSocket en el
-    \textit{event loop} de FastAPI; la inferencia del modelo LSTM, que es una
-    operación intensiva de CPU/GPU, se delega a un hilo de inferencia, de modo
-    que el \textit{event loop} sigue atendiendo otros mensajes mientras dura
-    la predicción.
-    \item \textbf{\texttt{/process\_sentence} en el \textit{threadpool} de
-    Starlette:} al ser un \textit{handler} sincrónico, FastAPI lo ejecuta en
-    el \textit{threadpool} interno de Starlette; por eso las llamadas
-    bloqueantes a Ollama y a Piper TTS no bloquean el \textit{event loop}.
-    \item \textbf{Ollama como proceso local independiente:} se invoca por
-    HTTP a \texttt{localhost:11434}; su disponibilidad no está garantizada,
-    y su ausencia se degrada según RNF-T-01 (texto original sin reconstruir),
-    sin interrumpir el flujo.
-    \item \textbf{\texttt{BroadcastChannel} como canal sin red:} la
-    propagación de un mensaje entre la Estación del Paciente y la Estación
-    de Recepción no pasa por el backend ni por ninguna red: es un mecanismo
-    del navegador entre pestañas del mismo origen, independiente de la
-    exhibición y reproducción de audio en la Estación del Paciente.
-    \item \textbf{Fin de atención (CU-12):} el Personal de Recepción o
-    Enfermería vacía la conversación en su estación y el evento
-    \texttt{CLEAR} viaja por el mismo canal hacia la Estación del Paciente,
-    que también la vacía; ningún dato de la atención queda persistido.
-\end{itemize}
+\diagrama{06_proceso_1_consentimiento}{0.8\textwidth}{Proceso 1: consentimiento de cámara}{fig:arq-proceso-1}
+
+\clearpage
+\subsection{Proceso 2: captura y reconocimiento de señas}
+
+El bucle de captura del navegador corre de forma continua mientras la cámara
+está activa y envía la ventana de frames por WebSocket cada 8 frames. El
+\textit{event loop} de FastAPI recibe la ventana y delega la inferencia del
+modelo a un hilo propio, de modo que sigue atendiendo otros mensajes mientras
+dura la predicción (CU-01, RF-01, RF-05).
+
+\diagrama{06_proceso_2_prediccion}{\textwidth}{Proceso 2: captura y reconocimiento de señas}{fig:arq-proceso-2}
+
+\clearpage
+\subsection{Proceso 3: cierre de oración, traducción y voz}
+
+Al detectar el fin de la oración, la Estación del Paciente envía las palabras
+reconocidas al backend. El \textit{handler} se ejecuta en el
+\textit{threadpool} de Starlette, por lo que las llamadas a Ollama y a Piper
+TTS no bloquean el \textit{event loop}. Ollama solo se invoca cuando no hay
+una plantilla médica ni una traducción en caché; si no está disponible, se
+muestra la oración sin reconstruir (RNF-T-01), sin interrumpir el flujo
+(CU-02, CU-03).
+
+\diagrama{06_proceso_3_traduccion}{\textwidth}{Proceso 3: cierre de oración, traducción y voz}{fig:arq-proceso-3}
+
+\clearpage
+\subsection{Proceso 4: envío del mensaje del paciente al personal}
+
+El mensaje traducido se propaga de la Estación del Paciente a la Estación de
+Recepción por \texttt{BroadcastChannel}: un mecanismo del navegador entre
+pestañas del mismo origen, que no pasa por el backend ni por ninguna red
+(CU-01).
+
+\diagrama{06_proceso_4_sincronizacion}{0.85\textwidth}{Proceso 4: envío del mensaje del paciente al personal}{fig:arq-proceso-4}
+
+\clearpage
+\subsection{Proceso 5: respuesta del personal}
+
+El Personal de Recepción o Enfermería responde por escrito o por voz; el
+dictado se transcribe en el propio navegador. La respuesta viaja por el mismo
+canal hacia la Estación del Paciente (CU-04, CU-05, RF-02).
+
+\diagrama{06_proceso_5_respuesta}{\textwidth}{Proceso 5: respuesta del personal}{fig:arq-proceso-5}
+
+\clearpage
+\subsection{Proceso 6: reporte de una traducción incorrecta}
+
+El paciente o el personal pueden reportar un mensaje traducido desde su
+propia estación. El backend valida el reporte, lo agrega a
+\texttt{logs/reports.jsonl} y registra el evento de auditoría
+correspondiente (CU-10, RF-06).
+
+\diagrama{06_proceso_6_reporte}{\textwidth}{Proceso 6: reporte de una traducción incorrecta}{fig:arq-proceso-6}
+
+\clearpage
+\subsection{Proceso 7: fin de atención}
+
+El Personal de Recepción o Enfermería finaliza la atención: su estación vacía
+la conversación y envía el evento \texttt{CLEAR} por el canal, que vacía
+también la Estación del Paciente. Ningún dato de la atención queda
+persistido; solo se registra el evento anónimo de fin de atención (CU-12,
+RNF-03).
+
+\diagrama{06_proceso_7_fin_atencion}{\textwidth}{Proceso 7: fin de atención}{fig:arq-proceso-7}
+
+\clearpage
+\subsection{Proceso 8: captura de muestras de entrenamiento}
+
+En el modo captura, el Desarrollador de IA / Equipo de Proyecto elige o crea
+la seña y graba un conjunto de repeticiones. Cada muestra se valida en el
+backend antes de guardarse en el sistema de archivos local (CU-06, CU-07).
+
+\diagrama{06_proceso_8_captura_muestras}{0.85\textwidth}{Proceso 8: captura de muestras de entrenamiento}{fig:arq-proceso-8}
+
+\clearpage
+\subsection{Proceso 9: entrenamiento del modelo}
+
+El entrenamiento corre como un proceso independiente del servicio, sin
+afectar la atención en curso. Separa entrenamiento y validación por sesión de
+grabación, guarda el modelo resultante y el servicio lo carga al reiniciarse
+(CU-08).
+
+\diagrama{06_proceso_9_entrenamiento}{0.85\textwidth}{Proceso 9: entrenamiento del modelo}{fig:arq-proceso-9}
 
 % ============================================================================
 \section{Vista de Desarrollo}

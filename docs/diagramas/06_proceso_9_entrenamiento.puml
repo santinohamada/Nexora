@@ -1,0 +1,22 @@
+@startuml 06_proceso_9_entrenamiento
+!include _estilo.iuml
+hide footbox
+skinparam maxMessageSize 160
+
+title Proceso 9 — Entrenamiento del modelo (CU-08)
+
+database "Archivos locales\n(dataset/, models/)" as FS
+participant "train_lstm.py\n(proceso offline)" as Train
+participant "FastAPI" as API
+actor "Desarrollador de IA /\nEquipo de Proyecto" as Dev
+
+Dev -> Train : ejecuta el entrenamiento
+Train -> FS : lee las muestras por seña
+Train -> Train : separa entrenamiento\ny validación por sesión
+Train -> Train : entrena y valida el modelo
+Train -> FS : guarda el modelo y las clases
+Train --> Dev : métricas de validación
+Dev -> API : reinicia el servicio
+API -> FS : carga el modelo nuevo
+
+@enduml
