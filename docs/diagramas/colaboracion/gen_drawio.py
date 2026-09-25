@@ -1,7 +1,7 @@
 """gen_drawio.py — genera los 9 diagramas de colaboracion UML (DC-01..DC-09)
 como archivos .drawio editables, con notacion Larman/UML 2.5 estricta.
-DC-06, DC-07 y DC-08 cubren RF-03, RF-04 y RF-06 oficiales respectivamente;
-DC-09 cubre RNF-03 oficial:
+DC-06, DC-07 y DC-08 cubren RF-03, RF-04 y RF-06 respectivamente;
+DC-09 cubre RNF-03:
 
 - objetos como rectangulos con nombre subrayado (instancia : Clase o :Clase)
 - UN enlace sin flecha entre cada par de objetos que colabora, SIEMPRE
@@ -646,7 +646,7 @@ def dc05() -> Diagram:
 
 
 # ---------------------------------------------------------------------------
-# DC-06 — otorgarConsentimiento(paciente) — realiza CU-09 (RF-03 oficial)
+# DC-06 — otorgarConsentimiento(paciente) — realiza CU-09 (RF-03)
 # 2-row layout: pacientePage -> sendAudit -> backend straight H on row 1;
 # backend -> fileAudit and pacientePage -> useMediaPipe each drop straight
 # down on row 2 (object x-centers match, so both links stay vertical with
@@ -690,7 +690,7 @@ def dc06() -> Diagram:
 
 
 # ---------------------------------------------------------------------------
-# DC-07 — registrarEventoAuditoria(operacion) — realiza CU-11 (RF-04 oficial)
+# DC-07 — registrarEventoAuditoria(operacion) — realiza CU-11 (RF-04)
 # compact straight horizontal chain: any handler -> _log_audit -> _append_jsonl
 # -> logs/audit.jsonl. _log_audit and _append_jsonl are both plain functions
 # in app.py (no audit_log module); _append_jsonl writes under a
@@ -729,7 +729,7 @@ def dc07() -> Diagram:
 
 
 # ---------------------------------------------------------------------------
-# DC-08 — reportarTraduccion(mensaje) — realiza CU-10 (RF-06 oficial)
+# DC-08 — reportarTraduccion(mensaje) — realiza CU-10 (RF-06)
 # 2-row layout: bubble -> backend -> validation straight H on row 1;
 # backend -> appendJsonl (same x-center, straight down) -> fileReports on
 # row 2; backend's self-loop covers the extra audit event it also emits
@@ -767,7 +767,7 @@ def dc08() -> Diagram:
 
 
 # ---------------------------------------------------------------------------
-# DC-09 — limpiarConversacion() — realiza CU-12 (RNF-03 oficial)
+# DC-09 — limpiarConversacion() — realiza CU-12 (RNF-03)
 # 2-row layout, misma familia que DC-04/DC-06: fila 1 controls->chatRec->
 # sendAudit->backend en cadena horizontal recta; fila 2 bc/fileAudit debajo
 # de chatRec/backend (mismo centro x, enlace vertical directo, sin

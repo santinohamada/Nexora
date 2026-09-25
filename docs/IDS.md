@@ -8,14 +8,11 @@ reordenar sin actualizar este archivo primero.
 
 Alcance verificado contra código: `app.py`, `train_lstm.py`, `src/model/lstm.py`,
 `capture_validation.py`, `web/app/**/page.tsx`, `web/hooks/*.ts`,
-`web/lib/mediapipe.ts`, `web/components/**`, `README.md`. Alcance verificado
-contra documentos oficiales de cátedra: `docs/referencias/RESUMEN_REFERENCIAS.md`
-(digesto de TP0, TP1, TP2, EDT, Registro de Interesados, Matriz de Requisitos,
-Registro de Riesgos).
+`web/lib/mediapipe.ts`, `web/components/**`, `README.md`.
 
 > **Nota de nombre:** "Nexora" es el nombre del repositorio de código, no el
 > nombre del proyecto académico. El proyecto y el sistema se llaman
-> **LSA Salud** en todo documento formal (TP0/TP1/TP2 y estos entregables).
+> **LSA Salud** en todo documento formal.
 
 ---
 
@@ -32,7 +29,7 @@ Registro de Riesgos).
 | Cátedra / Institución | Proyecto Final — Departamento de Ingeniería en Sistemas de Información, UTN-FRT |
 | Preparado por | Hamada, Santino · García Tarcic, Iñaki Ezequiel · Véliz, Héctor Matias · Arnedo, Emmanuel Augusto |
 
-### Códigos de documento (esquema propio del equipo, no oficial)
+### Códigos de documento (esquema propio del equipo)
 
 | Entregable | Código |
 |---|---|
@@ -53,9 +50,9 @@ Registro de Riesgos).
 
 | ID | Nombre | Tipo | Descripción |
 |----|--------|------|-------------|
-| ACT-01 | Paciente | Primario | Persona sorda o hipoacúsica que se comunica mediante Lengua de Señas Argentina (LSA) frente a la cámara de la Estación del Paciente (`web/app/paciente/page.tsx`). Corresponde al interesado oficial **"Personas que se comunican con LSA"** (Registro de Interesados). |
-| ACT-02 | Personal de Recepción o Enfermería | Primario | Personal de recepción o enfermería que lee la traducción del paciente y responde por texto o dictado de voz desde la Estación de Recepción (`web/app/recepcion/page.tsx`). **Generaliza explícitamente** a los dos interesados oficiales separados en el Registro de Interesados — **"Recepcionista"** y **"Enfermero/a"** — porque ambos comparten el mismo requisito involucrado ("Traducción LSA→texto"), el mismo interés ("comunicación directa y privada con el paciente") y la misma estrategia de gestión ("Gestionar de Cerca"); no hay ninguna interacción con el sistema que distinga a uno de otro, por lo que modelarlos como actores separados duplicaría el mismo caso de uso sin aportar comportamiento distinto (Larman, *UML y Patrones*: generalizar actores solo cuando comparten objetivos y forma de interacción). |
-| ACT-03 | Desarrollador de IA / Equipo de Proyecto | Primario | Personal técnico del equipo que graba nuevas muestras de señas (Modo Captura, `CaptureMode.tsx`) y reentrena el modelo LSTM (`train_lstm.py`). **Decisión de diseño del equipo, sin respaldo directo en un interesado oficial del Registro de Interesados**: el Registro no lista un rol de usuario final equivalente. El trabajo de construcción de dataset y entrenamiento aparece en el EDT oficial como tareas del propio equipo del proyecto (paquetes 3.2.2 a 3.2.5, 5.2.1, 5.2.2), no como un rol operativo del producto entregado al Sanatorio. Se mantiene como actor de sistema — en vez de tratarse como trabajo puramente externo al software — porque el software realmente expone un Modo Captura en producción; el nombre se alinea con el rol oficial más cercano que aparece en la matriz de requisitos (columna "Validación", RF-05/RF-06/RNF-01/RNF-02/RNF-06: "Arnedo Emmanuel — Dev IA") y con el EDT ("Equipo de Proyecto"). |
+| ACT-01 | Paciente | Primario | Persona sorda o hipoacúsica que se comunica mediante Lengua de Señas Argentina (LSA) frente a la cámara de la Estación del Paciente (`web/app/paciente/page.tsx`). Corresponde al interesado **"Personas que se comunican con LSA"**. |
+| ACT-02 | Personal de Recepción o Enfermería | Primario | Personal de recepción o enfermería que lee la traducción del paciente y responde por texto o dictado de voz desde la Estación de Recepción (`web/app/recepcion/page.tsx`). **Generaliza explícitamente** a los interesados **"Recepcionista"** y **"Enfermero/a"** — porque ambos comparten el mismo requisito involucrado ("Traducción LSA→texto"), el mismo interés ("comunicación directa y privada con el paciente") y la misma estrategia de gestión ("Gestionar de Cerca"); no hay ninguna interacción con el sistema que distinga a uno de otro, por lo que modelarlos como actores separados duplicaría el mismo caso de uso sin aportar comportamiento distinto (Larman, *UML y Patrones*: generalizar actores solo cuando comparten objetivos y forma de interacción). |
+| ACT-03 | Desarrollador de IA / Equipo de Proyecto | Primario | Personal técnico del equipo que graba nuevas muestras de señas (Modo Captura, `CaptureMode.tsx`) y reentrena el modelo LSTM (`train_lstm.py`). **Decisión de diseño del equipo**: no existe un rol de usuario final equivalente para esta tarea. La construcción de dataset y el entrenamiento son tareas del propio equipo del proyecto, no un rol operativo del producto entregado al Sanatorio. Se mantiene como actor de sistema — en vez de tratarse como trabajo puramente externo al software — porque el software realmente expone un Modo Captura en producción. |
 
 No se modelan actores de sistema secundarios (LLM/Ollama, Piper TTS) porque
 son componentes invocados sincrónicamente por el backend (`app.py`), sin
@@ -64,16 +61,14 @@ definición de actor de Larman/UML 2.5. Se documentan como dependencias
 tecnológicas en la ERS (secciones 2.4 y 3.4).
 
 No se modela un actor nuevo para el consumo de las métricas de auditoría del
-RF-04 oficial (logs de uso y métricas operativas). El registro es una
-subfunción automática, incluida por CU-01 y CU-04 (ver CU-11), sin
-interacción humana directa en el software; su consumo (lectura/exportación
-de esas métricas) es un proceso organizacional fuera de la interfaz —
-corresponde al entregable de gestión E08 "Informe de Impacto Operativo"
-(EDT) — y no una pantalla del sistema. El interesado oficial que en la
-matriz de requisitos figura como dueño de RF-04 (**Dirección del
-Sanatorio**) es, en consecuencia, un interesado de reporte, no un actor de
-sistema: es la opción más limpia según Larman (evitar introducir un actor
-sin interacción concreta con el sistema modelado).
+RF-04 (logs de uso y métricas operativas). El registro es una subfunción
+automática, incluida por CU-01 y CU-04 (ver CU-11), sin interacción humana
+directa en el software; su consumo (lectura/exportación de esas métricas) es
+un proceso organizacional fuera de la interfaz, y no una pantalla del
+sistema. Dirección del Sanatorio, interesada en RF-04, es en consecuencia un
+interesado de reporte, no un actor de sistema: es la opción más limpia según
+Larman (evitar introducir un actor sin interacción concreta con el sistema
+modelado).
 
 ---
 
@@ -89,59 +84,60 @@ sin interacción concreta con el sistema modelado).
 | CU-06 | Capturar Muestra de Seña para Entrenamiento | Desarrollador de IA / Equipo de Proyecto | Objetivo de usuario | Base; incluye CU-07 |
 | CU-07 | Gestionar Vocabulario de Señas | Desarrollador de IA / Equipo de Proyecto | Subfunción | Incluido por CU-06 |
 | CU-08 | Entrenar el Modelo de Reconocimiento | Desarrollador de IA / Equipo de Proyecto | Objetivo de usuario | Independiente (precondición: CU-06 ejecutado antes) |
-| CU-09 | Otorgar Consentimiento Explícito de Cámara | Paciente | Objetivo de usuario | Precondición obligatoria de CU-01 (RF-03 oficial) |
-| CU-10 | Reportar Traducción Incorrecta o Ambigua | Paciente, Personal de Recepción o Enfermería | Objetivo de usuario | Extiende a CU-01 y a CU-04 (punto de extensión: "revisión de mensaje") (RF-06 oficial) |
-| CU-11 | Registrar Evento de Auditoría | (subfunción interna del sistema, sin actor humano) | Subfunción | Incluido por CU-01 y CU-04 (RF-04 oficial) |
-| CU-12 | Finalizar Atención y Preparar la Estación para el Próximo Paciente | Personal de Recepción o Enfermería | Objetivo de usuario | Base; cierra la conversación abierta por CU-01/CU-04 (RNF-03 oficial) |
+| CU-09 | Otorgar Consentimiento Explícito de Cámara | Paciente | Objetivo de usuario | Precondición obligatoria de CU-01 (RF-03) |
+| CU-10 | Reportar Traducción Incorrecta o Ambigua | Paciente, Personal de Recepción o Enfermería | Objetivo de usuario | Extiende a CU-01 y a CU-04 (punto de extensión: "revisión de mensaje") (RF-06) |
+| CU-11 | Registrar Evento de Auditoría | (subfunción interna del sistema, sin actor humano) | Subfunción | Incluido por CU-01 y CU-04 (RF-04) |
+| CU-12 | Finalizar Atención y Preparar la Estación para el Próximo Paciente | Personal de Recepción o Enfermería | Objetivo de usuario | Base; cierra la conversación abierta por CU-01/CU-04 (RNF-03) |
 
 Paquetes del diagrama de casos de uso: **Comunicación** (CU-01 a CU-05,
 CU-09, CU-10, CU-12), **Gestión del Modelo** (CU-06 a CU-08), **Auditoría**
 (CU-11). El diagrama de casos de uso (Entregable 02) usa una única columna
 dentro del límite del sistema, o dos si doce casos de uso no entran en una
-columna legible (ver formato de referencia de cátedra).
+columna legible (ver formato de referencia).
 
 ---
 
 ## 3. Requisitos funcionales
 
-### 3.1 Matriz oficial (texto literal — fuente: `LSA_Matriz de trazabilidad de Requisitos_V3.xlsx`)
+### 3.1 Requisitos funcionales base (RF-01 a RF-06)
 
-Estos seis IDs están **reservados** para el texto oficial; no se reescriben.
+Estos seis IDs están **reservados** para el texto base del requisito; no se
+reescriben.
 
-| ID oficial | Descripción (texto literal) | Criterio de aceptación | Objetivo relacionado | Cobertura en LSA Salud |
-|---|---|---|---|---|
-| RF-01 | El sistema debe traducir LSA a texto y voz en tiempo casi real. | CRIT-01 | OE01 | Ver RF-01.1 a RF-01.8 |
-| RF-02 | El sistema debe transcribir la voz o texto del profesional a un formato de texto accesible para el paciente sordo. | CRIT-03 | OE09 | Ver RF-02.1, RF-02.2 |
-| RF-03 | La interfaz debe desplegar una pantalla de consentimiento explícito obligatorio antes de activar la cámara. | CRIT-07 | OE10 | Ver CU-09, RF-03.1 |
-| RF-04 | El sistema debe registrar logs de uso internos y métricas operativas anónimas para auditoría. | CRIT-03 | OE08 | Ver CU-11, RF-04.1 |
-| RF-05 | El sistema debe detectar cuando una seña no pueda interpretarse con confianza y evitar mostrar una traducción incorrecta. | CRIT-02/03 | OE06 | Mecanismo de umbral, ver RF-01.3, RF-01.4 |
-| RF-06 | El sistema debe permitir que paciente o profesional reporten una traducción incorrecta/ambigua/no comprendida, para registrar el caso y mejorar el modelo. | CRIT-02/03 | OE06 | Ver CU-10, RF-06.1 |
+| ID | Descripción (texto literal) | Criterio de verificación | Cobertura en LSA Salud |
+|---|---|---|---|
+| RF-01 | El sistema debe traducir LSA a texto y voz en tiempo casi real. | Latencia percibida < 1 s en condiciones normales | Ver RF-01.1 a RF-01.8 |
+| RF-02 | El sistema debe transcribir la voz o texto del profesional a un formato de texto accesible para el paciente sordo. | Mensaje entregado en pantalla en el mismo canal sincronizado que RF-01 | Ver RF-02.1, RF-02.2 |
+| RF-03 | La interfaz debe desplegar una pantalla de consentimiento explícito obligatorio antes de activar la cámara. | Diálogo de consentimiento obligatorio previo a activar la cámara | Ver CU-09, RF-03.1 |
+| RF-04 | El sistema debe registrar logs de uso internos y métricas operativas anónimas para auditoría. | 0% de datos identificatorios o imágenes/video en los registros de auditoría | Ver CU-11, RF-04.1 |
+| RF-05 | El sistema debe detectar cuando una seña no pueda interpretarse con confianza y evitar mostrar una traducción incorrecta. | Accuracy ≥ 90% en entornos controlados y ≥ 85% en operación real | Mecanismo de umbral, ver RF-01.3, RF-01.4 |
+| RF-06 | El sistema debe permitir que paciente o profesional reporten una traducción incorrecta/ambigua/no comprendida, para registrar el caso y mejorar el modelo. | Accuracy ≥ 90% en entornos controlados y ≥ 85% en operación real | Ver CU-10, RF-06.1 |
 
 ### 3.2 Sub-requisitos técnicos trazables
 
-Cada uno es una realización parcial de su RF oficial padre (relación
-muchos-a-uno). Continúan la numeración `RF-<oficial>.<n>`.
+Cada uno es una realización parcial de su RF padre (relación muchos-a-uno).
+Continúan la numeración `RF-<base>.<n>`.
 
-| ID | Texto (una línea) | CU relacionados | Traza a RF oficial |
+| ID | Texto (una línea) | CU relacionados | Traza a RF |
 |----|--------------------|------------------|---------------------|
 | RF-01.1 | Captura en tiempo real de landmarks de manos, pose y rostro (blendshapes) desde la cámara mediante MediaPipe. Los blendshapes faciales aportan los marcadores no manuales gramaticales de la LSA (preguntas, negación, intensidad) como parte de las características de reconocimiento. | CU-01 | RF-01 |
 | RF-01.2 | Envío de los frames acumulados al backend para predicción vía WebSocket. | CU-01 | RF-01 |
-| RF-01.3 | Clasificación de la seña mediante el modelo LSTM sobre una ventana de 45 frames, con umbral de confianza del 70 %. | CU-01, CU-02 | RF-01 (mecanismo de umbral realiza también RF-05 oficial) |
-| RF-01.4 | Construcción incremental de la secuencia de palabras y detección de cierre de oración por inactividad (idle ≥ 800 ms + quietud de movimiento); descarta señas de baja confianza o de reposo. | CU-01 | RF-01 (realiza también RF-05 oficial) |
+| RF-01.3 | Clasificación de la seña mediante el modelo LSTM sobre una ventana de 45 frames, con umbral de confianza del 70 %. | CU-01, CU-02 | RF-01 (mecanismo de umbral realiza también RF-05) |
+| RF-01.4 | Construcción incremental de la secuencia de palabras y detección de cierre de oración por inactividad (idle ≥ 800 ms + quietud de movimiento); descarta señas de baja confianza o de reposo. | CU-01 | RF-01 (realiza también RF-05) |
 | RF-01.5 | Traducción de la secuencia de palabras a una oración natural en español (plantilla médica → caché → modelo de lenguaje local). | CU-02 | RF-01 |
 | RF-01.6 | Síntesis de voz de la oración traducida con acento argentino y reproducción tras una ventana de exhibición previa. | CU-03 | RF-01 |
-| RF-01.7 | Publicación del mensaje traducido en la conversación sincronizada entre las dos caras de la estación. | CU-01, CU-04 | RF-01 (soporta también RF-02 oficial, como canal de entrega) |
-| RF-01.8 | Verificación de fidelidad clínica: el módulo de traducción valida que la oración generada por el modelo de lenguaje no incorpore síntomas, medicamentos ni términos clínicos ausentes de la secuencia de señas reconocida, antes de mostrarla o sintetizarla. | CU-02 | RF-01 (realiza también RF-05 oficial) |
+| RF-01.7 | Publicación del mensaje traducido en la conversación sincronizada entre las dos caras de la estación. | CU-01, CU-04 | RF-01 (soporta también RF-02, como canal de entrega) |
+| RF-01.8 | Verificación de fidelidad clínica: el módulo de traducción valida que la oración generada por el modelo de lenguaje no incorpore síntomas, medicamentos ni términos clínicos ausentes de la secuencia de señas reconocida, antes de mostrarla o sintetizarla. | CU-02 | RF-01 (realiza también RF-05) |
 | RF-02.1 | Redacción y envío de una respuesta de texto por parte del personal de recepción o enfermería. | CU-04 | RF-02 |
 | RF-02.2 | Dictado de la respuesta por voz (Web Speech API, es-AR), acumulable sobre texto ya escrito. | CU-05 | RF-02 |
 
-### 3.3 Requisitos técnicos sin RF oficial directo (decisión de diseño del equipo)
+### 3.3 Requisitos técnicos sin RF base directo (decisión de diseño del equipo)
 
-Sin contraparte en la matriz oficial: sostienen CU-06/07/08 (gestión del
-modelo), una decisión de arquitectura del equipo documentada y justificada
-en ACT-03 (sección 1) y en el Entregable 02. CU-06, CU-07 y CU-08 son, en
-conjunto, las herramientas de administración del modelo y del dataset con
-las que cuenta el Equipo de Proyecto (Modo Captura, gestión de vocabulario y
+Sin contraparte en la matriz de requisitos: sostienen CU-06/07/08 (gestión
+del modelo), una decisión de arquitectura del equipo documentada en ACT-03
+(sección 1) y en el Entregable 02. CU-06, CU-07 y CU-08 son, en conjunto,
+las herramientas de administración del modelo y del dataset con las que
+cuenta el Equipo de Proyecto (Modo Captura, gestión de vocabulario y
 reentrenamiento); no se agrega una pantalla de administración adicional
 fuera de estos tres casos de uso.
 
@@ -156,50 +152,49 @@ fuera de estos tres casos de uso.
 
 ### 3.4 Sub-requisitos de consentimiento, auditoría y reporte
 
-Cubren RF-03, RF-04 y RF-06 oficiales.
+Cubren RF-03, RF-04 y RF-06.
 
-| ID | Texto (una línea) | CU relacionados | Traza a RF oficial |
+| ID | Texto (una línea) | CU relacionados | Traza a RF |
 |----|--------------------|------------------|---------------------|
 | RF-03.1 | Antes de activar la cámara, el sistema despliega un diálogo de consentimiento explícito (`PacientePage`) y bloquea el acceso a la cámara (`enabled` en el hook de landmarks) hasta que el paciente lo otorgue. | CU-09 | RF-03 |
 | RF-04.1 | El sistema registra, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción/síntesis, reporte, consentimiento, traducción mostrada, fin de atención), sin datos identificatorios ni imágenes/video, en `logs/audit.jsonl`. | CU-11 | RF-04 |
 | RF-06.1 | El paciente o el personal de recepción/enfermería pueden marcar un mensaje del paciente como traducción incorrecta o ambigua (botón "Reportar traducción" en `ChatBubble`); el reporte se persiste en `logs/reports.jsonl`. | CU-10 | RF-06 |
 
-CU-12 no agrega un sub-requisito RF propio: realiza directamente RNF-03
-oficial (ver RNF-03.1 en la sección 4.2, actualizada con la acción de fin de
-atención) y se apoya en RF-04.1 para registrar el evento de auditoría de
-cierre.
+CU-12 no agrega un sub-requisito RF propio: realiza directamente RNF-03 (ver
+RNF-03.1 en la sección 4.2, actualizada con la acción de fin de atención) y
+se apoya en RF-04.1 para registrar el evento de auditoría de cierre.
 
 Total: **12 RF sub-requisitos** (RF-01.1–RF-01.8, RF-02.1–RF-02.2, RF-03.1,
-RF-04.1, RF-06.1), **6 RF técnicos sin RF oficial** (RF-T-01–RF-T-06).
+RF-04.1, RF-06.1), **6 RF técnicos sin RF base** (RF-T-01–RF-T-06).
 
 ---
 
 ## 4. Requisitos no funcionales
 
-### 4.1 Matriz oficial (texto literal)
+### 4.1 Requisitos no funcionales base (RNF-01 a RNF-07)
 
-| ID oficial | Descripción (texto literal) | Criterio de aceptación | Verificación en LSA Salud |
+| ID | Descripción (texto literal) | Criterio de verificación | Verificación en LSA Salud |
 |---|---|---|---|
-| RNF-01 | Latencia: procesamiento e interpretación de señas en tiempo real <1 segundo. | CRIT-01 | Verificada mediante las métricas operativas del sistema (`GET /metrics`, ver RNF-01.1) |
-| RNF-02 | Precisión: accuracy mínimo 90% en entornos clínicos controlados. | CRIT-02 | Verificada con evaluación del modelo sobre un conjunto de prueba independiente (`eval_model.py`, ver RNF-02.1) |
-| RNF-03 | Seguridad y Privacidad: 100% de interacciones de video procesadas sin almacenamiento persistente de imágenes/video. | CRIT-04 | Verificada por diseño de arquitectura (ver RNF-03.1) |
-| RNF-04 | Compatibilidad de Hardware: exclusivamente cámaras, pantallas doble cara y componentes comerciales estándar. | CRIT-06 | Verificada por el diseño de la estación fija (ver RNF-04.1) |
-| RNF-05 | Especialización de Datos: dataset ampliado y adaptado al dominio clínico (síntomas, triaje, dolor). | CRIT-02/05 | Verificada por la cobertura del vocabulario clínico del dataset (ver RNF-05.1) |
-| RNF-06 | El dataset clínico LSA debe ser revisado y validado lingüísticamente por intérpretes oficiales antes de usarse como base final. | CRIT-05 | Verificada mediante acta de validación de los intérpretes oficiales (ver RNF-06.1) |
-| RNF-07 | El sistema debe poder usarse en una estación fija de guardia/triaje con cámara, pantalla doble cara, micrófono y altavoces. | CRIT-06 | Verificada por el diseño de la estación fija (ver RNF-07.1) |
+| RNF-01 | Latencia: procesamiento e interpretación de señas en tiempo real <1 segundo. | Latencia percibida < 1 s en condiciones normales | Verificada mediante las métricas operativas del sistema (`GET /metrics`, ver RNF-01.1) |
+| RNF-02 | Precisión: accuracy mínimo 90% en entornos clínicos controlados. | Accuracy ≥ 90% en entornos controlados y ≥ 85% en operación real | Verificada con evaluación del modelo sobre un conjunto de prueba independiente (`eval_model.py`, ver RNF-02.1) |
+| RNF-03 | Seguridad y Privacidad: 100% de interacciones de video procesadas sin almacenamiento persistente de imágenes/video. | 0% de almacenamiento persistente de video/imágenes | Verificada por diseño de arquitectura (ver RNF-03.1) |
+| RNF-04 | Compatibilidad de Hardware: exclusivamente cámaras, pantallas doble cara y componentes comerciales estándar. | Hardware comercial estándar, sin equipamiento médico especializado | Verificada por el diseño de la estación fija (ver RNF-04.1) |
+| RNF-05 | Especialización de Datos: dataset ampliado y adaptado al dominio clínico (síntomas, triaje, dolor). | Cobertura del vocabulario clínico del dataset | Verificada por la cobertura del vocabulario clínico del dataset (ver RNF-05.1) |
+| RNF-06 | El dataset clínico LSA debe ser revisado y validado lingüísticamente por intérpretes antes de usarse como base final. | Dataset clínico validado por intérpretes de LSA | Verificada mediante acta de validación de los intérpretes (ver RNF-06.1) |
+| RNF-07 | El sistema debe poder usarse en una estación fija de guardia/triaje con cámara, pantalla doble cara, micrófono y altavoces. | Hardware comercial estándar, sin equipamiento médico especializado | Verificada por el diseño de la estación fija (ver RNF-07.1) |
 
 ### 4.2 Sub-requisitos técnicos trazables
 
-| ID | Atributo | Texto (una línea) | Traza a RNF oficial | Verificación |
+| ID | Atributo | Texto (una línea) | Traza a RNF | Verificación |
 |----|----------|--------------------|----------------------|--------------|
 | RNF-01.1 | Rendimiento | Metas de latencia extremo a extremo expresadas en p50/p95 (ver ERS 3.3): p50 ≤ 600 ms (ruta con plantilla), p95 ≤ 1 s (caso general). El sistema mide cada etapa mediante eventos de auditoría (`lstm_ms`, `translation_ms`, `tts_ms`, `total_ms`, `e2e_ms`) agregados por `GET /metrics`. | RNF-01 | Medición continua de p50/p95 sobre las métricas operativas agregadas por `GET /metrics` |
-| RNF-02.1 | Precisión del modelo | Exactitud de validación del modelo LSTM (`ModeloDeReconocimiento.exactitudDeValidación`, ver Entregable 01), calculada durante `train_lstm.py` sobre el 20% de validación; `eval_model.py <directorio>` (E05) mide accuracy, precisión/recall y matriz de confusión sobre un directorio de muestras. | RNF-02 | Evaluación con `eval_model.py` sobre un conjunto de muestras independiente del entrenamiento (Informe de Pruebas Controladas, E05) |
+| RNF-02.1 | Precisión del modelo | Exactitud de validación del modelo LSTM (`ModeloDeReconocimiento.exactitudDeValidación`, ver Entregable 01), calculada durante `train_lstm.py` sobre el 20% de validación; `eval_model.py <directorio>` mide accuracy, precisión/recall y matriz de confusión sobre un directorio de muestras. | RNF-02 | Evaluación con `eval_model.py` sobre un conjunto de muestras independiente del entrenamiento |
 | RNF-03.1 | Seguridad / privacidad | Todo el procesamiento y almacenamiento ocurre en la máquina local; no hay persistencia de conversaciones (estado en memoria, sincronizado entre las dos caras de la estación); los eventos de auditoría (RF-04.1) se registran sin imágenes ni video, consistentes con esta restricción. Al finalizar cada atención (CU-12), el sistema borra explícitamente la conversación en ambas caras. | RNF-03 | Verificada por diseño de arquitectura (sin persistencia) y por la acción de cierre de CU-12 |
-| RNF-04.1 / RNF-07.1 | Compatibilidad de hardware / estación fija | Las dos caras sincronizadas de la estación (Paciente y Recepción), sobre el mismo navegador y canal de sincronización local, con doble monitor, **implementan las dos caras de la estación fija de guardia/triaje** exigida por RNF-04/RNF-07 oficiales: cámara y pantalla del lado del paciente, pantalla y controles del lado del personal. El **ensamblaje físico** de esas dos pantallas y la cámara sobre hardware comercial (mostrador o box existente) y su calibración se realizan durante la instalación de cada estación (EDT, paquete 5.5.1; ver Entregable 06, Vista Física). | RNF-04, RNF-07 | Diseño de software completo; ensamblaje y calibración física verificados durante la instalación de cada estación (E07) |
+| RNF-04.1 / RNF-07.1 | Compatibilidad de hardware / estación fija | Las dos caras sincronizadas de la estación (Paciente y Recepción), sobre el mismo navegador y canal de sincronización local, con doble monitor, **implementan las dos caras de la estación fija de guardia/triaje** exigida por RNF-04/RNF-07: cámara y pantalla del lado del paciente, pantalla y controles del lado del personal. El **ensamblaje físico** de esas dos pantallas y la cámara sobre hardware comercial (mostrador o box existente) y su calibración se realizan durante la instalación de cada estación (ver Entregable 06, Vista Física). | RNF-04, RNF-07 | Diseño de software completo; ensamblaje y calibración física verificados durante la instalación de cada estación |
 | RNF-05.1 | Especialización de datos | El Modo Captura y el árbol de captura del dataset (`dataset/custom`) permiten ampliar continuamente el vocabulario clínico LSA (síntomas, triaje, dolor, admisión/recepción/guardia) a partir de un conjunto inicial de referencia. | RNF-05 | Verificada por la cobertura del vocabulario clínico del dataset, junto con la validación de intérpretes (RNF-06) |
-| RNF-06.1 | Validación lingüística | La validación del dataset clínico por intérpretes oficiales de LSA es un procedimiento operativo del proyecto (EDT, paquete 3.2.5), realizado antes de incorporar cada ampliación del vocabulario al modelo en producción. | RNF-06 | Acta de validación firmada por los intérpretes participantes antes de cada actualización del dataset |
+| RNF-06.1 | Validación lingüística | La validación del dataset clínico por intérpretes de LSA es un procedimiento operativo del proyecto, realizado antes de incorporar cada ampliación del vocabulario al modelo en producción. | RNF-06 | Acta de validación firmada por los intérpretes participantes antes de cada actualización del dataset |
 
-### 4.3 Requisitos técnicos sin RNF oficial directo
+### 4.3 Requisitos técnicos sin RNF base directo
 
 | ID | Atributo | Texto (una línea) |
 |----|----------|--------------------|
@@ -212,44 +207,14 @@ RF-04.1, RF-06.1), **6 RF técnicos sin RF oficial** (RF-T-01–RF-T-06).
 
 ---
 
-## 5. Objetivos específicos (OE) y criterios de aceptación (CRIT) — anexo de trazabilidad
-
-Fuente: TP1 (Acta de Constitución) y TP2 (Declaración de Alcance), citados
-en `docs/referencias/RESUMEN_REFERENCIAS.md`, secciones 1 y 2.
-
-| OE | Meta cuantificada | RF/RNF oficiales relacionados | CRIT relacionado |
-|---|---|---|---|
-| OE01 | -80% tiempo de interacción (4 min → <1 min), primeros 6 meses | RF-01 | CRIT-01 |
-| OE02 | -50% de la brecha de permanencia en urgencias, 1er año | RF-01, RF-02 | CRIT-01, CRIT-03 |
-| OE03 | Recuperar ≥150 hs operativas/año, 1er año | RNF-04, RNF-07 | CRIT-06 |
-| OE04 | Comprensión clínica del paciente 18% → >90%, 12 meses | RNF-05, RNF-06 | CRIT-02, CRIT-05 |
-| OE05 | Readmisión a 30 días 24,3% → <15%, 24 meses | RF-01, RF-02 | — |
-| OE06 | Precisión del reconocimiento ≥90% (controlado) / ≥85% (real) | RF-05, RF-06, RNF-02 | CRIT-02, CRIT-03 |
-| OE07 | Latencia de interpretación <1 segundo | RNF-01 | CRIT-01 |
-| OE08 | Adopción por ≥70% del personal de recepción/triaje, 6 meses | RF-04 | CRIT-03 |
-| OE09 | Satisfacción del paciente >85% | RF-02 | — |
-| OE10 | 100% de interacciones sin almacenamiento persistente | RF-03, RNF-03 | CRIT-04, CRIT-07 |
-
-| CRIT | Criterio de aceptación (TP2) | Verificación |
-|---|---|---|
-| CRIT-01 | Latencia percibida <1 s en condiciones normales | Verificada mediante las métricas operativas del sistema (`GET /metrics`, p50/p95) |
-| CRIT-02 | Accuracy ≥90% en reconocimiento en entornos controlados | Verificada con evaluación del modelo sobre un conjunto de prueba independiente (`eval_model.py`) |
-| CRIT-03 | Precisión ≥85% en pruebas operativas reales de guardia | Verificada durante el piloto en guardia mediante los eventos de auditoría (RF-04.1) y los reportes de traducción (RF-06.1) |
-| CRIT-04 | 100% de interacciones de video procesadas sin almacenamiento persistente | Verificada por diseño de arquitectura (procesamiento en memoria, sin persistencia de imágenes/video) |
-| CRIT-05 | Dataset clínico ampliado con aval formal de la comunidad de intérpretes LSA | Verificada mediante acta de validación de los intérpretes oficiales (RNF-06.1) |
-| CRIT-06 | Estaciones con componentes estándar de mercado, sin hardware médico especializado | Verificada por el diseño de la estación fija sobre hardware comercial (ver Entregable 06, Vista Física) |
-| CRIT-07 | Pantalla de consentimiento obligatoria (citado en la matriz de requisitos junto a RF-03; no listado en la tabla CRIT-01..06 de TP2 — inconsistencia menor entre documentos oficiales, documentada aquí) | Verificada por el diálogo de consentimiento obligatorio previo a activar la cámara (RF-03.1) |
-
----
-
-## 6. Conceptos del dominio (Modelo de Dominio)
+## 5. Conceptos del dominio (Modelo de Dominio)
 
 | Concepto | Descripción breve |
 |----------|--------------------|
 | Paciente | Persona sorda/hipoacúsica que se comunica mediante LSA. |
 | Personal de Recepción o Enfermería | Personal que atiende y responde al paciente. |
 | Desarrollador de IA / Equipo de Proyecto | Personal técnico que amplía el vocabulario y reentrena el modelo. |
-| EstaciónDeAtención | Pantalla/estación (Paciente o Recepción) sincronizada con la otra; sus dos caras físicas conforman una estación fija (RNF-04/07 oficiales), desplegada de forma independiente en cada punto de atención del sanatorio (admisión, recepción, triaje, guardia). |
+| EstaciónDeAtención | Pantalla/estación (Paciente o Recepción) sincronizada con la otra; sus dos caras físicas conforman una estación fija (RNF-04/07), desplegada de forma independiente en cada punto de atención del sanatorio (admisión, recepción, triaje, guardia). |
 | Conversación | Intercambio de mensajes de una sesión de atención; se descarta por completo en las dos caras de la estación al finalizar la atención (CU-12), sin dejar datos persistidos. |
 | Mensaje | Unidad de comunicación enviada por el paciente o el personal de recepción/enfermería. |
 | SecuenciaDeSeñas | Secuencia de palabras reconocidas en curso, antes de traducirse. |
@@ -260,16 +225,16 @@ en `docs/referencias/RESUMEN_REFERENCIAS.md`, secciones 1 y 2.
 | SíntesisDeVoz | Locución sonora asociada a un mensaje traducido. |
 | ModeloDeReconocimiento | Red LSTM entrenada capaz de clasificar clases de seña. |
 | MuestraDeEntrenamiento | Grabación de una seña capturada para (re)entrenar el modelo. |
-| ConsentimientoDeCámara | Autorización explícita del paciente para activar la cámara, otorgada antes de iniciar CU-01 (RF-03 oficial); se realiza como un evento de auditoría de tipo `consent`, sin entidad ni archivo propios. |
-| EventoDeAuditoría | Registro anónimo de una operación de sistema relevante, sin datos identificatorios ni imágenes/video (RF-04 oficial). |
-| ReporteDeTraducción | Señalamiento de un mensaje del paciente como traducción incorrecta o ambigua, hecho por el paciente o el personal (RF-06 oficial). |
+| ConsentimientoDeCámara | Autorización explícita del paciente para activar la cámara, otorgada antes de iniciar CU-01 (RF-03); se realiza como un evento de auditoría de tipo `consent`, sin entidad ni archivo propios. |
+| EventoDeAuditoría | Registro anónimo de una operación de sistema relevante, sin datos identificatorios ni imágenes/video (RF-04). |
+| ReporteDeTraducción | Señalamiento de un mensaje del paciente como traducción incorrecta o ambigua, hecho por el paciente o el personal (RF-06). |
 
 Diagramas de clases (dos vistas): `docs/diagramas/dominio/gen_modelo_dominio.py` → `docs/img/01_modelo_dominio_a.pdf` y `01_modelo_dominio_b.pdf`.
 Diagrama de casos de uso: `docs/diagramas/02_casos_uso.puml` → `docs/img/02_casos_uso.pdf`.
 
 ---
 
-## 7. Pantallas (mockups, Entregable 04)
+## 6. Pantallas (mockups, Entregable 04)
 
 | ID | Pantalla | Ruta | Componentes reales representados |
 |----|----------|------|-----------------------------------|
@@ -288,7 +253,7 @@ círculo (①②③…), único por pantalla (no se reinicia entre secciones de 
 misma pantalla). El Entregable 07 referencia estos callouts como
 "panel ③ de la Pantalla P-02".
 
-## 8. Operaciones de sistema y diagramas de colaboración (Entregable 08)
+## 7. Operaciones de sistema y diagramas de colaboración (Entregable 08)
 
 | ID | Operación de sistema | CU realizado | Diagrama de colaboración |
 |----|------------------------|--------------|---------------------------|

@@ -12,7 +12,7 @@ identificados en el Entregable de Diagrama de Casos de Uso. Los escenarios
 se redactan a nivel esencial (intención del actor), sin describir botones,
 menús ni otros detalles de la interfaz concreta, que se documentan en el
 entregable de mockups. CU-09, CU-10, CU-11 y CU-12 corresponden a los
-requisitos oficiales RF-03, RF-06, RF-04 y RNF-03 respectivamente.
+requisitos RF-03, RF-06, RF-04 y RNF-03 respectivamente.
 
 \subsection{Actores}
 
@@ -470,7 +470,7 @@ la línea de comandos del servidor. \\
 
 % ============================================================================
 \subsection{CU-09: Otorgar Consentimiento Explícito de Cámara}
-\textit{Cubre el requisito oficial RF-03.}
+\textit{Cubre el requisito RF-03.}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
 \caption{CU-09 --- Otorgar Consentimiento Explícito de Cámara}\\
@@ -495,7 +495,7 @@ lo rechaza, la cámara permanece inactiva y CU-01 no puede comenzar. \\
     modal de consentimiento (P-05) sobre el resto de la página, que queda
     inerte, antes de solicitar permiso de cámara al navegador.
     \item El diálogo explica, en lenguaje simple, qué captura la cámara,
-    para qué se usa y que no se guarda video ni imágenes (RNF-03 oficial).
+    para qué se usa y que no se guarda video ni imágenes (RNF-03).
     \item El paciente presiona ``Acepto y continúo''.
     \item El sistema registra el consentimiento como evento de auditoría
     anónimo (\texttt{type: "consent"}, \texttt{consent: "accepted"}, sin
@@ -532,7 +532,7 @@ estación. \\
 
 % ============================================================================
 \subsection{CU-10: Reportar Traducción Incorrecta o Ambigua}
-\textit{Cubre el requisito oficial RF-06. Extiende a CU-01 y CU-04.}
+\textit{Cubre el requisito RF-06. Extiende a CU-01 y CU-04.}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
 \caption{CU-10 --- Reportar Traducción Incorrecta o Ambigua}\\
@@ -596,7 +596,7 @@ acumulados como insumo para el reentrenamiento (CU-08). \\
 
 % ============================================================================
 \subsection{CU-11: Registrar Evento de Auditoría}
-\textit{Cubre el requisito oficial RF-04. Subfunción incluida por CU-01 y CU-04, sin actor humano.}
+\textit{Cubre el requisito RF-04. Subfunción incluida por CU-01 y CU-04, sin actor humano.}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
 \caption{CU-11 --- Registrar Evento de Auditoría}\\
@@ -605,10 +605,9 @@ acumulados como insumo para el reentrenamiento (CU-08). \\
 \textbf{ID} & CU-11 \\
 \textbf{Actor principal} & Ninguno --- subfunción interna del sistema (ver \texttt{IDS.md}, Sección~1, sobre la decisión de no modelar un actor de auditoría). \\
 \textbf{Personal involucrado e intereses} &
-Dirección del Sanatorio y Equipo de Proyecto UTN (interesados oficiales
-dueños de RF-04): necesitan métricas operativas anónimas para evaluar el
-impacto del sistema (E08 --- Informe de Impacto Operativo, EDT), sin que
-eso implique acceso a datos identificatorios del paciente. \\
+Dirección del Sanatorio y Equipo de Proyecto: necesitan métricas
+operativas anónimas para evaluar el impacto del sistema, sin que eso
+implique acceso a datos identificatorios del paciente. \\
 \textbf{Precondiciones} &
 CU-01 o CU-04 se está ejecutando y alcanzó un punto de inclusión de este
 caso de uso. \\
@@ -652,13 +651,13 @@ Entregable 09, Modelo de Datos). \\
 \textbf{Temas abiertos} &
 \texttt{GET /metrics} agrega los eventos acumulados (conteos, latencias
 p50/p95/máx.) bajo demanda; el Equipo de Proyecto exporta esas métricas
-periódicamente como insumo del E08 (Informe de Impacto Operativo). \\
+periódicamente para evaluar el impacto operativo del sistema. \\
 \bottomrule
 \end{longtable}
 
 % ============================================================================
 \subsection{CU-12: Finalizar Atención y Preparar la Estación para el Próximo Paciente}
-\textit{Cubre el requisito oficial RNF-03.}
+\textit{Cubre el requisito RNF-03.}
 
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
 \caption{CU-12 --- Finalizar Atención y Preparar la Estación para el Próximo Paciente}\\
@@ -670,7 +669,7 @@ periódicamente como insumo del E08 (Informe de Impacto Operativo). \\
 Personal de Recepción o Enfermería: necesita dejar la estación lista para
 el próximo paciente sin arrastrar datos de la atención anterior. \newline
 Paciente: se beneficia de que ningún dato de su atención quede accesible
-para el siguiente paciente (RNF-03 oficial). \\
+para el siguiente paciente (RNF-03). \\
 \textbf{Precondiciones} &
 Se inició una atención en la estación (CU-01 y/o CU-04, en curso o ya
 finalizada). \\

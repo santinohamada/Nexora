@@ -17,7 +17,7 @@ la información y las interacciones disponibles, no el diseño visual final
 generan con la notación \textbf{Salt} de PlantUML a partir de la estructura
 real de esos componentes, de modo que cada elemento mostrado corresponde a
 un elemento real de la interfaz, incluida P-05 (Diálogo de Consentimiento,
-RF-03 oficial), definida en \texttt{web/app/paciente/page.tsx}.
+RF-03), definida en \texttt{web/app/paciente/page.tsx}.
 
 Cada elemento relevante de una pantalla está marcado con un \textbf{callout}
 numerado entre paréntesis --(1), (2), (3)...--, único dentro de esa pantalla.
@@ -162,7 +162,7 @@ dictado de voz.
         recepción o enfermería al terminar la atención de un paciente;
         borra la conversación mostrada en las dos caras de la estación
         (Paciente y Recepción) y la deja lista para el próximo paciente,
-        sin dejar datos persistidos (CU-12, RNF-03 oficial). \\
+        sin dejar datos persistidos (CU-12, RNF-03). \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -217,7 +217,7 @@ nuevas muestras de entrenamiento para el modelo de reconocimiento.
 
 % ============================================================================
 \subsection{P-05 --- Diálogo de Consentimiento}
-\textit{Cubre el requisito oficial RF-03.}
+\textit{Cubre el requisito RF-03.}
 
 Diálogo modal renderizado dentro de \texttt{PacientePage}
 (\texttt{web/app/paciente/page.tsx}), superpuesto a \texttt{/paciente}
@@ -227,7 +227,7 @@ mientras el consentimiento no fue otorgado (\texttt{role="dialog"},
 \texttt{navigator.mediaDevices.getUserMedia()}: el estado
 \texttt{consentState} se pasa como \texttt{enabled} al hook de landmarks,
 que solo pide permiso de cámara cuando vale \texttt{"accepted"} (CU-09;
-RF-03 oficial).
+RF-03).
 
 \diagrama{04_mockup_p05_consentimiento}{0.75\textwidth}{Mockup de P-05 --- Diálogo de Consentimiento}{fig:mock-p05}
 
@@ -243,7 +243,7 @@ RF-03 oficial).
         (2) & Título ``Consentimiento para usar la cámara''. \\
         (3) & Texto explicativo en lenguaje simple: qué capta la cámara,
         para qué se usa (traducir señas a texto y voz) y que no se guarda
-        video ni imágenes (RNF-03 oficial). \\
+        video ni imágenes (RNF-03). \\
         (4) & Botón ``No acepto''; deja la cámara inactiva y registra el
         evento de auditoría \texttt{consent: "declined"}. \\
         (5) & Botón ``Acepto y continúo''; otorga el consentimiento

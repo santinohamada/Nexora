@@ -12,7 +12,7 @@ Este documento describe la arquitectura de software de \textbf{LSA Salud}
 mediante el modelo de vistas \textbf{4+1} de Kruchten, aplicando la
 metodología de diseño usada en el resto de los entregables (Larman / Proceso
 Unificado, notación UML 2.5 --- ver Referencias de la ERS, Entregable 05).
-Incluye los componentes que realizan los requisitos oficiales RF-03, RF-04 y
+Incluye los componentes que realizan los requisitos RF-03, RF-04 y
 RF-06 (consentimiento, auditoría y reporte de traducción). Mientras que el Modelo de Dominio (Entregable 01) describe los conceptos del
 \emph{problema}, este documento describe las decisiones de \emph{diseño} del
 software que lo resuelve: módulos, procesos concurrentes, organización del
@@ -172,7 +172,7 @@ Puntos relevantes:
     \textbf{offline}, fuera del proceso del backend: lee \texttt{dataset/} y
     escribe en \texttt{models/}, sin invocación síncrona desde \texttt{app.py}
     (ver CU-08 en \texttt{IDS.md}).
-    \item \texttt{eval\_model.py <directorio>} es otro script offline (E05):
+    \item \texttt{eval\_model.py <directorio>} es otro script offline:
     importa el modelo ya cargado de \texttt{app.py} y evalúa su accuracy
     sobre un directorio de muestras \texttt{.npy}, sin exponer ningún
     endpoint ni modificar el proceso del backend.
@@ -201,9 +201,9 @@ atención tenga el sanatorio --- admisión, recepción, triaje, guardia ---,
 cada una con su propio par de caras paciente--personal (doble pantalla)
 sobre una misma PC. Cada estación es, por diseño, la materialización de las
 dos caras de la estación fija de guardia/triaje exigida por RNF-04/RNF-07
-oficiales (ver ERS, Sección~3.4.2); su ensamblaje físico sobre hardware
+(ver ERS, Sección~3.4.2); su ensamblaje físico sobre hardware
 comercial y su calibración se realizan durante la instalación de cada
-estación (EDT, paquete 5.5.1; entregable E07), fuera de alcance de software.
+estación, fuera de alcance de software.
 
 \diagrama{06_vista_fisica}{\textwidth}{Vista Física de LSA Salud: nodos, procesos y protocolos de despliegue de cada estación, replicados de forma independiente en admisión, recepción, triaje y guardia}{fig:arq-vista-fisica}
 
@@ -337,7 +337,7 @@ vistas anteriores.
     funciones simples dentro de \texttt{app.py}
     (\texttt{\_log\_audit}/\texttt{\_append\_jsonl}), sin un módulo
     separado &
-    RF-04.1 oficial exige registrar logs de uso y métricas operativas
+    RF-04.1 exige registrar logs de uso y métricas operativas
     anónimas para auditoría, sin agregar un servicio ni una base de datos
     nueva (coherente con la decisión de persistencia basada en archivos). &
     Cada \textit{handler} existente agrega una línea de invocación a
@@ -348,7 +348,7 @@ vistas anteriores.
     Gateo de consentimiento dentro del propio \texttt{paciente/page}
     (\texttt{consentState} pasado como \texttt{enabled} al hook de
     landmarks), en vez de un componente de guardia separado &
-    RF-03.1 oficial exige bloquear la cámara hasta el consentimiento
+    RF-03.1 exige bloquear la cámara hasta el consentimiento
     explícito; controlar el flag \texttt{enabled} del hook de captura desde
     la propia página evita introducir un componente y un árbol de render
     adicionales para un estado que ya vive en \texttt{PacientePage}. &
@@ -417,9 +417,9 @@ vistas anteriores.
 \section{Trazabilidad con atributos de calidad}
 \label{sec:trazabilidad-rnf}
 
-La Tabla~\ref{tab:arq-rnf} vincula cada requisito no funcional --- oficial o
-técnico, ver \texttt{IDS.md} Sección~4 --- con la vista o el mecanismo
-arquitectónico que lo atiende.
+La Tabla~\ref{tab:arq-rnf} vincula cada requisito no funcional --- numerado
+en la matriz de requisitos o definido por el equipo, ver \texttt{IDS.md}
+Sección~4 --- con la vista o el mecanismo arquitectónico que lo atiende.
 
 \begin{longtable}{>{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{2.8cm} >{\raggedright\arraybackslash}p{8.6cm}}
     \toprule
@@ -435,7 +435,7 @@ arquitectónico que lo atiende.
     Vista Física: todos los procesos críticos corren en la PC local, sin
     dependencia de conectividad externa (sección~\ref{sec:vista-fisica}). \\
 
-    RNF-03.1 (RNF-03 oficial) & Seguridad / privacidad &
+    RNF-03.1 & Seguridad / privacidad &
     Vista Física y decisión arquitectónica de procesamiento local
     (sección~\ref{sec:decisiones}): ningún dato de la conversación sale de
     la máquina; persistencia basada en archivos sin base de datos externa;
@@ -455,27 +455,26 @@ arquitectónico que lo atiende.
     audio actúa como confirmación automática, sin botón manual
     (sección~\ref{sec:vista-procesos}). \\
 
-    RNF-01.1 (RNF-01 oficial) & Rendimiento &
+    RNF-01.1 & Rendimiento &
     Vista de Procesos: separación event loop / \textit{threadpool}, y
     decisiones arquitectónicas de streaming por WebSocket y cachés LRU
     (secciones~\ref{sec:vista-procesos} y~\ref{sec:decisiones}). \\
 
-    RNF-02.1 (RNF-02 oficial) & Precisión &
+    RNF-02.1 & Precisión &
     Vista de Desarrollo: la exactitud de validación se calcula en
-    \texttt{train\_lstm.py} y se evalúa con \texttt{eval\_model.py} (E05),
+    \texttt{train\_lstm.py} y se evalúa con \texttt{eval\_model.py},
     ambos fuera del proceso del backend (ver ERS, Sección~3.3). \\
 
-    RNF-04.1 / RNF-07.1 (RNF-04 / RNF-07 oficiales) & Hardware / estación fija &
+    RNF-04.1 / RNF-07.1 & Hardware / estación fija &
     Vista Física: cada estación sincroniza sus dos caras y materializa la
     estación fija (sección~\ref{sec:vista-fisica}); el ensamblaje físico y
-    la calibración se realizan durante la instalación de cada estación
-    (E07, EDT paquete 5.5.1). \\
+    la calibración se realizan durante la instalación de cada estación. \\
 
-    RNF-05.1 / RNF-06.1 (RNF-05 / RNF-06 oficiales) & Dataset clínico &
+    RNF-05.1 / RNF-06.1 & Dataset clínico &
     Vista de Desarrollo: árbol único \texttt{dataset/custom}, con landmarks
     y \textit{blendshapes} en la misma muestra (sección~\ref{sec:vista-desarrollo});
-    la validación lingüística es un procedimiento operativo del proyecto
-    (ver ERS, Sección~2.6, riesgo \#1). \\
+    la validación lingüística por intérpretes de LSA es un procedimiento
+    operativo del proyecto (ver ERS, Sección~2.6). \\
 
     RNF-T-06 & Seguridad de red &
     Vista Física y decisión arquitectónica de restricción de CORS: cada

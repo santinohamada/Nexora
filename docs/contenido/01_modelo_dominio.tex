@@ -46,7 +46,7 @@ Desarrollador de IA / Equipo de Proyecto.
 \diagrama{01_modelo_dominio_b}{\textwidth}{Modelo de Dominio de LSA Salud, vista B: reconocimiento y gestión del modelo}{fig:modelo-dominio-b}
 
 Los tres conceptos de la Sección~\ref{sec:dom-pendientes} cubren los
-requisitos oficiales RF-03, RF-04 y RF-06 (\textit{Consentimiento},
+requisitos RF-03, RF-04 y RF-06 (\textit{Consentimiento},
 \textit{Auditoría} y \textit{Reporte de traducción}); las asociaciones que
 los involucran se señalan en la Tabla~\ref{tab:asociaciones-dominio}.
 
@@ -108,7 +108,7 @@ como corresponde a un modelo de dominio).
     Clase\-De\-Seña &
     Categoría de seña del vocabulario clínico de LSA Salud, ampliado desde
     LSA64 y adaptado a síntomas, triaje, dolor y admisión, recepción y
-    guardia, validado por intérpretes oficiales de LSA (por ejemplo,
+    guardia, validado por intérpretes de LSA (por ejemplo,
     ``dolor'', ``cabeza'' o ``respirar''); el vocabulario se amplía de forma
     continua mediante el Modo Captura (CU-06/CU-07/CU-08). &
     nombre. \\
@@ -154,7 +154,7 @@ como corresponde a un modelo de dominio).
 \subsection{Conceptos de consentimiento, auditoría y reporte}
 \label{sec:dom-pendientes}
 
-Los siguientes tres conceptos corresponden a los requisitos oficiales RF-03,
+Los siguientes tres conceptos corresponden a los requisitos RF-03,
 RF-04 y RF-06 de la matriz de trazabilidad (RF-03.1, RF-04.1 y RF-06.1 en
 \texttt{IDS.md}). Se documentan aparte del resto del diccionario porque, a
 diferencia de los demás conceptos, no tienen una clase de software dedicada:
@@ -172,21 +172,21 @@ el mismo nivel de detalle que el resto del diccionario.
     Consentimiento\-De\-Cámara &
     Autorización explícita que el paciente otorga antes de que la Estación
     del Paciente active la cámara; condición obligatoria para que exista
-    cualquier Secuencia\-De\-Señas (RF-03 oficial). &
+    cualquier Secuencia\-De\-Señas (RF-03). &
     otorgado (booleano), marcaTemporal. \\
 
     Evento\-De\-Auditoría &
     Registro anónimo de una operación de sistema relevante (predicción,
     traducción, síntesis, respuesta, captura, consentimiento, fin de
     atención), sin datos identificatorios ni imágenes o video, generado
-    automáticamente para auditoría operativa (RF-04 oficial). &
+    automáticamente para auditoría operativa (RF-04). &
     tipoDeOperación, marcaTemporal, resultado (éxito o error). \\
 
     Reporte\-De\-Traducción &
     Señalamiento de que un mensaje de la conversación es una traducción
     incorrecta o ambigua, hecho por el Paciente o por el Personal de
     Recepción o Enfermería, para registrar el caso y mejorar el modelo
-    (RF-06 oficial). &
+    (RF-06). &
     motivo, marcaTemporal. \\
     \bottomrule
     \caption{Diccionario de conceptos de consentimiento, auditoría y reporte}

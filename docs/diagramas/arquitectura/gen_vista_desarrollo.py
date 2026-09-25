@@ -90,7 +90,7 @@ def build():
     c.append(edge("e7", "usa", [at("appPy", 0, 0.5), at("model", 1, 0.4)]))
     c.append(edge("e8", "usa", [at("appPy", 1, 0.5), at("capVal", 0, 0.5)]))
     c.append(edge("e9", "usa", [at("train", 0.5, 0), at("model", 0.5, 1)]))
-    c.append(edge("e10", "usa (E05)", [at("evalModel", 0.5, 0), at("appPy", 0.5, 1)]))
+    c.append(edge("e10", "usa", [at("evalModel", 0.5, 0), at("appPy", 0.5, 1)]))
     c.append(edge("e11", "lee/escribe dataset/<br>lee models/ y voices/", [at("appPy", 0.9, 1), (ax + aw * 0.9, 650)], offset=(80, 0)))
     c.append(edge("e12", "escribe logs/<br>(auditoría, reportes)", [at("appPy", 0.3, 1), (250, 416), (250, 655), (270, 655)], offset=(-72, 0), pos=-0.2))
     tx, ty = at("train", 0.5, 1)
