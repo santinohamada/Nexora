@@ -30,12 +30,12 @@ def at(cid, fx, fy):
     return (x + w * fx, y + h * fy)
 
 
-def edge(cid, label, points, offset=(0, 0)):
+def edge(cid, label, points, offset=(0, 0), pos=0):
     (sx, sy), (tx, ty) = points[0], points[-1]
     mids = "".join(f'<mxPoint x="{px}" y="{py}"/>' for px, py in points[1:-1])
     arr = f'<Array as="points">{mids}</Array>' if mids else ""
     return (f'<mxCell id="{cid}" value="{escape(label)}" style="{DEP}" edge="1" parent="1">'
-            f'<mxGeometry relative="1" as="geometry"><mxPoint x="{sx}" y="{sy}" as="sourcePoint"/>'
+            f'<mxGeometry x="{pos}" relative="1" as="geometry"><mxPoint x="{sx}" y="{sy}" as="sourcePoint"/>'
             f'<mxPoint x="{tx}" y="{ty}" as="targetPoint"/>{arr}'
             f'<mxPoint x="{offset[0]}" y="{offset[1]}" as="offset"/></mxGeometry></mxCell>')
 
@@ -82,7 +82,7 @@ def build():
     c.append(edge("e9", "usa", [at("train", 0.5, 0), at("model", 0.5, 1)]))
     c.append(edge("e10", "usa (E05)", [at("evalModel", 0.5, 0), at("appPy", 0.5, 1)]))
     c.append(edge("e11", "lee/escribe dataset/<br>lee models/ y voices/", [at("appPy", 0.9, 1), (ax + aw * 0.9, 650)], offset=(80, 0)))
-    c.append(edge("e12", "escribe logs/<br>(auditoría, reportes)", [at("appPy", 0.3, 1), (250, 416), (250, 655), (270, 655)]))
+    c.append(edge("e12", "escribe logs/<br>(auditoría, reportes)", [at("appPy", 0.3, 1), (250, 416), (250, 655), (270, 655)], offset=(-72, 0), pos=-0.2))
     tx, ty = at("train", 0.5, 1)
     c.append(edge("e13", "lee dataset/<br>escribe models/", [(tx, ty), (tx, 705), (260, 705)]))
 

@@ -696,7 +696,7 @@ def dc06() -> Diagram:
             "backend",
             [Msg("1.2", "_log_audit('consent', consent=...)", "ab")],
             self_loop=True,
-            self_side="top",
+            self_side="right",
         ),
         Link("backend", "fileAudit", [Msg("1.3", "_append_jsonl(record)", "ab")]),
         Link("pacientePage", "useMediaPipe", [Msg("2", "enabled=true", "ab")]),
@@ -785,22 +785,11 @@ def dc08() -> Diagram:
             self_frac=(0.05, 0.30),
         ),
     ]
-    notes = [
-        Note(
-            "backend",
-            480,
-            60,
-            "El evento de auditoría 'report' sigue la\nmisma cadena _log_audit -> _append_jsonl\n-> logs/audit.jsonl documentada en DC-07.",
-            250,
-            64,
-        )
-    ]
     return Diagram(
         "08_colaboracion_dc08",
         "DC-08 — reportarTraduccion(mensaje) — realiza CU-10",
         objects,
         links,
-        notes,
         title_w=700,
     )
 
