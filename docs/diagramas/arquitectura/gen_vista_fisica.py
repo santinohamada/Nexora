@@ -9,6 +9,7 @@ columna angosta, igual que gen_vista_desarrollo.py / gen_modelo_dominio.py.
 Uso: C:\\Nexora\\venv\\Scripts\\python.exe gen_vista_fisica.py
 Escribe docs/diagramas/arquitectura/06_vista_fisica.drawio.
 """
+import re
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -33,8 +34,17 @@ DEP = ("endArrow=open;endSize=9;dashed=1;html=1;strokeColor=#333333;fontSize=12;
 BIDIR = DEP + "startArrow=open;startSize=9;"
 
 
+
+def fit_tab(value, style):
+    if not style.startswith("shape=folder") or "tabPosition=left" not in style:
+        return style
+    size = int(re.search(r"fontSize=(\d+)", style).group(1))
+    text = re.sub(r"<[^>]+>", "", value)
+    width = round(len(text) * size * 0.62 + 24)
+    return re.sub(r"tabWidth=\d+", f"tabWidth={width}", style)
+
 def vertex(cid, value, style, x, y, w, h):
-    return (f'<mxCell id="{cid}" value="{escape(value)}" style="{style}" vertex="1" parent="1">'
+    return (f'<mxCell id="{cid}" value="{escape(value)}" style="{fit_tab(value, style)}" vertex="1" parent="1">'
             f'<mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/></mxCell>')
 
 
