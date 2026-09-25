@@ -1,0 +1,626 @@
+% ============================================================================
+% 03_modelos_casos_uso.tex — Cuerpo del entregable "Modelos de Casos de Uso"
+% Formato "fully dressed" (Larman, UML y Patrones) para cada caso de uso.
+% ============================================================================
+\section{Modelos de Casos de Uso}
+
+\subsection{Introducción}
+
+Esta sección desarrolla, en formato completamente vestido (\textit{fully
+dressed}) según Craig Larman, cada uno de los once casos de uso
+identificados en el Entregable de Diagrama de Casos de Uso. Los escenarios
+se redactan a nivel esencial (intención del actor), sin describir botones,
+menús ni otros detalles de la interfaz concreta, que se documentan en el
+entregable de mockups. CU-09, CU-10 y CU-11 corresponden a los requisitos
+oficiales RF-03, RF-06 y RF-04 respectivamente, y están marcados como
+\textbf{diseñado --- pendiente de implementación}: no existe código que los
+materialice, pero se especifican con el mismo nivel de detalle que el
+resto para que el diseño quede completo.
+
+\subsection{Actores}
+
+\begin{table}[H]
+    \centering
+    \caption{Actores de LSA Salud}
+    \label{tab:actores-mcu}
+    \begin{tabularx}{\textwidth}{l l X}
+        \toprule
+        \textbf{ID} & \textbf{Actor} & \textbf{Descripción} \\
+        \midrule
+        ACT-01 & Paciente & Persona sorda o hipoacúsica que se comunica mediante LSA. \\
+        ACT-02 & Personal de Recepción o Enfermería & Personal de recepción o enfermería que responde al paciente. \\
+        ACT-03 & Desarrollador de IA / Equipo de Proyecto & Personal técnico que amplía el vocabulario y reentrena el modelo. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+% ============================================================================
+\subsection{CU-01: Comunicarse mediante Lengua de Señas Argentina}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-01 --- Comunicarse mediante Lengua de Señas Argentina}\\
+\toprule
+\textbf{Nombre} & Comunicarse mediante Lengua de Señas Argentina \\
+\textbf{ID} & CU-01 \\
+\textbf{Actor principal} & Paciente \\
+\textbf{Personal involucrado e intereses} &
+Paciente: quiere expresar una necesidad médica sin depender de un
+intérprete humano. \newline
+Personal de Recepción o Enfermería: necesita recibir el mensaje del
+paciente en español, de forma clara y oportuna. \\
+\textbf{Precondiciones} &
+El paciente otorgó el consentimiento explícito de cámara (CU-09).
+Estación del Paciente abierta, cámara autorizada, backend en ejecución,
+modelo de reconocimiento cargado. \\
+\textbf{Garantías de éxito} &
+El mensaje traducido queda registrado en la conversación compartida y, si
+corresponde, se reprodujo en voz. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El paciente se ubica frente a la cámara y comienza a hacer señas.
+    \item El sistema captura de forma continua los movimientos del paciente.
+    \item El sistema reconoce cada seña realizada y la agrega a la
+    secuencia en curso cuando la reconoce con suficiente certeza.
+    \item El paciente hace una pausa (baja las manos) al terminar de
+    expresar su idea.
+    \item El sistema detecta la pausa y da por cerrada la secuencia de
+    señas.
+    \item El sistema traduce la secuencia a una oración en español natural
+    (CU-02: Traducir Secuencia de Señas a Oración Natural).
+    \item El sistema sintetiza la oración en voz (CU-03: Sintetizar
+    Oración en Voz), si la síntesis está disponible.
+    \item El sistema agrega el mensaje traducido a la conversación,
+    visible para el personal de recepción o enfermería.
+    \item El sistema registra un evento de auditoría anónimo de la
+    operación (CU-11: Registrar Evento de Auditoría).
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[3a.] La seña reconocida no alcanza el nivel de certeza mínimo: el
+    sistema la descarta y continúa observando.
+    \item[3b.] La seña reconocida es el estado de reposo (``idle''): el
+    sistema no la agrega a la secuencia.
+    \item[6a.] El sistema no logra traducir la secuencia en una oración
+    clara: descarta el resultado y no genera mensaje.
+    \item[7a.] La síntesis de voz no está disponible: el sistema continúa
+    sin reproducir audio.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RNF-T-01, RNF-T-05, RNF-01.1 (ver ERS, sección 3.5). \\
+\textbf{Variantes de tecnología y datos} &
+Captura de landmarks por MediaPipe Holistic (por defecto) o MediaPipe
+Tasks (Pose + Mano + Cara, activable con el parámetro \texttt{mp=tasks});
+transporte de los frames por WebSocket en formato JSON (v1) o binario
+(v2). \\
+\textbf{Frecuencia} &
+Continua durante toda la sesión de atención; se repite cada vez que el
+paciente forma una idea completa. \\
+\textbf{Temas abiertos} &
+Vocabulario limitado a las clases entrenadas; sin soporte para
+reconocimiento continuo de LSA como lengua completa (fuera de alcance
+actual). \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-02: Traducir Secuencia de Señas a Oración Natural}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-02 --- Traducir Secuencia de Señas a Oración Natural}\\
+\toprule
+\textbf{Nombre} & Traducir Secuencia de Señas a Oración Natural \\
+\textbf{ID} & CU-02 \\
+\textbf{Actor principal} & Paciente (caso de uso incluido desde CU-01) \\
+\textbf{Personal involucrado e intereses} &
+Paciente: quiere que su idea se entienda correctamente, sin agregados
+inventados. \newline
+Personal de Recepción o Enfermería: necesita una oración clara y fiel a lo
+expresado. \\
+\textbf{Precondiciones} &
+Existe una secuencia de señas cerrada, con al menos una palabra
+reconocida. \\
+\textbf{Garantías de éxito} &
+Se obtuvo una oración en español, o se determinó que la secuencia no
+forma una idea clara. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El sistema recibe la secuencia de palabras sueltas.
+    \item El sistema normaliza la secuencia (descarta repeticiones y la
+    palabra de reposo).
+    \item El sistema busca si la combinación coincide con una plantilla
+    médica conocida.
+    \item El sistema toma la frase de la plantilla como traducción.
+    \item El sistema registra la traducción obtenida, para reutilizarla si
+    la misma combinación vuelve a aparecer.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[3a.] No hay coincidencia con ninguna plantilla: el sistema busca
+    la combinación entre las traducciones generadas recientemente
+    (3a.1); si tampoco encuentra coincidencia, delega la construcción de
+    la oración a un modelo de lenguaje local, indicándole que respete la
+    persona gramatical y que no agregue síntomas no mencionados (3a.2).
+    \item[3a.2a.] El modelo de lenguaje no responde a tiempo o falla: el
+    sistema usa como traducción las palabras originales, sin interrumpir
+    el flujo.
+    \item[3a.2b.] El modelo de lenguaje determina que la combinación no
+    forma una idea clara: el sistema descarta la traducción y no genera
+    mensaje.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RNF-T-01, RF-01.5. \\
+\textbf{Variantes de tecnología y datos} &
+Plantillas médicas precalculadas (diccionario en el backend); caché de
+traducciones recientes; modelo de lenguaje local Qwen2 1.5B servido por
+Ollama en \texttt{localhost:11434}. \\
+\textbf{Frecuencia} & Una vez por cada secuencia de señas cerrada. \\
+\textbf{Temas abiertos} &
+Cobertura de plantillas limitada a las clases entrenadas actualmente; la
+restricción de no inventar síntomas se indica en el prompt del modelo de
+lenguaje, pero no se verifica automáticamente sobre su respuesta. \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-03: Sintetizar Oración en Voz}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-03 --- Sintetizar Oración en Voz}\\
+\toprule
+\textbf{Nombre} & Sintetizar Oración en Voz \\
+\textbf{ID} & CU-03 \\
+\textbf{Actor principal} & Paciente (caso de uso incluido desde CU-01) \\
+\textbf{Personal involucrado e intereses} &
+Personal de Recepción o Enfermería: quiere poder escuchar el mensaje, no
+solo leerlo, para atender más rápido. \\
+\textbf{Precondiciones} &
+Existe una oración traducida; el motor de síntesis de voz está cargado. \\
+\textbf{Garantías de éxito} &
+Se generó el audio de la oración, o se determinó que la síntesis no está
+disponible. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El sistema recibe la oración traducida.
+    \item El sistema verifica si ya generó audio antes para esa misma
+    oración.
+    \item El sistema sintetiza el audio con voz en español rioplatense.
+    \item El sistema entrega el audio para su reproducción, tras una
+    breve ventana de exhibición del texto en pantalla.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[2a.] El audio ya fue generado antes para la misma oración: el
+    sistema reutiliza el audio ya generado en lugar de sintetizarlo de
+    nuevo.
+    \item[3a.] El motor de síntesis de voz no está cargado: el sistema
+    entrega el mensaje sin audio.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RNF-T-01, RF-01.6. \\
+\textbf{Variantes de tecnología y datos} &
+Motor Piper TTS con modelo de voz en español argentino
+(\texttt{es\_AR-daniela-high}); caché de audio en memoria (hasta 50
+oraciones). \\
+\textbf{Frecuencia} & Una vez por cada oración traducida exitosamente. \\
+\textbf{Temas abiertos} & Ninguno relevado. \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-04: Responder al Paciente}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-04 --- Responder al Paciente}\\
+\toprule
+\textbf{Nombre} & Responder al Paciente \\
+\textbf{ID} & CU-04 \\
+\textbf{Actor principal} & Personal de Recepción o Enfermería \\
+\textbf{Personal involucrado e intereses} &
+Personal de Recepción o Enfermería: quiere responder rápido, con el método
+que le resulte más cómodo. \newline
+Paciente: necesita leer la respuesta en su propia pantalla sin demora. \\
+\textbf{Precondiciones} &
+Estación de Recepción abierta; existe una conversación activa (puede
+estar vacía). \\
+\textbf{Garantías de éxito} &
+La respuesta del personal de recepción o enfermería queda registrada en la
+conversación y visible en la Estación del Paciente. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El personal redacta una respuesta en su propio idioma.
+    \item El sistema valida que la respuesta no esté vacía.
+    \item El personal confirma el envío.
+    \item El sistema agrega la respuesta a la conversación compartida.
+    \item El sistema muestra la respuesta en ambas estaciones
+    sincronizadas.
+    \item El sistema registra un evento de auditoría anónimo de la
+    operación (CU-11: Registrar Evento de Auditoría).
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[1a.] El personal prefiere dictar la respuesta por voz en
+    lugar de escribirla: continúa en CU-05 (Dictar Respuesta por Voz),
+    que extiende este caso de uso en el punto de extensión ``ingreso de
+    texto''.
+    \item[5a.] El paciente o el personal marcan la respuesta como
+    incorrecta o ambigua: continúa en CU-10 (Reportar Traducción
+    Incorrecta), que extiende este caso de uso en el punto de extensión
+    ``revisión de mensaje''.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RNF-T-05 (sincronización sin demora perceptible). \\
+\textbf{Variantes de tecnología y datos} &
+Ingreso de texto manual; sincronización entre estaciones mediante
+BroadcastChannel (canal \texttt{nexora-chat}, nombre interno heredado del
+repositorio de código). \\
+\textbf{Frecuencia} &
+Cada vez que el personal necesita responder al paciente durante la
+atención. \\
+\textbf{Temas abiertos} &
+Sin historial persistente entre sesiones: si se cierra la pestaña, se
+pierde la conversación. \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-05: Dictar Respuesta por Voz}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-05 --- Dictar Respuesta por Voz}\\
+\toprule
+\textbf{Nombre} & Dictar Respuesta por Voz \\
+\textbf{ID} & CU-05 \\
+\textbf{Actor principal} & Personal de Recepción o Enfermería \\
+\textbf{Personal involucrado e intereses} &
+Personal de Recepción o Enfermería: quiere responder sin escribir, por
+ejemplo mientras atiende otras tareas. \\
+\textbf{Precondiciones} &
+El navegador soporta reconocimiento de voz; el personal está en el
+punto de extensión ``ingreso de texto'' de CU-04. \\
+\textbf{Garantías de éxito} &
+El texto dictado queda disponible como respuesta, lista para enviarse
+(el flujo continúa en CU-04 desde el paso de confirmación). \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El personal activa el dictado por voz.
+    \item El sistema escucha el habla del personal de forma
+    continua.
+    \item El sistema transcribe el habla a texto en español rioplatense,
+    mostrando resultados parciales a medida que reconoce.
+    \item El personal detiene el dictado cuando termina de hablar.
+    \item El sistema conserva el texto transcripto, sumándolo a cualquier
+    texto que el personal ya hubiera escrito antes de dictar.
+    \item El flujo continúa en el paso 2 de CU-04 (confirmar y enviar).
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[1a.] El navegador no soporta reconocimiento de voz: el sistema
+    informa la limitación y el personal continúa con el flujo
+    principal de CU-04 (escribir).
+    \item[2a.] Ocurre un error de micrófono o de reconocimiento: el
+    sistema informa el error y detiene la escucha.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-02.2; restricción de compatibilidad de navegador (ver ERS, secciones 3.4 y 3.6). \\
+\textbf{Variantes de tecnología y datos} &
+Web Speech API nativa del navegador, configurada en español argentino
+(\texttt{es-AR}). \\
+\textbf{Frecuencia} & Opcional, a criterio del personal de recepción o enfermería, en cualquier respuesta. \\
+\textbf{Temas abiertos} &
+Requiere Google Chrome; sin soporte confirmado en otros navegadores. \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-06: Capturar Muestra de Seña para Entrenamiento}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-06 --- Capturar Muestra de Seña para Entrenamiento}\\
+\toprule
+\textbf{Nombre} & Capturar Muestra de Seña para Entrenamiento \\
+\textbf{ID} & CU-06 \\
+\textbf{Actor principal} & Desarrollador de IA / Equipo de Proyecto \\
+\textbf{Personal involucrado e intereses} &
+Desarrollador de IA / Equipo de Proyecto: quiere ampliar el vocabulario
+reconocible de forma simple. \newline
+Paciente: se beneficia indirectamente de un vocabulario más amplio en el
+futuro. \\
+\textbf{Precondiciones} &
+Estación del Paciente abierta en Modo Captura; cámara autorizada; backend
+en ejecución. \\
+\textbf{Garantías de éxito} &
+Una o más muestras quedaron grabadas y asociadas a la etiqueta de seña
+correspondiente. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El desarrollador entra al Modo Captura.
+    \item El desarrollador selecciona o crea la etiqueta de la seña a
+    grabar (CU-07: Gestionar Vocabulario de Señas).
+    \item El desarrollador indica cuántas repeticiones va a grabar de
+    corrido.
+    \item El desarrollador inicia la secuencia de grabación.
+    \item El sistema anuncia una cuenta regresiva antes de cada
+    repetición.
+    \item El sistema graba los movimientos del desarrollador durante una
+    ventana de tiempo fija.
+    \item El sistema envía la muestra grabada al backend y la guarda
+    asociada a la etiqueta.
+    \item El sistema repite los pasos 5 a 7 hasta completar las
+    repeticiones indicadas.
+    \item El sistema confirma que las muestras quedaron guardadas y
+    actualiza el conteo de muestras por etiqueta.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[2a.] La etiqueta no existe todavía: el sistema la agrega al
+    vocabulario disponible en el momento de guardar la primera muestra.
+    \item[6a.] El desarrollador detiene la grabación antes de tiempo: el
+    sistema cancela esa repetición y no la guarda.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-T-03, RF-T-04. \\
+\textbf{Variantes de tecnología y datos} &
+Modo legado (MediaPipe Holistic: se guardan solo landmarks) o Modo Tasks
+(MediaPipe Tasks: se guardan landmarks y 52 coeficientes de expresión
+facial); persistencia como archivos \texttt{.npy} en árboles de carpetas
+separados por modo (\texttt{dataset/custom} vs.\ \texttt{dataset/custom\_tasks}
++ \texttt{dataset/custom\_blendshapes}). \\
+\textbf{Frecuencia} &
+Bajo demanda, cuando se necesita ampliar o reforzar el vocabulario. \\
+\textbf{Temas abiertos} &
+Sin validación automática de la calidad de la seña grabada: la calidad
+depende del criterio del desarrollador. \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-07: Gestionar Vocabulario de Señas}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-07 --- Gestionar Vocabulario de Señas}\\
+\toprule
+\textbf{Nombre} & Gestionar Vocabulario de Señas \\
+\textbf{ID} & CU-07 \\
+\textbf{Actor principal} & Desarrollador de IA / Equipo de Proyecto (caso de uso incluido desde CU-06) \\
+\textbf{Personal involucrado e intereses} &
+Desarrollador de IA / Equipo de Proyecto: necesita saber qué señas ya
+existen y cuántas muestras tiene cada una, para decidir qué grabar. \\
+\textbf{Precondiciones} & Backend en ejecución. \\
+\textbf{Garantías de éxito} &
+El desarrollador cuenta con la lista actualizada de etiquetas conocidas y
+con la cantidad de muestras disponibles por etiqueta. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El sistema consulta las clases que el modelo actualmente
+    reconoce.
+    \item El sistema consulta cuántas muestras existen por etiqueta en el
+    conjunto de datos activo.
+    \item El sistema combina ambas fuentes en una única lista de
+    etiquetas conocidas.
+    \item El desarrollador elige una etiqueta existente, o crea una
+    nueva.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[4a.] El desarrollador crea una etiqueta nueva: el sistema la
+    valida (solo letras minúsculas, números y guion bajo, hasta 32
+    caracteres) antes de aceptarla.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-T-01, RF-T-02. \\
+\textbf{Variantes de tecnología y datos} &
+Las estadísticas de muestras se calculan sobre el árbol de datos
+correspondiente al modo activo (legado o Tasks). \\
+\textbf{Frecuencia} &
+Cada vez que se abre el Modo Captura, y cada vez que se agrega una
+etiqueta. \\
+\textbf{Temas abiertos} & Ninguno relevado. \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-08: Entrenar el Modelo de Reconocimiento}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-08 --- Entrenar el Modelo de Reconocimiento}\\
+\toprule
+\textbf{Nombre} & Entrenar el Modelo de Reconocimiento \\
+\textbf{ID} & CU-08 \\
+\textbf{Actor principal} & Desarrollador de IA / Equipo de Proyecto \\
+\textbf{Personal involucrado e intereses} &
+Desarrollador de IA / Equipo de Proyecto: quiere que el modelo aprenda las
+señas nuevas capturadas. \newline
+Paciente y Personal de Recepción o Enfermería: se benefician de un modelo
+más preciso y con más vocabulario. \\
+\textbf{Precondiciones} &
+Existen muestras de entrenamiento capturadas (CU-06) para al menos una
+clase de seña. \\
+\textbf{Garantías de éxito} &
+Se generó una nueva versión del modelo de reconocimiento, entrenada con
+el conjunto de datos disponible, lista para usarse en las próximas
+sesiones. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El desarrollador inicia el proceso de entrenamiento fuera de
+    línea.
+    \item El sistema releva las clases de seña disponibles en el conjunto
+    de datos.
+    \item El sistema separa las muestras en un conjunto de entrenamiento
+    y uno de validación.
+    \item El sistema entrena el modelo de reconocimiento durante un
+    número fijo de rondas de aprendizaje.
+    \item El sistema evalúa la exactitud del modelo sobre el conjunto de
+    validación en cada ronda.
+    \item El sistema conserva la versión del modelo con mejor exactitud
+    de validación.
+    \item El sistema deja disponible el modelo entrenado y su lista de
+    clases para que el backend lo cargue en el próximo inicio.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[2a.] No se encuentran clases ni muestras en el conjunto de
+    datos: el sistema informa la situación y no entrena.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-T-05. \\
+\textbf{Variantes de tecnología y datos} &
+Aumento de datos por recorte aleatorio, ruido gaussiano y escalado
+durante el entrenamiento; separación 80/20 con semilla fija para
+reproducibilidad. \\
+\textbf{Frecuencia} &
+Bajo demanda del desarrollador, típicamente después de acumular nuevas
+muestras de varias sesiones de captura. \\
+\textbf{Temas abiertos} &
+Proceso manual, sin disparo automático ni interfaz web; requiere acceso a
+la línea de comandos del servidor. \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-09: Otorgar Consentimiento Explícito de Cámara}
+\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-03.}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-09 --- Otorgar Consentimiento Explícito de Cámara}\\
+\toprule
+\textbf{Nombre} & Otorgar Consentimiento Explícito de Cámara \\
+\textbf{ID} & CU-09 \\
+\textbf{Actor principal} & Paciente \\
+\textbf{Personal involucrado e intereses} &
+Paciente: necesita entender, antes de que se lo grabe, para qué se usa la
+cámara y poder negarse. \newline
+Sanatorio (Comité de Ética): necesita que ningún paciente sea grabado sin
+autorización explícita. \\
+\textbf{Precondiciones} &
+El paciente abrió la Estación del Paciente; la cámara todavía no fue
+activada. \\
+\textbf{Garantías de éxito} &
+La cámara se activa únicamente si el paciente otorgó el consentimiento; si
+lo rechaza, la cámara permanece inactiva y CU-01 no puede comenzar. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El sistema muestra la pantalla de consentimiento antes de
+    solicitar permiso de cámara al navegador (Pantalla P-05, diseño
+    nuevo).
+    \item El sistema explica, en lenguaje simple, qué captura la cámara,
+    para qué se usa y que no se guarda video ni imágenes (RNF-03 oficial).
+    \item El paciente otorga el consentimiento.
+    \item El sistema registra el consentimiento (marca temporal, sin
+    datos identificatorios) y activa la cámara.
+    \item El flujo continúa en el paso 1 de CU-01.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[3a.] El paciente rechaza el consentimiento: el sistema no
+    activa la cámara y muestra una alternativa (por ejemplo, solicitar
+    asistencia del personal); CU-01 no puede iniciar.
+    \item[3b.] El navegador deniega el permiso de cámara después de un
+    consentimiento otorgado: el sistema informa el error sin activar el
+    flujo de reconocimiento.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-03.1; RNF-03.1 (sin almacenamiento de video). \\
+\textbf{Variantes de tecnología y datos} &
+Diseño nuevo, sin componente real todavía; se prevé una pantalla modal
+previa a \texttt{navigator.mediaDevices.getUserMedia()}. \\
+\textbf{Frecuencia} & Una vez por sesión de la Estación del Paciente. \\
+\textbf{Temas abiertos} &
+Persistencia del consentimiento entre recargas de la misma sesión;
+formato exacto del texto legal a mostrar (pendiente de validación con el
+Comité de Ética del Sanatorio). \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-10: Reportar Traducción Incorrecta o Ambigua}
+\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-06. Extiende a CU-01 y CU-04.}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-10 --- Reportar Traducción Incorrecta o Ambigua}\\
+\toprule
+\textbf{Nombre} & Reportar Traducción Incorrecta o Ambigua \\
+\textbf{ID} & CU-10 \\
+\textbf{Actor principal} & Paciente, Personal de Recepción o Enfermería \\
+\textbf{Personal involucrado e intereses} &
+Paciente y Personal: quieren señalar cuando un mensaje traducido no
+representa lo que se quiso decir, para que el equipo mejore el modelo.
+\newline
+Desarrollador de IA / Equipo de Proyecto: necesita casos reales
+identificados para priorizar el reentrenamiento (CU-08). \\
+\textbf{Precondiciones} &
+Existe al menos un mensaje en la conversación (generado por CU-01 o
+CU-04). \\
+\textbf{Garantías de éxito} &
+El reporte queda registrado, asociado al mensaje señalado y con su motivo,
+sin exponer datos identificatorios del paciente. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El actor revisa un mensaje de la conversación (punto de
+    extensión ``revisión de mensaje'' de CU-01 o CU-04).
+    \item El actor marca el mensaje como incorrecto o ambiguo.
+    \item El sistema solicita un motivo breve (por ejemplo: ``seña mal
+    reconocida'', ``oración no tiene sentido'', ``palabra faltante'').
+    \item El actor confirma el reporte.
+    \item El sistema registra el reporte, asociado al mensaje señalado, y
+    confirma al actor que el caso quedó registrado.
+    \item El flujo vuelve al punto de extensión de origen (CU-01 o
+    CU-04).
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[4a.] El actor cancela antes de confirmar: el sistema descarta
+    el reporte y no lo persiste.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-06.1; RNF-03.1 (reporte sin datos identificatorios ni imágenes). \\
+\textbf{Variantes de tecnología y datos} &
+Diseño nuevo; se prevé un ícono de reporte sobre cada burbuja de la
+conversación en P-02 y P-03 (ver Entregable 04, mockups). \\
+\textbf{Frecuencia} &
+Bajo demanda, cada vez que el paciente o el personal detectan una
+traducción incorrecta. \\
+\textbf{Temas abiertos} &
+Mecanismo de priorización de los reportes acumulados para el reentrenamiento
+(CU-08); no definido todavía. \\
+\bottomrule
+\end{longtable}
+
+% ============================================================================
+\subsection{CU-11: Registrar Evento de Auditoría}
+\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-04. Subfunción incluida por CU-01 y CU-04, sin actor humano.}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}p{\dimexpr\textwidth-4.1cm-2\tabcolsep\relax}@{}}
+\caption{CU-11 --- Registrar Evento de Auditoría}\\
+\toprule
+\textbf{Nombre} & Registrar Evento de Auditoría \\
+\textbf{ID} & CU-11 \\
+\textbf{Actor principal} & Ninguno --- subfunción interna del sistema (ver \texttt{IDS.md}, Sección~1, sobre la decisión de no modelar un actor de auditoría). \\
+\textbf{Personal involucrado e intereses} &
+Dirección del Sanatorio y Equipo de Proyecto UTN (interesados oficiales
+dueños de RF-04): necesitan métricas operativas anónimas para evaluar el
+impacto del sistema (E08 --- Informe de Impacto Operativo, EDT), sin que
+eso implique acceso a datos identificatorios del paciente. \\
+\textbf{Precondiciones} &
+CU-01 o CU-04 se está ejecutando y alcanzó un punto de inclusión de este
+caso de uso. \\
+\textbf{Garantías de éxito} &
+Un evento de auditoría anónimo quedó registrado, con tipo de operación,
+marca temporal y resultado, sin datos identificatorios ni imágenes o
+video. \\
+\textbf{Escenario principal de éxito} &
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+    \item El sistema completa una operación relevante (predicción,
+    traducción, síntesis de voz, respuesta del personal o captura de
+    muestra).
+    \item El sistema arma un evento de auditoría anónimo con el tipo de
+    operación, la marca temporal y el resultado (éxito o error), sin
+    identidad del paciente ni contenido de imagen o video.
+    \item El sistema persiste el evento en el registro de auditoría.
+\end{enumerate} \\
+\textbf{Extensiones} &
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item[3a.] La operación original terminó en error: el evento se
+    registra igual, con resultado ``error'', para que la métrica
+    operativa lo refleje.
+\end{itemize} \\
+\textbf{Requisitos especiales} & RF-04.1; RNF-03.1 (anonimato, sin imágenes ni video). \\
+\textbf{Variantes de tecnología y datos} &
+Diseño nuevo; se prevé persistencia basada en archivos, consistente con el
+resto del sistema (ver Entregable 09, Modelo de Datos). \\
+\textbf{Frecuencia} & Una vez por cada operación de sistema relevante. \\
+\textbf{Temas abiertos} &
+Mecanismo de exportación o consulta de las métricas acumuladas (E08,
+Informe de Impacto Operativo); no forma parte de la interfaz de LSA Salud
+en esta fase. \\
+\bottomrule
+\end{longtable}

@@ -1,0 +1,65 @@
+% ============================================================================
+% Documento_Maestro_LSA_Salud.tex — Documento maestro que agrupa los nueve
+% entregables académicos de LSA Salud como \part independientes.
+% Cada \part reinicia la numeración de \section (ver lsasalud.sty,
+% \counterwithin*{section}{part}), por lo que los archivos de
+% docs/contenido/ se reutilizan sin modificar entre los documentos
+% standalone (0X_*.tex) y este maestro.
+% ============================================================================
+\documentclass[12pt, a4paper]{article}
+\usepackage{lsasalud}
+
+\hypersetup{pdftitle={Documento Maestro --- LSA Salud}}
+
+\begin{document}
+
+\portada{Documento Maestro}{LSASALUD-G9-DM}
+
+\historialRevisiones{
+    1.0 & \today & --- & Versión inicial del Documento Maestro (Entregables 01 a 09). \\
+}
+
+\tableofcontents
+\newpage
+\listoffigures
+\newpage
+\listoftables
+\newpage
+
+% ============================================================================
+\part{Modelo de Dominio}
+\input{contenido/01_modelo_dominio}
+
+% ============================================================================
+\part{Diagrama de Casos de Uso}
+\input{contenido/02_diagrama_casos_uso}
+
+% ============================================================================
+\part{Modelos de Casos de Uso}
+\input{contenido/03_modelos_casos_uso}
+
+% ============================================================================
+\part{Mockups}
+\input{contenido/04_mockups}
+
+% ============================================================================
+\part{ERS --- Especificación de Requisitos de Software (IEEE Std 830-1998)}
+\input{contenido/05_ers_ieee830}
+
+% ============================================================================
+\part{Documento de Arquitectura de Software: Vistas}
+\input{contenido/06_arquitectura_vistas}
+
+% ============================================================================
+\part{Casos de Uso Reales: Diseño de Interfaz Gráfica}
+\input{contenido/07_casos_uso_reales}
+
+% ============================================================================
+\part{Diagramas de Colaboración}
+\input{contenido/08_diagramas_colaboracion}
+
+% ============================================================================
+\part{Modelo de Base de Datos}
+\input{contenido/09_modelo_datos}
+
+\end{document}

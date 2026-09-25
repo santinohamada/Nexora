@@ -1,0 +1,27 @@
+@startsalt 04_mockup_p01_landing
+{+
+  <b>LSA SALUD</b>  (1)
+  ==
+  .
+  <b>Bienvenido a LSA Salud</b>  (2)
+  Seleccione la estación que desea abrir. En un entorno de doble monitor,  (3)
+  abra cada estación en una ventana y pantalla diferente.
+  .
+  {
+    {+
+      <&person> <b>Estación del Paciente</b>  (4)
+      Cámara, captura de señas y traductor
+      en tiempo real.
+      .
+      [Abrir estación]
+    } | . | {+
+      <&monitor> <b>Estación de Recepción</b>  (5)
+      Panel de conversación y respuestas
+      del personal de enfermería.
+      .
+      [Abrir estación]
+    }
+  }
+  .
+}
+@endsalt

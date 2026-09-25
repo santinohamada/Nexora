@@ -1,0 +1,911 @@
+% ============================================================================
+% 05_ers_ieee830.tex — Cuerpo del entregable "ERS IEEE Std 830-1998"
+% ============================================================================
+\section{Introducción}
+
+\subsection{Propósito}
+
+El propósito de este documento es especificar, de manera completa,
+verificable y trazable, los requisitos funcionales y no funcionales del
+sistema \textbf{LSA Salud}, un prototipo de software para la comunicación
+bidireccional entre pacientes que usan Lengua de Señas Argentina (LSA) y
+personal de recepción o enfermería, pensado para el Sanatorio 9 de Julio,
+en entornos de atención médica donde no hay un intérprete humano
+disponible. Sigue la estructura recomendada por el estándar IEEE Std
+830-1998. Los requisitos oficiales (RF-01 a RF-06, RNF-01 a RNF-07) provienen
+de la matriz de trazabilidad de requisitos de la cátedra (TP2); este
+documento los desarrolla en sub-requisitos técnicos trazables (ver
+Sección~3.2 y \texttt{IDS.md}).
+
+Este documento está dirigido a:
+\begin{itemize}
+    \item El equipo de desarrollo del proyecto.
+    \item Docentes y evaluadores académicos de la UTN--FRT.
+    \item Profesionales de salud interesados en evaluar el prototipo.
+    \item Futuros colaboradores o integradores del sistema.
+\end{itemize}
+
+\subsection{Ámbito del sistema}
+
+\textbf{Nombre del sistema:} LSA Salud --- Sistema Inteligente de
+Comunicación y Reconocimiento de LSA. \textbf{Cliente:} Sanatorio 9 de
+Julio (San Miguel de Tucumán). El nombre del repositorio de código,
+``Nexora'', es un alias técnico interno y no el nombre del proyecto
+académico.
+
+\subsubsection{Lo que el sistema hace}
+\begin{itemize}
+    \item Captura en tiempo real los movimientos corporales del paciente
+    mediante visión por computadora (MediaPipe Holistic o MediaPipe
+    Tasks).
+    \item Clasifica las señas capturadas con una red neuronal LSTM
+    entrenada con datos propios.
+    \item Reconstruye oraciones naturales en español a partir de las
+    palabras sueltas reconocidas, usando plantillas médicas precalculadas
+    y, como respaldo, un modelo de lenguaje local.
+    \item Sintetiza las oraciones en voz con acento argentino.
+    \item Provee un canal de comunicación bidireccional entre el paciente
+    y el personal de recepción o enfermería, sincronizado entre dos estaciones de trabajo.
+    \item Permite al personal de recepción o enfermería responder por
+    texto o por dictado de voz.
+    \item Ofrece un módulo de captura de datos para ampliar el vocabulario
+    del modelo y un script de reentrenamiento.
+    \item \textit{Diseñado, pendiente de implementación:} solicita
+    consentimiento explícito de cámara antes de iniciar la captura
+    (RF-03.1), registra eventos de auditoría anónimos por operación
+    relevante (RF-04.1) y permite reportar una traducción incorrecta o
+    ambigua (RF-06.1). Ver Sección~3.2 y \texttt{IDS.md}.
+\end{itemize}
+
+\subsubsection{Lo que el sistema no hace}
+\begin{itemize}
+    \item No reemplaza al intérprete humano de LSA: actúa como un ajuste
+    razonable complementario, sobre un vocabulario acotado.
+    \item No almacena datos clínicos ni el historial de conversaciones: el
+    estado de la conversación es volátil (en memoria del navegador, vía
+    BroadcastChannel).
+    \item No envía datos a servidores externos fuera de la máquina local
+    (el modelo de lenguaje y la síntesis de voz corren localmente).
+    \item No reconoce LSA como lengua continua y completa: reconoce un
+    conjunto acotado de clases de seña entrenadas.
+\end{itemize}
+
+\subsubsection{Exclusiones de alcance (TP2)}
+
+La Declaración de Alcance oficial (TP2) excluye explícitamente del proyecto:
+capacitación general en LSA al personal del sanatorio; desarrollo de
+hardware a medida (solo ensamblaje de hardware comercial, ver E07 en el
+EDT); integración con la Historia Clínica Electrónica (HCE) del sanatorio;
+interpretación de modismos regionales complejos en esta primera versión;
+mantenimiento técnico posterior a la entrega (15/11/2026); y
+reestructuración de redes o cableado del sanatorio. Estas exclusiones
+delimitan el alcance de este documento y de los entregables 01 a 09.
+
+\subsubsection{Beneficios, objetivos y metas}
+\begin{itemize}
+    \item Reducir la barrera de comunicación en centros de salud sin
+    intérprete de LSA disponible.
+    \item Preservar la privacidad de los datos de salud mediante
+    procesamiento local.
+    \item Demostrar la viabilidad de un flujo extremo a extremo de visión
+    por computadora, procesamiento de lenguaje natural y síntesis de voz
+    en hardware de consumo.
+\end{itemize}
+
+\subsection{Definiciones, acrónimos y abreviaturas}
+
+\begin{longtable}{p{4cm} p{10cm}}
+    \caption{Definiciones, acrónimos y abreviaturas}
+    \label{tab:definiciones} \\
+    \toprule
+    \textbf{Término} & \textbf{Definición} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Término} & \textbf{Definición} \\
+    \midrule
+    \endhead
+    LSA & Lengua de Señas Argentina --- lengua natural con sintaxis propia. \\
+    LSTM & Long Short-Term Memory --- red neuronal recurrente para secuencias temporales, usada para clasificar señas. \\
+    LLM & Large Language Model --- modelo de lenguaje grande (Qwen2 1.5B, servido localmente por Ollama). \\
+    TTS & Text-to-Speech --- síntesis de texto a voz (motor Piper, modelo ONNX). \\
+    MediaPipe Holistic & Framework de Google para extracción de landmarks corporales en tiempo real; opción de captura por defecto de LSA Salud. \\
+    MediaPipe Tasks & Variante de MediaPipe basada en landmarkers independientes (Pose, Hand, Face); opción de captura alternativa, activable con \texttt{?mp=tasks}. \\
+    Landmark & Punto anatómico detectado con coordenadas (x, y, z, visibilidad). \\
+    Frame & Conjunto de 75 landmarks (33 de pose, 21 por mano) capturados en un instante. \\
+    Blendshape & Coeficiente de expresión facial (0 a 1) provisto por MediaPipe Tasks; LSA Salud captura 52 por frame en modo Tasks --- base de captura para una futura incorporación de gestos no manuales/faciales a la clasificación (ver riesgo \#16, Sección~\ref{sec:riesgos-diseno}). \\
+    Idle & Estado de reposo del paciente (manos abajo, sin movimiento significativo) que participa en el cierre de una oración. \\
+    Plantilla médica & Frase médica predefinida asociada a una combinación conocida de clases de seña. \\
+    Modo Captura & Modo de la Estación del Paciente para grabar nuevas muestras de entrenamiento. \\
+    ERS / SRS & Especificación de Requisitos de Software / Software Requirements Specification. \\
+    CU & Caso de Uso. \\
+    RF / RNF & Requisito Funcional / Requisito No Funcional. \\
+    REST & Representational State Transfer --- estilo arquitectónico para servicios web. \\
+    WebSocket (WS) & Protocolo de comunicación bidireccional full-duplex sobre TCP. \\
+    ONNX & Open Neural Network Exchange --- formato abierto para modelos de IA. \\
+    BroadcastChannel API & API del navegador para comunicación entre pestañas del mismo origen, sin pasar por la red. \\
+    p50 / p95 & Percentil 50 (mediana) y percentil 95 de una distribución de latencias. \\
+    \bottomrule
+\end{longtable}
+
+\subsection{Referencias}
+
+\begin{enumerate}
+    \item IEEE Std 830-1998 --- IEEE Recommended Practice for Software Requirements Specifications.
+    \item ISO/IEC/IEEE 42010 / UML 2.5 --- Object Management Group, \textit{Unified Modeling Language, Version 2.5.1}.
+    \item Larman, C. \textit{UML y Patrones: Introducción al análisis y diseño orientado a objetos y al proceso unificado}. Pearson, 3.\textsuperscript{a} edición.
+    \item Ley 26.378 --- Aprobación de la Convención sobre los Derechos de las Personas con Discapacidad (Argentina, 2008).
+    \item Ley 27.044 --- Otorga jerarquía constitucional a la Convención (Argentina, 2014).
+    \item Ley 25.326 --- Protección de Datos Personales (Argentina, 2000).
+    \item Google MediaPipe --- \url{https://mediapipe.dev}
+    \item PyTorch --- \url{https://pytorch.org}
+    \item Ollama --- \url{https://ollama.ai}
+    \item Piper TTS --- \url{https://github.com/rhasspy/piper}
+    \item \texttt{README.md} y código fuente del repositorio ``Nexora'' (nombre interno del repositorio de código; \texttt{app.py}, \texttt{train\_lstm.py}, \texttt{src/\allowbreak model/\allowbreak lstm.py}, \texttt{web/}).
+    \item TP0 --- Traductor LSA Salud (documento de tema); TP1 --- Acta de Constitución del Proyecto; TP2 --- Declaración de Alcance del Proyecto; Estructura de Desglose de Trabajo (EDT); Matriz de Trazabilidad de Requisitos; Registro de Interesados; Registro de Riesgos (documentos oficiales de cátedra, UTN-FRT).
+\end{enumerate}
+
+\subsection{Visión general del documento}
+
+El resto de este documento se organiza así:
+\begin{itemize}
+    \item \textbf{Sección 2 --- Descripción general:} contexto del
+    producto, funciones generales, características de los usuarios,
+    restricciones y suposiciones.
+    \item \textbf{Sección 3 --- Requisitos específicos:} interfaces
+    externas, requisitos funcionales, requisitos de rendimiento,
+    restricciones de diseño y atributos del sistema.
+    \item \textbf{Apéndices:} matriz de trazabilidad entre requisitos
+    funcionales, casos de uso y requisitos no funcionales.
+\end{itemize}
+
+% ============================================================================
+\section{Descripción general}
+
+\subsection{Perspectiva del producto}
+
+LSA Salud es un sistema \textbf{independiente} (\textit{standalone}) que
+corre íntegramente en una PC local. No depende de servicios en la nube
+para su funcionamiento (el modelo de lenguaje y la síntesis de voz corren
+localmente); si el proceso de Ollama no está disponible, la traducción cae
+en un modo degradado que igual entrega las palabras originales
+(ver RF-01.5, extensión 3a.2a).
+
+El sistema usa una \textbf{arquitectura de doble estación}: la Estación
+del Paciente (cámara, predicción y chat) y la Estación de Recepción
+(historial de chat y respuesta por texto o voz), sincronizadas mediante
+BroadcastChannel. Como se detalla en la Sección~2.5, estas dos estaciones
+son, a la vez, el diseño de las dos caras de la estación fija de
+guardia/triaje exigida por los requisitos oficiales RNF-04 y RNF-07.
+
+\begin{table}[H]
+    \centering
+    \caption{Stack tecnológico de LSA Salud}
+    \label{tab:stack}
+    \small
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4cm} >{\raggedright\arraybackslash}p{4.4cm} X}
+        \toprule
+        \textbf{Componente} & \textbf{Tecnología} & \textbf{Función} \\
+        \midrule
+        Visión por computadora & MediaPipe Holistic / MediaPipe Tasks & Extrae landmarks corporales (y blendshapes faciales en modo Tasks). \\
+        Clasificación de señas & PyTorch (LSTM) & Clasifica ventanas de 45 frames en clases de seña. \\
+        Reconstrucción gramatical & Plantillas médicas + Ollama (Qwen2 1.5B) & Convierte palabras sueltas en una oración natural. \\
+        Síntesis de voz & Piper TTS (ONNX) & Verbaliza la oración con voz argentina. \\
+        Reconocimiento de voz & Web Speech API & Permite al personal de recepción o enfermería dictar respuestas. \\
+        Sincronización entre estaciones & BroadcastChannel API & Mensajes entre pestañas del mismo origen, sin red. \\
+        Frontend & Next.js 14 + React + TypeScript & Interfaz web de las estaciones. \\
+        Backend & FastAPI + Uvicorn & API REST y WebSocket para inferencia y traducción. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{Funciones del producto}
+
+\begin{enumerate}
+    \item \textbf{Traducción de LSA a texto:} captura de señas, clasificación por LSTM y reconstrucción de oraciones naturales (CU-01, CU-02).
+    \item \textbf{Síntesis de voz:} conversión de la oración traducida a audio con voz argentina (CU-03).
+    \item \textbf{Canal de comunicación bidireccional:} chat sincronizado entre las dos estaciones (CU-01, CU-04).
+    \item \textbf{Respuesta por texto o por voz:} el personal de recepción o enfermería responde escribiendo o dictando (CU-04, CU-05).
+    \item \textbf{Captura de datos de entrenamiento:} grabación de nuevas señas para ampliar el vocabulario (CU-06, CU-07).
+    \item \textbf{Entrenamiento del modelo:} reentrenamiento del LSTM con los datos capturados (CU-08).
+    \item \textbf{Diseñado, pendiente de implementación:} consentimiento de cámara (CU-09), reporte de traducción incorrecta (CU-10) y registro de auditoría (CU-11).
+\end{enumerate}
+
+\subsection{Características de los usuarios}
+
+\begin{table}[H]
+    \centering
+    \caption{Tipos de usuario y perfiles}
+    \label{tab:usuarios}
+    \small
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm} >{\raggedright\arraybackslash}p{4.1cm} X}
+        \toprule
+        \textbf{Actor} & \textbf{Perfil} & \textbf{Interacción} \\
+        \midrule
+        Paciente (ACT-01) & Usuario de LSA, sin conocimiento técnico esperado. & Hace señas frente a la cámara; lee las respuestas del profesional en pantalla. \\
+        Personal de Recepción o Enfermería (ACT-02) & Personal administrativo o de enfermería. & Lee las traducciones del paciente; responde por texto o por dictado de voz. \\
+        Desarrollador de IA / Equipo de Proyecto (ACT-03) & Personal técnico del equipo del proyecto. & Usa el Modo Captura para grabar señas nuevas y ejecuta el reentrenamiento. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsection{Restricciones}
+
+\begin{itemize}
+    \item \textbf{Ejecución local obligatoria:} ningún dato de la conversación sale de la máquina; el único tráfico de red es hacia procesos locales (Ollama en \texttt{localhost:11434}).
+    \item \textbf{Dependencia de Ollama:} el servicio debe estar corriendo localmente para la reconstrucción gramatical por LLM; si no está disponible, se degrada a texto sin reconstruir (RF-01.5, extensión 3a.2a).
+    \item \textbf{Navegador:} Google Chrome es necesario para Web Speech API (dictado) y para un soporte confiable de MediaPipe.
+    \item \textbf{Vocabulario limitado:} el modelo entrenado reconoce actualmente 5 clases (\texttt{cabeza}, \texttt{dolor}, \texttt{idle}, \texttt{respirar}, \texttt{yo}); es ampliable mediante el Modo Captura y el reentrenamiento.
+    \item \textbf{Sin persistencia de conversaciones:} todo el historial de chat es volátil (memoria del navegador + BroadcastChannel).
+    \item \textbf{Lenguajes:} Python 3.9+ en el backend; TypeScript/React en el frontend.
+    \item \textbf{Hardware mínimo:} PC con cámara web; GPU opcional para acelerar la inferencia del LSTM (funciona sobre CPU).
+\end{itemize}
+
+\subsection{Suposiciones y dependencias}
+
+\begin{itemize}
+    \item Se asume que el centro de salud dispone de al menos una PC con dos pantallas (o dos dispositivos) y una cámara web: las dos estaciones sincronizadas (Paciente y Recepción) implementan las dos caras de la estación fija de guardia/triaje exigida por RNF-04/RNF-07 oficiales (ver \texttt{IDS.md}, Sección~4.2); su ensamblaje físico sobre hardware comercial es tarea del entregable E07 del EDT, fuera de alcance de este documento.
+    \item Se asume que Ollama y el modelo \texttt{qwen2:1.5b} están instalados y descargados de antemano.
+    \item Se asume que el modelo de voz Piper (\texttt{es\_AR-daniela-high.onnx}) está disponible en la carpeta \texttt{voices/}.
+    \item Se asume que el paciente conoce LSA y puede realizar señas de forma clara frente a la cámara.
+    \item Se asume conexión eléctrica estable; no se contempla operación a batería.
+    \item Si cambia el sistema operativo (probado en Windows), puede requerirse revalidar la compatibilidad de MediaPipe y Piper.
+\end{itemize}
+
+\subsection{Riesgos relevantes al diseño}
+\label{sec:riesgos-diseno}
+
+El Registro de Riesgos oficial (TP5) identifica riesgos con impacto directo
+en requisitos de este documento; se listan los de calificación
+\textit{Inaceptable} más relevantes al software:
+
+\begin{itemize}
+    \item \textbf{Riesgo \#1} (falta de disponibilidad de intérpretes
+    oficiales de LSA para validar el dataset clínico, 30\%): afecta
+    RNF-06.1 (validación lingüística).
+    \item \textbf{Riesgo \#4} (iluminación deficiente en boxes que impida
+    la captura de gestos, 25\%): afecta RF-01.1 (captura de landmarks).
+    \item \textbf{Riesgo \#5} (latencia de procesamiento de video superior
+    al umbral de 1 s, 35\%): afecta RNF-01.1 (rendimiento).
+    \item \textbf{Riesgo \#9} (dificultad para compilar suficientes
+    muestras de vocabulario médico, 30\%): afecta RNF-05.1 (especialización
+    de datos).
+    \item \textbf{Riesgo \#16} (falla del modelo al capturar gestos
+    faciales/no manuales vitales en la sintaxis de LSA, 30\%): LSA Salud
+    ya captura 52 \textit{blendshapes} faciales por frame en modo
+    MediaPipe Tasks (ver Sección~2.4, Definiciones) como base de datos
+    para una futura incorporación de gestos no manuales al modelo de
+    clasificación; hoy esos coeficientes se capturan y se persisten
+    (RF-T-04) pero todavía no se usan como entrada del LSTM, por lo que la
+    mitigación está en curso y no cerrada.
+\end{itemize}
+
+\subsection{Requisitos futuros}
+
+\begin{itemize}
+    \item \textit{Requisito futuro:} ampliación del vocabulario a decenas de señas médicas frecuentes.
+    \item \textit{Requisito futuro:} soporte para variantes regionales de LSA.
+    \item \textit{Requisito futuro:} interfaz de administración web para gestionar modelos y datasets (hoy el reentrenamiento se hace por línea de comandos, CU-08).
+    \item \textit{Requisito futuro:} verificación automática de que la traducción del LLM no incorpore síntomas no mencionados (hoy solo se indica por prompt, ver CU-02).
+    \item \textit{Requisito futuro:} soporte de navegadores adicionales a Google Chrome para el dictado de voz.
+    \item \textit{Requisito futuro:} restringir el origen permitido en CORS (hoy \texttt{allow\_origins=["*"]} en \texttt{app.py}), pensado para uso en una red local controlada.
+    \item \textit{Requisito futuro:} integración opcional con sistemas de Historia Clínica Electrónica.
+\end{itemize}
+
+% ============================================================================
+\section{Requisitos específicos}
+
+Esta sección detalla los requisitos con nivel suficiente para el diseño,
+la implementación y la verificación del sistema. Cada requisito está
+identificado de forma unívoca y es trazable al código fuente (ver
+Apéndice~A).
+
+\subsection{Interfaces externas}
+
+\subsubsection{Interfaces de usuario}
+
+\begin{table}[H]
+    \centering
+    \caption{Interfaces de usuario del sistema}
+    \label{tab:interfaces-usuario}
+    \begin{tabularx}{\textwidth}{l l X}
+        \toprule
+        \textbf{Interfaz} & \textbf{Ruta} & \textbf{Descripción} \\
+        \midrule
+        Landing page & \texttt{/} & Selector de estación (Paciente / Recepción). \\
+        Pantalla de Consentimiento (P-05) & \texttt{/paciente} (previa) & Consentimiento explícito antes de activar la cámara. \textit{Diseñada, pendiente de implementación.} \\
+        Estación del Paciente & \texttt{/paciente} & Cámara, predicción en tiempo real, chat y Modo Captura. \\
+        Estación de Recepción & \texttt{/recepcion} & Historial de chat, respuesta por texto y por dictado de voz. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsubsection{Interfaces de hardware}
+
+\begin{table}[H]
+    \centering
+    \caption{Interfaces de hardware}
+    \label{tab:interfaces-hw}
+    \begin{tabularx}{\textwidth}{l l X}
+        \toprule
+        \textbf{Hardware} & \textbf{API} & \textbf{Uso} \\
+        \midrule
+        Cámara web & \texttt{navigator.mediaDevices.getUserMedia()} & Captura de video para MediaPipe. \\
+        Micrófono & Web Speech API (\texttt{SpeechRecognition}) & Dictado de voz del personal de recepción o enfermería. \\
+        Parlantes & \texttt{HTMLAudioElement} & Reproducción de la voz sintetizada (Piper TTS). \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\subsubsection{Interfaces de software}
+
+\begin{table}[H]
+    \centering
+    \caption{Endpoints del backend FastAPI}
+    \label{tab:endpoints}
+    \begin{tabularx}{\textwidth}{l l X}
+        \toprule
+        \textbf{Método} & \textbf{Endpoint} & \textbf{Descripción} \\
+        \midrule
+        GET & \texttt{/} & Health check: estado, dispositivo de cómputo, cantidad de clases. \\
+        GET & \texttt{/classes} & Lista de clases que reconoce el modelo cargado. \\
+        GET & \texttt{/dataset\_stats?mode=} & Cantidad de muestras por etiqueta, para el modo legado o Tasks. \\
+        POST & \texttt{/predict} & Predicción de una seña vía REST (frames en JSON). \\
+        WS & \texttt{/ws/predict} & Predicción de señas vía WebSocket (protocolo v1 JSON o v2 binario). \\
+        POST & \texttt{/capture} & Guarda una muestra de entrenamiento (frames + etiqueta $\rightarrow$ \texttt{.npy}). \\
+        POST & \texttt{/process\_sentence} & Traduce palabras sueltas a oración natural y genera el audio. \\
+        GET & \texttt{/debug/timings.jsonl} & Transmite el registro de latencias por etapa (solo si está habilitado por variable de entorno; herramienta de desarrollo). \\
+        \midrule
+        POST & \texttt{/consent} \textit{(diseñado)} & Registra el consentimiento de cámara del paciente (CU-09, RF-03.1). \\
+        POST & \texttt{/report} \textit{(diseñado)} & Registra un reporte de traducción incorrecta o ambigua (CU-10, RF-06.1). \\
+        POST & \texttt{/audit} \textit{(diseñado, interno)} & Registra un evento de auditoría anónimo (CU-11, RF-04.1); no es invocado por el frontend, sino por el propio backend al completar cada operación de sistema. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+También hay una dependencia de software externa: el servicio Ollama
+(API REST local en el puerto 11434) que sirve el modelo de lenguaje
+\texttt{qwen2:1.5b}.
+
+\subsubsection{Interfaces de comunicación}
+
+\begin{itemize}
+    \item \textbf{BroadcastChannel:} canal \texttt{nexora-chat} (nombre interno heredado del repositorio de código) para sincronizar mensajes entre pestañas del mismo origen. Eventos: \texttt{MESSAGE} (nuevo mensaje) y \texttt{CLEAR} (limpiar historial), con deduplicación por identificador de mensaje.
+    \item \textbf{WebSocket:} conexión persistente entre el frontend y \texttt{/ws/predict}, con reconexión automática cada 2 segundos ante corte.
+    \item \textbf{HTTP REST:} comunicación solicitud-respuesta para traducción de oraciones, captura de datos y consulta de clases/estadísticas.
+\end{itemize}
+
+\subsection{Requisitos funcionales}
+
+Los seis requisitos funcionales oficiales (RF-01 a RF-06, matriz de
+trazabilidad TP2) se desarrollan aquí como sub-requisitos técnicos
+trazables, numerados \texttt{RF-<oficial>.<n>} (ver \texttt{IDS.md},
+Sección~3, para el texto literal de cada RF oficial y la tabla de
+trazabilidad completa). Los requisitos sin contraparte oficial --- decisión
+de diseño del equipo para CU-06/07/08 --- usan el prefijo \texttt{RF-T-}.
+Cada uno indica su prioridad (\textit{Esencial}: imprescindible para el
+flujo principal; \textit{Condicional}: mejora el flujo pero el sistema es
+utilizable sin él; \textit{Deseable}: conveniencia menor) y los casos de
+uso relacionados (ver Entregable de Modelos de Casos de Uso). Al final de
+la sección se detallan RF-03.1, RF-04.1 y RF-06.1: \textbf{diseñados,
+pendientes de implementación}.
+
+\subsubsection{RF-01.1: Captura de landmarks en tiempo real (RF-01 oficial)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-01.1 \\
+\textbf{Prioridad} & Esencial \\
+\textbf{Descripción} & El sistema debe extraer, en tiempo real, los landmarks corporales del paciente desde la cámara web. \\
+\textbf{Entrada} & Flujo de video de la cámara ($\sim$30 fps). \\
+\textbf{Proceso} & MediaPipe (Holistic por defecto, o Tasks con \texttt{mp=tasks}) procesa cada frame elegible y extrae landmarks de pose (33) y de ambas manos (21 cada una), normalizados respecto de la nariz. \\
+\textbf{Salida} & Un \textit{frame} de 75 landmarks (300 valores) por cada muestreo. \\
+\textbf{CU relacionados} & CU-01. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-01.2: Envío de frames para predicción (RF-01 oficial)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-01.2 \\
+\textbf{Prioridad} & Esencial \\
+\textbf{Descripción} & El frontend debe acumular frames en un buffer y enviarlos periódicamente al backend para su clasificación. \\
+\textbf{Entrada} & Buffer de frames (hasta 45, con al menos 20 acumulados antes del primer envío). \\
+\textbf{Proceso} & Cada 8 frames nuevos, el buffer se serializa como JSON (protocolo v1) o binario (protocolo v2, con coordenadas redondeadas) y se envía por WebSocket. \\
+\textbf{Salida} & Mensaje WebSocket entrante con la predicción (ver RF-01.3). \\
+\textbf{CU relacionados} & CU-01. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-01.3: Clasificación de la seña mediante LSTM (RF-01 oficial; realiza también RF-05 oficial)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-01.3 \\
+\textbf{Prioridad} & Esencial \\
+\textbf{Descripción} & El backend debe clasificar la ventana de frames recibida en una de las clases de seña conocidas, con un nivel de confianza. El umbral de confianza (ver ``Umbral'' más abajo) es, a la vez, el mecanismo que realiza el requisito oficial RF-05 (``detectar cuando una seña no pueda interpretarse con confianza y evitar mostrar una traducción incorrecta''). \\
+\textbf{Entrada} & Tensor de dimensiones $(1, 45, 300)$, recortado o relleno con ceros según haga falta. \\
+\textbf{Proceso} & Red LSTM (2 capas, 128 unidades ocultas) seguida de una capa totalmente conectada y \textit{softmax}; se calcula la clase de mayor probabilidad y el top-3. \\
+\textbf{Salida} & Seña predicha, confianza (\%) y top-3 de predicciones. \\
+\textbf{Umbral} & $\geq$70\% de confianza para que la palabra se registre en la secuencia (ver RF-01.4). \\
+\textbf{CU relacionados} & CU-01, CU-02. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-01.4: Construcción de la secuencia y cierre de oración (RF-01 oficial; realiza también RF-05 oficial)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-01.4 \\
+\textbf{Prioridad} & Esencial \\
+\textbf{Descripción} & El sistema debe acumular las palabras reconocidas en una secuencia y detectar cuándo el paciente terminó de expresar su idea, descartando las señas de baja confianza o de reposo (mecanismo que también realiza RF-05 oficial). \\
+\textbf{Entrada} & Predicciones sucesivas del LSTM y magnitud de movimiento entre frames consecutivos. \\
+\textbf{Proceso} & Se agrega una palabra a la secuencia cuando su confianza es $\geq$70\% y no es la clase de reposo (\texttt{idle}) ni domina el top-3 con más de 50\%. La secuencia se cierra cuando la magnitud media de movimiento de los últimos 6 frames es menor a 0.05 y pasaron al menos 800 ms desde la última predicción distinta de reposo. \\
+\textbf{Salida} & Secuencia de palabras cerrada, lista para traducirse (dispara CU-02). \\
+\textbf{CU relacionados} & CU-01. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-01.5: Traducción de la secuencia a oración natural (RF-01 oficial)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-01.5 \\
+\textbf{Prioridad} & Esencial \\
+\textbf{Descripción} & El sistema debe convertir la secuencia de palabras sueltas en una oración en español natural, priorizando respuestas instantáneas. \\
+\textbf{Entrada} & Cadena de palabras sueltas (por ejemplo, ``yo dolor cabeza''). \\
+\textbf{Proceso} & Se normaliza la secuencia y se busca, en orden: coincidencia exacta en el diccionario de plantillas médicas; luego en la caché de traducciones recientes (hasta 200 entradas); si no hay coincidencia, se delega en el modelo de lenguaje local (tiempo de espera de 8 segundos), con instrucciones explícitas de no inventar síntomas y de respetar la persona gramatical. \\
+\textbf{Salida} & Oración natural (por ejemplo, ``Me duele la cabeza.''), y el origen de la traducción (plantilla, caché o modelo de lenguaje). \\
+\textbf{CU relacionados} & CU-02. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-01.6: Síntesis de voz (RF-01 oficial)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-01.6 \\
+\textbf{Prioridad} & Esencial \\
+\textbf{Descripción} & La oración traducida debe sintetizarse como audio, con voz en español argentino. \\
+\textbf{Entrada} & Oración en español (texto). \\
+\textbf{Proceso} & Si el audio ya fue generado antes para la misma oración, se reutiliza desde la caché (hasta 50 entradas); en caso contrario, se sintetiza con Piper TTS y el resultado se codifica en base64. \\
+\textbf{Salida} & Audio WAV codificado en base64, reproducido en el navegador tras una ventana de exhibición del texto (1000 ms por defecto). \\
+\textbf{CU relacionados} & CU-03. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-01.7: Sincronización de la conversación entre estaciones (RF-01 oficial; soporta también RF-02 oficial)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-01.7 \\
+\textbf{Prioridad} & Esencial \\
+\textbf{Descripción} & Los mensajes del paciente y del personal de recepción o enfermería deben sincronizarse instantáneamente entre las dos estaciones. Es el canal que entrega el mensaje del profesional en un formato accesible para el paciente sordo (RF-02 oficial). \\
+\textbf{Entrada} & Mensaje nuevo (del paciente, generado por CU-02/CU-03, o del personal, generado por CU-04). \\
+\textbf{Proceso} & El mensaje se agrega al historial local y se publica por BroadcastChannel; cada estación deduplica por identificador antes de mostrarlo. \\
+\textbf{Salida} & Historial de conversación actualizado en ambas estaciones. \\
+\textbf{CU relacionados} & CU-01, CU-04. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-02.1: Respuesta del personal por texto (RF-02 oficial)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-02.1 \\
+\textbf{Prioridad} & Esencial \\
+\textbf{Descripción} & El personal de recepción o enfermería debe poder escribir una respuesta y enviarla a la conversación compartida. \\
+\textbf{Entrada} & Texto ingresado por el personal. \\
+\textbf{Proceso} & Se valida que el texto no esté vacío antes de habilitar el envío. \\
+\textbf{Salida} & Mensaje agregado a la conversación (ver RF-01.7). \\
+\textbf{CU relacionados} & CU-04. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-02.2: Dictado por voz del personal (RF-02 oficial)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-02.2 \\
+\textbf{Prioridad} & Condicional \\
+\textbf{Descripción} & El personal de recepción o enfermería debe poder dictar su respuesta por voz en lugar de escribirla. \\
+\textbf{Entrada} & Audio del micrófono. \\
+\textbf{Proceso} & Se usa la Web Speech API del navegador, configurada en español argentino, con resultados parciales y finales; el texto dictado se acumula sobre el texto ya escrito. \\
+\textbf{Salida} & Texto transcripto, listo para enviarse (RF-02.1). \\
+\textbf{Restricción} & Requiere un navegador compatible (Google Chrome). \\
+\textbf{CU relacionados} & CU-05. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-T-01: Selección o creación de etiqueta de seña (sin RF oficial; decisión de diseño del equipo)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-T-01 \\
+\textbf{Prioridad} & Condicional \\
+\textbf{Descripción} & Antes de grabar una muestra, el desarrollador debe poder elegir una etiqueta existente o crear una nueva. \\
+\textbf{Entrada} & Nombre de etiqueta (existente o nueva). \\
+\textbf{Proceso} & Si la etiqueta es nueva, se valida contra un patrón (letras minúsculas, dígitos y guion bajo, de 1 a 32 caracteres) antes de aceptarla; la carpeta de datos se crea recién al guardar la primera muestra. \\
+\textbf{Salida} & Etiqueta activa para la siguiente grabación. \\
+\textbf{CU relacionados} & CU-07. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-T-02: Consulta de clases y estadísticas del dataset (sin RF oficial; decisión de diseño del equipo)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-T-02 \\
+\textbf{Prioridad} & Condicional \\
+\textbf{Descripción} & El sistema debe exponer las clases que reconoce el modelo y la cantidad de muestras grabadas por etiqueta. \\
+\textbf{Entrada} & Modo activo (legado o Tasks). \\
+\textbf{Proceso} & El backend lista las clases del modelo cargado y cuenta los archivos \texttt{.npy} por carpeta de etiqueta, en el árbol de datos correspondiente al modo. \\
+\textbf{Salida} & Lista de clases y mapa etiqueta $\rightarrow$ cantidad de muestras. \\
+\textbf{CU relacionados} & CU-07. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-T-03: Grabación de muestras de entrenamiento (sin RF oficial; decisión de diseño del equipo)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-T-03 \\
+\textbf{Prioridad} & Condicional \\
+\textbf{Descripción} & El sistema debe permitir grabar una o varias muestras de una seña, con cuenta regresiva y repeticiones configurables. \\
+\textbf{Entrada} & Etiqueta activa, cantidad de repeticiones. \\
+\textbf{Proceso} & Por cada repetición: cuenta regresiva de 3 segundos, grabación de 45 frames consecutivos, envío al backend. \\
+\textbf{Salida} & Confirmación de guardado y conteo de muestras actualizado por etiqueta. \\
+\textbf{CU relacionados} & CU-06. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-T-04: Persistencia de muestras de entrenamiento (sin RF oficial; decisión de diseño del equipo)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-T-04 \\
+\textbf{Prioridad} & Condicional \\
+\textbf{Descripción} & Cada muestra grabada debe guardarse en disco, separando el árbol de captura legado del basado en MediaPipe Tasks. \\
+\textbf{Entrada} & Frames grabados (y, en modo Tasks, blendshapes faciales). \\
+\textbf{Proceso} & Se valida que los frames sean numéricamente finitos y, en modo Tasks, que haya exactamente 52 blendshapes por frame; se guarda como archivo \texttt{.npy} bajo \texttt{dataset/custom/<etiqueta>/} (legado) o \texttt{dataset/custom\_tasks/<etiqueta>/} más \texttt{dataset/custom\_blendshapes/<etiqueta>/} (Tasks). \\
+\textbf{Salida} & Archivo(s) \texttt{.npy} persistido(s) con nombre de marca de tiempo. \\
+\textbf{CU relacionados} & CU-06. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-T-05: Reentrenamiento del modelo LSTM (sin RF oficial; decisión de diseño del equipo)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-T-05 \\
+\textbf{Prioridad} & Condicional \\
+\textbf{Descripción} & El sistema debe permitir reentrenar el modelo LSTM con las muestras capturadas, fuera de línea. \\
+\textbf{Entrada} & Conjunto de archivos \texttt{.npy} agrupados por etiqueta en \texttt{dataset/custom}. \\
+\textbf{Proceso} & Descubrimiento de clases, separación 80/20 entrenamiento/validación (semilla fija), aumento de datos en entrenamiento (recorte aleatorio, ruido gaussiano, escalado), 50 rondas de entrenamiento, conservación del mejor modelo por exactitud de validación. \\
+\textbf{Salida} & Archivo de pesos del modelo y archivo de clases actualizados. \\
+\textbf{CU relacionados} & CU-08. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-T-06: Selección de estación de trabajo (sin RF oficial; decisión de diseño del equipo)}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-T-06 \\
+\textbf{Prioridad} & Deseable \\
+\textbf{Descripción} & Desde la página de inicio, el usuario debe poder abrir la estación que corresponda a su rol. \\
+\textbf{Entrada} & Selección del usuario. \\
+\textbf{Proceso} & Navegación a \texttt{/paciente} o \texttt{/recepcion}. \\
+\textbf{Salida} & Estación correspondiente abierta. \\
+\textbf{CU relacionados} & Precondición de CU-01 y de CU-04. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-03.1: Consentimiento explícito de cámara (RF-03 oficial) --- diseñado, pendiente de implementación}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-03.1 \\
+\textbf{Estado} & \textbf{Diseñado --- pendiente de implementación.} \\
+\textbf{Prioridad} & Esencial (bloqueante: sin consentimiento, no hay CU-01). \\
+\textbf{Descripción} & Antes de activar la cámara, el sistema debe desplegar una pantalla de consentimiento explícito (P-05) y bloquear el acceso a la cámara hasta que el paciente lo otorgue. \\
+\textbf{Entrada} & Decisión del paciente (acepta / no acepta). \\
+\textbf{Proceso} & El sistema muestra el texto explicativo de P-05 antes de invocar \texttt{getUserMedia()}; si el paciente acepta, registra el consentimiento (sin datos identificatorios) y recién entonces solicita el permiso de cámara al navegador. \\
+\textbf{Salida} & Consentimiento registrado y cámara activada, o cámara inactiva con alternativa ofrecida. \\
+\textbf{CU relacionados} & CU-09 (precondición de CU-01). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-04.1: Registro de eventos de auditoría (RF-04 oficial) --- diseñado, pendiente de implementación}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-04.1 \\
+\textbf{Estado} & \textbf{Diseñado --- pendiente de implementación.} \\
+\textbf{Prioridad} & Condicional (no bloquea el flujo de comunicación; es una subfunción de auditoría). \\
+\textbf{Descripción} & El sistema debe registrar, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción, síntesis, respuesta, captura), sin datos identificatorios ni imágenes o video, para habilitar métricas operativas de uso (E08, Informe de Impacto Operativo). \\
+\textbf{Entrada} & Finalización de una operación de sistema (SO-01 a SO-05, ver Entregable 08). \\
+\textbf{Proceso} & El backend arma un evento con tipo de operación, marca temporal y resultado, y lo persiste en el registro de auditoría basado en archivos (ver Entregable 09). \\
+\textbf{Salida} & Evento de auditoría anónimo persistido. \\
+\textbf{CU relacionados} & CU-11 (incluido por CU-01 y CU-04). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{RF-06.1: Reporte de traducción incorrecta o ambigua (RF-06 oficial) --- diseñado, pendiente de implementación}
+\begin{table}[H]
+\centering
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{ID} & RF-06.1 \\
+\textbf{Estado} & \textbf{Diseñado --- pendiente de implementación.} \\
+\textbf{Prioridad} & Condicional. \\
+\textbf{Descripción} & El paciente o el personal de recepción o enfermería deben poder marcar un mensaje de la conversación como traducción incorrecta o ambigua, indicando un motivo, para registrar el caso y priorizar el reentrenamiento (CU-08). \\
+\textbf{Entrada} & Mensaje señalado y motivo del reporte. \\
+\textbf{Proceso} & El sistema asocia el reporte al mensaje señalado y lo persiste, sin datos identificatorios del paciente. \\
+\textbf{Salida} & Reporte registrado y confirmación mostrada al actor. \\
+\textbf{CU relacionados} & CU-10 (extiende a CU-01 y CU-04). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Requisitos de rendimiento (RNF-01.1, sub-requisito de RNF-01 oficial)}
+
+Los siguientes valores son \textbf{objetivos de diseño}, expresados en
+p50/p95 como exige la metodología del proyecto, y trazables al requisito
+oficial RNF-01 (``latencia <1 segundo'', CRIT-01). El repositorio incluye un
+mecanismo de instrumentación por etapa (variable de entorno
+\texttt{LATENCY\_V2\_TIMING}, endpoint \texttt{/debug/timings.jsonl}) capaz
+de medirlos, pero al momento de este documento \textbf{no hay una
+medición formal registrada}; por eso la columna ``Estado'' distingue
+entre objetivo y medición, y el criterio de aceptación oficial CRIT-01 no
+puede darse todavía por verificado.
+
+\begin{table}[H]
+    \centering
+    \caption{Requisitos de rendimiento (RNF-01.1)}
+    \label{tab:rendimiento}
+    \small
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5.2cm} >{\raggedright\arraybackslash}p{3.6cm} X}
+        \toprule
+        \textbf{Métrica} & \textbf{Valor objetivo} & \textbf{Estado} \\
+        \midrule
+        Latencia extremo a extremo (captura $\rightarrow$ audio listo), ruta con plantilla & p50 $\leq$ 600 ms & Objetivo de diseño \\
+        Latencia extremo a extremo, caso general & p95 $\leq$ 1 s & Objetivo de diseño \\
+        Inferencia LSTM por ventana (\texttt{lstm\_ms}) con MediaPipe Tasks vs.\ Holistic & sin regresión de p95 mayor al 10\% & Objetivo de diseño (gate manual documentado en \texttt{openspec}) \\
+        Captura de frames & $\sim$30 fps (según cámara) & Dependiente de hardware \\
+        Usuarios simultáneos & 1 par paciente--personal por instancia del backend & Restricción de diseño actual \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\textbf{RNF-02.1 (sub-requisito de RNF-02 oficial, precisión):} la
+exactitud de validación del modelo LSTM (\texttt{ModeloDeReconocimiento.exactitudDeValidación},
+ver Entregable 01) se calcula durante \texttt{train\_lstm.py} sobre el 20\%
+de validación, pero no existe todavía un harness formal que la reporte
+como criterio de aceptación automatizado frente al 90\% exigido por
+RNF-02/CRIT-02 oficiales. \textbf{Estado: objetivo de diseño, sin medición
+formal registrada}; se recomienda incorporarlo al entregable de gestión E05
+(Informe de Pruebas Controladas).
+
+\subsection{Restricciones de diseño}
+
+\begin{itemize}
+    \item \textbf{Privacidad por diseño:} todo el procesamiento sensible ocurre en la máquina local; el único proceso externo invocado es Ollama, también local.
+    \item \textbf{Backend de un solo archivo:} \texttt{app.py} concentra los endpoints REST y WebSocket, pensado para simplicidad de despliegue en un entorno de consultorio.
+    \item \textbf{Modelos pre-entrenados como dependencia:} los pesos del LSTM, el modelo de voz Piper y el modelo de lenguaje de Ollama deben estar descargados de antemano; el sistema no los descarga en tiempo de ejecución.
+    \item \textbf{Protocolos por tipo de operación:} WebSocket para predicción de baja latencia, REST para operaciones puntuales (traducción, captura, consulta de clases), BroadcastChannel para sincronización entre estaciones.
+    \item \textbf{Sin base de datos:} las muestras de entrenamiento se guardan como archivos \texttt{.npy} en el sistema de archivos; la conversación es volátil y no se persiste.
+\end{itemize}
+
+\subsection{Atributos del sistema}
+
+Los requisitos de rendimiento se documentan en la sección 3.3 (RNF-01.1).
+Esta sección cubre los restantes atributos de calidad: los primeros tres
+(RNF-03.1, RNF-04.1/RNF-07.1, RNF-05.1/RNF-06.1) son sub-requisitos
+trazables a la matriz oficial; los últimos tres (RNF-T-01 a RNF-T-03) son
+requisitos técnicos sin contraparte oficial.
+
+\subsubsection{Seguridad y privacidad (RNF-03.1, sub-requisito de RNF-03 oficial)}
+\begin{itemize}
+    \item \textbf{Privacidad de datos de salud:} todo el procesamiento y almacenamiento ocurre en la máquina local; no hay persistencia de conversaciones (estado en memoria más BroadcastChannel).
+    \item \textbf{Autenticación:} no implementada en el prototipo actual (\textit{Requisito futuro}).
+    \item \textbf{Configuración de CORS:} el backend acepta actualmente cualquier origen (\texttt{allow\_origins=\allowbreak["*"]} en \texttt{app.py}); apropiado para pruebas en una red local controlada, pero debe restringirse antes de un despliegue de producción (\textit{Requisito futuro}, ver 2.7).
+    \item \textbf{Acceso a cámara y micrófono:} requiere autorización explícita del navegador, otorgada por el usuario, y --- cuando RF-03.1 esté implementado --- consentimiento explícito previo del paciente (CU-09).
+    \item \textbf{Eventos de auditoría (RF-04.1) y reportes de traducción (RF-06.1):} diseñados sin datos identificatorios ni imágenes o video, consistentes con esta restricción.
+\end{itemize}
+
+\subsubsection{Compatibilidad de hardware y estación fija (RNF-04.1 / RNF-07.1, sub-requisitos de RNF-04 y RNF-07 oficiales)}
+\begin{itemize}
+    \item Las dos estaciones sincronizadas (Paciente y Recepción), sobre el mismo navegador y canal BroadcastChannel, con doble monitor, implementan las dos caras de la estación fija de guardia/triaje que exigen RNF-04 y RNF-07 oficiales (cámara, pantalla doble cara, micrófono, altavoces, componentes comerciales estándar).
+    \item \textbf{Estado: parcial.} El diseño de software está completo; el ensamblaje físico de las dos pantallas y la cámara sobre un mostrador o box existente, con hardware comercial, es tarea del entregable E07 ``Estación Desplegada en Guardia'' (EDT), fuera del alcance de software de este documento.
+\end{itemize}
+
+\subsubsection{Especialización y validación del dataset (RNF-05.1 / RNF-06.1, sub-requisitos de RNF-05 y RNF-06 oficiales)}
+\begin{itemize}
+    \item El Modo Captura y los árboles \texttt{dataset/custom}, \texttt{dataset/custom\_tasks}, \texttt{dataset/custom\_blendshapes} permiten ampliar el vocabulario a señas médicas; la cobertura completa del dominio clínico (síntomas, triaje, dolor) no está verificada al día de este documento (RNF-05.1, \textbf{estado: parcial}).
+    \item La validación lingüística del dataset por intérpretes oficiales de LSA es un proceso organizacional (EDT, paquete 3.2.5), no una función de software (RNF-06.1, \textbf{estado: pendiente}); el riesgo \#1 del Registro de Riesgos aplica directamente (ver Sección~2.6).
+\end{itemize}
+
+\subsubsection{RNF-T-01: Fiabilidad (sin RNF oficial)}
+\begin{itemize}
+    \item El WebSocket de predicción se reconecta automáticamente cada 2 segundos ante un cierre de conexión.
+    \item Si el modelo de lenguaje local falla o no responde a tiempo (8 s), se usa el texto original de la secuencia sin interrumpir el flujo.
+    \item Si el motor Piper TTS no está cargado, el mensaje se entrega sin audio.
+    \item Un indicador de solicitud en curso evita enviar frames al WebSocket mientras una predicción anterior sigue pendiente.
+\end{itemize}
+
+\subsubsection{RNF-T-02: Disponibilidad (sin RNF oficial)}
+\begin{itemize}
+    \item El sistema no depende de conectividad a internet para el flujo crítico (captura, clasificación LSTM, síntesis de voz): todos esos componentes corren localmente.
+    \item La disponibilidad de la traducción por modelo de lenguaje depende de que el proceso local de Ollama esté activo; su ausencia degrada la traducción pero no interrumpe el sistema (ver RNF-T-01).
+\end{itemize}
+
+\subsubsection{RNF-T-03: Mantenibilidad (sin RNF oficial)}
+\begin{itemize}
+    \item Separación clara entre frontend (Next.js) y backend (FastAPI).
+    \item Responsabilidades divididas en hooks de React independientes: captura de cámara, WebSocket de predicción, construcción de oraciones, canal de chat y reconocimiento de voz.
+    \item El modelo LSTM está desacoplado del backend en un módulo propio (\texttt{src/\allowbreak model/\allowbreak lstm.py}).
+    \item Las plantillas médicas están centralizadas en una estructura de datos del backend, fácil de extender.
+\end{itemize}
+
+\subsubsection{RNF-T-04: Portabilidad (sin RNF oficial)}
+\begin{itemize}
+    \item Probado en Windows; el stack (Next.js, FastAPI/Uvicorn, PyTorch, ONNX) es multiplataforma en principio.
+    \item Requiere Node.js 18 o superior y Python 3.9 o superior.
+\end{itemize}
+
+\subsubsection{RNF-T-05: Usabilidad y accesibilidad (sin RNF oficial)}
+\begin{itemize}
+    \item Conversación fluida, sin botones de confirmación manual: la ventana de exhibición del texto antes de reproducir el audio actúa como confirmación automática (excepción deliberada: el consentimiento de cámara de P-05/CU-09 y el reporte de traducción de CU-10 sí requieren una acción explícita, ver Entregable 04).
+    \item Interfaz en español, con indicadores visuales de estado (``EN VIVO'', ``GRABANDO'', cuenta regresiva, barras de confianza en tiempo real).
+    \item Arquitectura de doble estación pensada para separar visualmente el rol del paciente y el del profesional de salud.
+\end{itemize}
+
+\subsection{Otros requisitos}
+
+\subsubsection{Escalabilidad del vocabulario}
+\begin{itemize}
+    \item El Modo Captura permite ampliar el vocabulario de forma incremental, sin requerir conocimientos técnicos avanzados (CU-06, CU-07).
+    \item El reentrenamiento es offline mediante \texttt{train\_lstm.py} (CU-08).
+\end{itemize}
+
+\subsubsection{Compatibilidad}
+\begin{itemize}
+    \item Navegador: Google Chrome (requerido para Web Speech API y recomendado para MediaPipe).
+    \item Sistema operativo: Windows (probado); Linux/macOS teóricamente compatibles, sin validación registrada.
+\end{itemize}
+
+% ============================================================================
+\section{Apéndices}
+
+\subsection{Apéndice A: Matriz de trazabilidad RF -- CU -- RNF}
+
+\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}p{5.6cm} >{\raggedright\arraybackslash}p{5.6cm}}
+    \caption{Matriz de trazabilidad Requisitos Funcionales -- Casos de Uso -- Requisitos No Funcionales}
+    \label{tab:trazabilidad} \\
+    \toprule
+    \textbf{Requisito funcional} & \textbf{Casos de uso relacionados} & \textbf{Requisitos no funcionales relacionados} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Requisito funcional} & \textbf{Casos de uso relacionados} & \textbf{Requisitos no funcionales relacionados} \\
+    \midrule
+    \endhead
+    RF-01.1 & CU-01 & RNF-T-01 \\
+    RF-01.2 & CU-01 & RNF-T-01, RNF-01.1 \\
+    RF-01.3 & CU-01, CU-02 & RNF-01.1 \\
+    RF-01.4 & CU-01 & RNF-T-05, RNF-01.1 \\
+    RF-01.5 & CU-02 & RNF-T-01, RNF-01.1 \\
+    RF-01.6 & CU-03 & RNF-T-01, RNF-01.1 \\
+    RF-01.7 & CU-01, CU-04 & RNF-T-05 \\
+    RF-02.1 & CU-04 & --- \\
+    RF-02.2 & CU-05 & RNF-T-04 (compatibilidad de navegador) \\
+    RF-T-01 & CU-07 & --- \\
+    RF-T-02 & CU-07 & --- \\
+    RF-T-03 & CU-06 & --- \\
+    RF-T-04 & CU-06 & RNF-03.1 \\
+    RF-T-05 & CU-08 & --- \\
+    RF-T-06 & Precondición de CU-01, CU-04 & --- \\
+    \midrule
+    RF-03.1 \textit{(diseñado)} & CU-09 & RNF-03.1 \\
+    RF-04.1 \textit{(diseñado)} & CU-11 & RNF-03.1 \\
+    RF-06.1 \textit{(diseñado)} & CU-10 & RNF-03.1 \\
+    \bottomrule
+\end{longtable}
+
+\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{3.4cm} >{\raggedright\arraybackslash}p{10.2cm}}
+    \caption{Matriz de trazabilidad RNF oficiales -- sub-requisitos}
+    \label{tab:trazabilidad-rnf} \\
+    \toprule
+    \textbf{RNF oficial} & \textbf{Sub-requisitos técnicos} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{RNF oficial} & \textbf{Sub-requisitos técnicos} \\
+    \midrule
+    \endhead
+    RNF-01 (latencia) & RNF-01.1 \\
+    RNF-02 (precisión) & RNF-02.1 \\
+    RNF-03 (seguridad/privacidad) & RNF-03.1 \\
+    RNF-04 (hardware) & RNF-04.1 (compartido con RNF-07.1) \\
+    RNF-05 (dataset especializado) & RNF-05.1 \\
+    RNF-06 (validación lingüística) & RNF-06.1 \\
+    RNF-07 (estación fija) & RNF-07.1 (compartido con RNF-04.1) \\
+    \bottomrule
+\end{longtable}
+
+\subsection{Apéndice B: Formatos de datos relevantes}
+
+\subsubsection{Formato de un frame (entrada al pipeline de reconocimiento)}
+\begin{verbatim}
+Frame = [
+  [x_0, y_0, z_0, vis_0],     // landmark 0 (pose)
+  ...                          // 33 landmarks de pose
+  [x_33, y_33, z_33, vis_33],  // landmark 33 (mano izquierda)
+  ...                          // 21 landmarks de mano izquierda
+  [x_54, y_54, z_54, vis_54],  // landmark 54 (mano derecha)
+  ...                          // 21 landmarks de mano derecha
+]
+// Total: 75 landmarks x 4 valores = 300 flotantes por frame
+\end{verbatim}
+
+\subsubsection{Formato de respuesta de predicción (WebSocket)}
+\begin{verbatim}
+{
+  "sign": "dolor",
+  "confidence": 88.5,
+  "top3": [
+    {"sign": "dolor", "confidence": 88.5},
+    {"sign": "cabeza", "confidence": 8.2},
+    {"sign": "idle", "confidence": 3.3}
+  ]
+}
+\end{verbatim}
+
+\subsubsection{Formato de respuesta de traducción (REST)}
+\begin{verbatim}
+{
+  "original": "yo dolor cabeza",
+  "natural_sentence": "Me duele la cabeza.",
+  "audio_base64": "UklGRi4AAABXQVZFZm10IBAA...",
+  "source": "template",
+  "latency_ms": 3
+}
+\end{verbatim}

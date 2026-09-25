@@ -1,0 +1,89 @@
+@startuml 09_modelo_logico
+!include _estilo.iuml
+title Modelo de Base de Datos - Modelo Lógico (notación pata de gallo)\nNota: cada "entidad" es un patrón de archivo/directorio, no una tabla de una base de datos relacional
+
+entity "MuestraDeEntrenamiento" as MDE {
+    * etiqueta : varchar(32) <<PK, FK>>
+    * timestamp_ms : bigint <<PK>>
+    --
+    arbol : varchar {legacy | tasks}
+    shape : varchar = '(45,75,4)'
+}
+
+entity "MuestraDeBlendshapes" as MBS {
+    * etiqueta : varchar(32) <<PK, FK>>
+    * timestamp_ms : bigint <<PK, FK>>
+    --
+    shape : varchar = '(45,52)'
+}
+
+entity "ClaseDeSeña" as CDS {
+    * etiqueta : varchar(32) <<PK>>
+}
+
+entity "VocabularioDelModelo" as VOC {
+    * indice : int <<PK>>
+    --
+    etiqueta : varchar(32) <<FK>>
+}
+
+entity "ModeloDeReconocimiento" as MOD {
+    * archivo : varchar <<PK>>
+    --
+    framesPorMuestra : int
+}
+
+entity "EventoDeConsentimiento" as EDC <<diseñado>> {
+    * marcaTemporal : bigint <<PK>>
+    --
+    otorgado : boolean
+}
+
+entity "EventoDeAuditoría" as EDA <<diseñado>> {
+    * marcaTemporal : bigint <<PK>>
+    --
+    tipoOperacion : varchar
+    resultado : varchar {exito | error}
+}
+
+entity "ReporteDeTraducción" as RDT <<diseñado>> {
+    * marcaTemporal : bigint <<PK>>
+    --
+    mensajeId : int
+    motivo : varchar
+}
+
+CDS ||--o{ MDE : etiqueta
+MDE ||--o| MBS : "etiqueta + timestamp_ms"
+CDS ||--o{ VOC : etiqueta
+MOD ||--|{ VOC : "vocabulario de"
+
+' --- Enlaces ocultos: fuerzan dos columnas verticales angostas (layout, no semántica) ---
+MBS -[hidden]-> MDE
+MDE -[hidden]-> CDS
+CDS -[hidden]-> VOC
+VOC -[hidden]-> MOD
+EDC -[hidden]-> EDA
+EDA -[hidden]-> RDT
+
+note top of MDE
+  PK compuesta = ruta fisica
+  (directorio <etiqueta> +
+  archivo <timestamp_ms>.npy)
+end note
+
+note bottom of MOD
+  archivo in {lstm_v1_<N>frames.pth,
+  lstm_v2_24frames.pth, lstm.pth}
+end note
+
+note bottom of RDT
+  EventoDeConsentimiento, EventoDeAuditoría
+  y ReporteDeTraducción: diseñados,
+  pendientes de implementación.
+  Sin FK hacia el resto del modelo
+  (persistencia independiente, anonima,
+  formato JSON Lines).
+end note
+
+@enduml

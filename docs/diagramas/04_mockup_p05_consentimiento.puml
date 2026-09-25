@@ -1,0 +1,17 @@
+@startsalt 04_mockup_p05_consentimiento
+{+
+  <b>LSA SALUD</b>  (1)
+  ==
+  <b>Consentimiento para usar la cámara</b>  (2)
+  .
+  {+
+  Antes de comenzar, necesitamos su autorización para activar   (3)
+  la cámara. La cámara se usa únicamente para reconocer sus
+  señas y traducirlas a texto y voz. No se guarda video ni
+  imágenes: todo el procesamiento ocurre en este equipo y se
+  descarta al instante.
+  }
+  .
+  { [Acepto y continúo] | (4) | [No acepto] | (5) }
+}
+@endsalt
