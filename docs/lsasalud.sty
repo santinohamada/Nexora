@@ -1,0 +1,215 @@
+% ============================================================================
+% lsasalud.sty — Paquete de estilo compartido para los entregables académicos
+% de LSA Salud (UTN — Facultad Regional Tucumán, Proyecto Final).
+%
+% Uso:
+%   \documentclass[12pt,a4paper]{article}
+%   \usepackage{lsasalud}
+%   \begin{document}
+%   \portada{Título del entregable}{Código de documento}
+%   \tableofcontents
+%   \input{contenido/0X_...}
+%   \end{document}
+% ============================================================================
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{lsasalud}[2026/01/01 Estilo compartido LSA Salud]
+
+% --- Paquetes base --------------------------------------------------------
+\RequirePackage[utf8]{inputenc}
+\RequirePackage[T1]{fontenc}
+\RequirePackage[spanish, es-tabla, es-noshorthands]{babel}
+\RequirePackage{geometry}
+\RequirePackage{graphicx}
+\RequirePackage{float}
+\RequirePackage{hyperref}
+\RequirePackage{booktabs}
+\RequirePackage{longtable}
+\RequirePackage{tabularx}
+\RequirePackage{array}
+\RequirePackage{enumitem}
+\RequirePackage{fancyhdr}
+\RequirePackage{titlesec}
+\RequirePackage{caption}
+\RequirePackage{xcolor}
+\RequirePackage{multirow}
+\RequirePackage{tocloft}
+\RequirePackage{listings}
+\RequirePackage[expansion=false]{microtype}
+\RequirePackage[htt]{hyphenat}
+\RequirePackage{xurl}
+
+% --- Ajustes tipográficos para evitar overfull \hbox ------------------------
+% Las columnas X de tabularx justifican por defecto; alinearlas a la
+% izquierda (raggedright) evita el estiramiento agresivo que produce
+% overfull boxes cuando una celda tiene poco texto para repartir en el
+% ancho disponible.
+\renewcommand{\tabularxcolumn}[1]{>{\raggedright\arraybackslash}p{#1}}
+% Tolerancia algo mayor para que el algoritmo de saltos de línea prefiera
+% una línea más floja antes que un overfull box severo.
+\tolerance=1200
+\emergencystretch=2em
+
+% --- Geometría de página ---------------------------------------------------
+\geometry{
+    left=2.5cm,
+    right=2.5cm,
+    top=3cm,
+    bottom=3cm
+}
+
+% --- Paleta de colores ------------------------------------------------------
+\definecolor{ieeeblue}{RGB}{0, 51, 102}
+\definecolor{sectioncolor}{RGB}{30, 68, 138}
+\definecolor{linkcolor}{RGB}{0, 102, 204}
+\definecolor{codebg}{RGB}{245, 245, 250}
+\definecolor{codegreen}{RGB}{0, 128, 0}
+
+% --- Hipervínculos -----------------------------------------------------------
+\hypersetup{
+    colorlinks=true,
+    linkcolor=ieeeblue,
+    urlcolor=linkcolor,
+    citecolor=ieeeblue,
+    pdfsubject={Proyecto Final --- LSA Salud},
+    pdfauthor={UTN FRT}
+}
+
+% --- Encabezado y pie de página ---------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% --- "Entregable" como nombre de \part y aislamiento de numeración ----------
+% Cada entregable reinicia su propia numeración de sección; esto permite
+% reutilizar los mismos archivos de docs/contenido/ tanto en documentos
+% independientes como en un futuro documento maestro que los agrupe con \part.
+\renewcommand{\partname}{Entregable}
+\counterwithin*{section}{part}
+
+% --- Profundidad del índice --------------------------------------------------
+% Con subsubsections por cada RF/RNF/DC individual, un tocdepth=3 (el default
+% de article) produce un índice larguísimo y poco hojeable en el Documento
+% Maestro. Se limita a section/subsection; el detalle sigue disponible en el
+% cuerpo del documento.
+\setcounter{tocdepth}{2}
+
+% --- Formato de títulos (titlesec) ------------------------------------------
+\titleformat{\part}[display]
+    {\Huge\bfseries\centering\color{sectioncolor}}
+    {\LARGE\color{ieeeblue}\textsc{\partname{} \thepart}}
+    {0.6em}
+    {\rule{\linewidth}{1.2pt}\\[0.4em]}
+    [\vspace{0.4em}\rule{\linewidth}{1.2pt}]
+
+\titleformat{\section}
+    {\Large\bfseries\color{sectioncolor}}
+    {\thesection.}{0.5em}{}
+\titleformat{\subsection}
+    {\large\bfseries\color{sectioncolor}}
+    {\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}
+    {\normalsize\bfseries\color{sectioncolor}}
+    {\thesubsubsection.}{0.5em}{}
+
+% --- Listados de código ------------------------------------------------------
+\lstset{
+    backgroundcolor=\color{codebg},
+    basicstyle=\small\ttfamily,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{gray!30},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{sectioncolor}\bfseries,
+    stringstyle=\color{ieeeblue},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    tabsize=2,
+    showstringspaces=false
+}
+
+% --- Datos de portada e identificación del proyecto (bloque oficial) --------
+\newcommand{\autores}{\begin{tabular}[t]{@{}l@{}}
+    Hamada, Santino \\
+    García Tarcic, Iñaki Ezequiel \\
+    Véliz, Héctor Matias \\
+    Arnedo, Emmanuel Augusto
+\end{tabular}}
+\newcommand{\materiaProyecto}{Proyecto Final --- Ingeniería en Sistemas de Información}
+\newcommand{\nombreProyecto}{LSA Salud}
+\newcommand{\idProyecto}{LSASALUD-G9}
+\newcommand{\clienteProyecto}{Sanatorio 9 de Julio}
+\newcommand{\directorProyecto}{Hamada, Santino}
+\newcommand{\tutorProyecto}{Vicente, Francisco José}
+\newcommand{\cotutorProyecto}{López, Emmanuel}
+\newcommand{\versionLSA}{1.0}
+
+% --- Portada -----------------------------------------------------------------
+% \portada{<título del entregable>}{<código de documento, p. ej. LSASALUD-G9-MD>}
+\newcommand{\portada}[2]{%
+    \begin{titlepage}
+        \centering
+        \vspace*{1cm}
+
+        {\Huge\bfseries\color{sectioncolor} \nombreProyecto}\\[0.5cm]
+        {\large Sistema Inteligente de Comunicación y Reconocimiento\\
+         de Lengua de Señas Argentina (LSA)}\\[1.2cm]
+
+        \rule{\textwidth}{1.5pt}\\[0.5cm]
+        {\LARGE\bfseries #1}\\[0.3cm]
+        {\large \materiaProyecto}\\[0.5cm]
+        \rule{\textwidth}{1.5pt}\\[1.2cm]
+
+        {\large
+        \begin{tabular}{ll}
+            \textbf{ID de proyecto:}       & \idProyecto \\[0.25cm]
+            \textbf{Nombre proyecto:}      & \nombreProyecto \\[0.25cm]
+            \textbf{Cliente:}              & \clienteProyecto \\[0.25cm]
+            \textbf{Institución:}          & \begin{tabular}[t]{@{}l@{}}Universidad Tecnológica Nacional\\ Facultad Regional Tucumán\end{tabular} \\[0.25cm]
+            \textbf{Preparado por:}        & \autores \\[0.4cm]
+            \textbf{Director:}             & \directorProyecto \\[0.25cm]
+            \textbf{Tutor:}                & \tutorProyecto \\[0.25cm]
+            \textbf{Cotutor:}              & \cotutorProyecto \\[0.25cm]
+            \textbf{Fecha:}                & \today \\[0.25cm]
+            \textbf{Código de documento:}  & #2 \\[0.25cm]
+            \textbf{Versión:}              & \versionLSA \\
+        \end{tabular}
+        }
+        \vfill
+        {\small El código de documento sigue el esquema propio del equipo
+        (\texttt{LSASALUD-G9-<sigla>}), no un código de la cátedra.}
+    \end{titlepage}
+    \newpage
+}
+
+% --- Historial de revisiones --------------------------------------------------
+% \historialRevisiones{
+%   1.0 & \today & Autor & Versión inicial \\
+% }
+\newcommand{\historialRevisiones}[1]{%
+    \begin{table}[H]
+        \centering
+        \caption{Historial de revisiones}
+        \begin{tabularx}{\textwidth}{l l l X}
+            \toprule
+            \textbf{Versión} & \textbf{Fecha} & \textbf{Autor} & \textbf{Descripción} \\
+            \midrule
+            #1
+            \bottomrule
+        \end{tabularx}
+    \end{table}
+}
+
+% --- Figuras a partir de diagramas renderizados -------------------------------
+% \diagrama{archivo-sin-extension}{ancho}{caption}{label}
+\newcommand{\diagrama}[4]{%
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=#2]{img/#1.pdf}
+        \caption{#3}
+        \label{#4}
+    \end{figure}
+}
+
+\endinput

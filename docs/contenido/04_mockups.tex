@@ -1,0 +1,250 @@
+% ============================================================================
+% 04_mockups.tex — Cuerpo del entregable "Mockups"
+% Wireframes de baja/media fidelidad (PlantUML Salt), sin colores de marca.
+% Sin preámbulo: se incluye tanto desde 04_Mockups.tex (standalone) como,
+% eventualmente, desde un documento maestro.
+% ============================================================================
+\section{Mockups}
+
+\subsection{Propósito y alcance}
+
+Esta sección presenta los \textbf{mockups} (bocetos de interfaz) de las
+cinco pantallas de LSA Salud, en fidelidad baja a media, sin colores de
+marca ni tipografía definitiva: el objetivo es comunicar la disposición de
+la información y las interacciones disponibles, no el diseño visual final
+(que sí existe en la implementación real, \texttt{web/app/**/page.tsx} y
+\texttt{web/components/**}, con estilos de Tailwind CSS, para las cuatro
+pantallas ya implementadas). Los wireframes se generaron con la notación
+\textbf{Salt} de PlantUML a partir de una lectura directa de esos
+componentes, de modo que cada elemento mostrado corresponde a un elemento
+real de la interfaz implementada; la excepción es P-05 (Pantalla de
+Consentimiento), diseño nuevo sin componente real todavía (RF-03 oficial).
+
+Cada elemento relevante de una pantalla está marcado con un \textbf{callout}
+numerado entre paréntesis --(1), (2), (3)...--, único dentro de esa pantalla.
+Estos callouts son referenciados más adelante por el Entregable~07 (Casos de
+Uso Reales) para describir la interacción concreta sobre la interfaz real,
+por ejemplo: ``el sistema muestra la palabra reconocida en el panel (6) de
+la Pantalla P-02''.
+
+Las cinco pantallas identificadas son las mismas de la sección 3.1 de la
+ERS (ver Entregable 05) y del registro de identificadores (\texttt{IDS.md}):
+P-01 (Selección de Estación), P-02 (Estación del Paciente), P-03 (Estación
+de Recepción), P-04 (Modo Captura) y P-05 (Pantalla de Consentimiento,
+diseñada, pendiente de implementación).
+
+Un principio de producto atraviesa las pantallas del flujo de comunicación y
+se remarca en cada sección: en el flujo del paciente \textbf{no hay botones
+de confirmación manual}. La oración traducida se exhibe brevemente en
+pantalla (ventana de exhibición previa, RF-01.6) y ese lapso actúa como
+confirmación automática antes de reproducir el audio; el paciente no tiene
+que pulsar ``aceptar'' ni ``enviar'' (ver RNF-T-05). La única confirmación
+manual explícita del flujo es, precisamente, la nueva Pantalla P-05 de
+consentimiento (RF-03.1): es una excepción deliberada al principio, porque
+el consentimiento de cámara exige una acción positiva y consciente del
+paciente, no una confirmación automática.
+
+% ============================================================================
+\subsection{P-01 --- Selección de Estación}
+
+Landing page servida en la ruta \texttt{/} (\texttt{web/app/page.tsx}).
+Permite abrir la Estación del Paciente o la Estación de Recepción, pensada
+para un entorno de doble monitor o dos dispositivos.
+
+\diagrama{04_mockup_p01_landing}{0.85\textwidth}{Mockup de P-01 --- Selección de Estación}{fig:mock-p01}
+
+\begin{table}[H]
+    \centering
+    \caption{Elementos de la Pantalla P-01}
+    \label{tab:mock-p01}
+    \begin{tabularx}{\textwidth}{c X}
+        \toprule
+        \textbf{Callout} & \textbf{Elemento} \\
+        \midrule
+        (1) & Logotipo de LSA Salud. \\
+        (2) & Título de bienvenida (``Bienvenido a LSA Salud''). \\
+        (3) & Texto explicativo: instrucción de abrir cada estación en una
+        ventana o pantalla distinta. \\
+        (4) & Tarjeta ``Estación del Paciente''; enlaza a P-02
+        (\texttt{/paciente}). \\
+        (5) & Tarjeta ``Estación de Recepción''; enlaza a P-03
+        (\texttt{/recepcion}). \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+% ============================================================================
+\subsection{P-02 --- Estación del Paciente (modo predicción)}
+
+Pantalla servida en \texttt{/paciente} (\texttt{web/app/paciente/page.tsx})
+cuando el modo activo es \texttt{predict}. Concentra la cámara, el
+reconocimiento de señas en tiempo real y la conversación compartida con la
+Estación de Recepción.
+
+\diagrama{04_mockup_p02_paciente}{\textwidth}{Mockup de P-02 --- Estación del Paciente}{fig:mock-p02}
+
+\begin{table}[H]
+    \centering
+    \caption{Elementos de la Pantalla P-02}
+    \label{tab:mock-p02}
+    \begin{tabularx}{\textwidth}{c X}
+        \toprule
+        \textbf{Callout} & \textbf{Elemento} \\
+        \midrule
+        (1) & Encabezado (\texttt{Header}) con el logotipo de LSA Salud. \\
+        (2) & Título de sección y descripción de la estación. \\
+        (3) & Indicador ``EN VIVO · Visión por computadora'' (estado activo
+        de la cámara; solo alcanzable tras el consentimiento de P-05, RF-03.1). \\
+        (4) & Área de video con el flujo de la cámara y los landmarks
+        de MediaPipe superpuestos en un \texttt{canvas}. \\
+        (5) & Ventana de oración en construcción, superpuesta al video:
+        muestra las palabras reconocidas mientras la secuencia sigue
+        abierta, o el indicador ``Generando respuesta de IA...'' mientras
+        se traduce (RF-01.4, RF-01.5). Se retira sola cuando la oración se
+        cierra o se traduce: no requiere confirmación del paciente. \\
+        (6) & Panel ``Top-3 Predicciones'' (\texttt{TopPredictions}): tres
+        barras con la seña y el porcentaje de confianza de las tres clases
+        más probables en cada ciclo de predicción (RF-01.3). \\
+        (7) & Panel de conversación: lista de burbujas de chat
+        (\texttt{ChatBubble}) del paciente y del personal de recepción o
+        enfermería, sincronizada entre estaciones (RF-01.7). \\
+        (8) & Botón ``Limpiar Historial''. \\
+        (9) & Botón ``Ajustes (Modo Captura)''; cambia a la Pantalla P-04. \\
+        (10) & Ícono ``Reportar'' sobre cada burbuja del panel (7); abre
+        CU-10 (Reportar Traducción Incorrecta o Ambigua, RF-06.1).
+        \textbf{Diseñado --- pendiente de implementación.} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Nótese que no hay ningún botón de confirmación entre (5) y (7): la oración
+pasa de ``en construcción'' a integrar la conversación de forma automática
+en cuanto el sistema cierra y traduce la secuencia (principio de producto,
+RNF-T-05). El callout (10) es la única excepción deliberada al principio de
+``sin confirmación manual'': reportar una traducción es, por definición,
+una acción explícita del paciente o del personal.
+
+% ============================================================================
+\subsection{P-03 --- Estación de Recepción}
+
+Pantalla servida en \texttt{/recepcion} (\texttt{web/app/recepcion/page.tsx}).
+Muestra el historial de la conversación y permite responder por texto o por
+dictado de voz.
+
+\diagrama{04_mockup_p03_recepcion}{\textwidth}{Mockup de P-03 --- Estación de Recepción}{fig:mock-p03}
+
+\begin{table}[H]
+    \centering
+    \caption{Elementos de la Pantalla P-03}
+    \label{tab:mock-p03}
+    \begin{tabularx}{\textwidth}{c X}
+        \toprule
+        \textbf{Callout} & \textbf{Elemento} \\
+        \midrule
+        (1) & Encabezado (\texttt{Header}) con el logotipo de LSA Salud. \\
+        (2) & Título ``Estación de Recepción / Enfermería'' y descripción. \\
+        (3) & Panel ``Historial del Paciente'': burbujas de chat
+        (\texttt{ChatBubble}) de la conversación compartida (RF-01.7). \\
+        (4) & Área de texto para redactar una respuesta
+        (\texttt{ReceptionControls}). \\
+        (5) & Botón ``Enviar''; habilitado solo con texto no vacío (RF-02.1). \\
+        (6) & Botón circular de dictado por voz (micrófono); alterna entre
+        escuchar y detener (RF-02.2, CU-05). \\
+        (7) & Indicador de estado: ``Click para hablar'' / ``Escuchando...
+        click para detener'', o el mensaje de error si el navegador no
+        soporta reconocimiento de voz o falla el micrófono. \\
+        (8) & Ícono ``Reportar'' sobre cada burbuja del panel (3); abre
+        CU-10 (Reportar Traducción Incorrecta o Ambigua, RF-06.1).
+        \textbf{Diseñado --- pendiente de implementación.} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+% ============================================================================
+\subsection{P-04 --- Modo Captura}
+
+Sub-pantalla de \texttt{/paciente} (\texttt{web/components/capture/CaptureMode.tsx})
+activada al elegir ``Ajustes (Modo Captura)'' desde P-02. Permite grabar
+nuevas muestras de entrenamiento para el modelo de reconocimiento.
+
+\diagrama{04_mockup_p04_captura}{0.95\textwidth}{Mockup de P-04 --- Modo Captura}{fig:mock-p04}
+
+\begin{table}[H]
+    \centering
+    \caption{Elementos de la Pantalla P-04}
+    \label{tab:mock-p04}
+    \begin{tabularx}{\textwidth}{c X}
+        \toprule
+        \textbf{Callout} & \textbf{Elemento} \\
+        \midrule
+        (1) & Logotipo de LSA Salud, en el encabezado del Modo Captura. \\
+        (2) & Selector de etiqueta de seña: chips con el nombre de cada
+        seña conocida y, entre paréntesis, la cantidad de muestras ya
+        grabadas para esa etiqueta (RF-T-02); la etiqueta seleccionada
+        queda resaltada. \\
+        (3) & Botón ``+ Nueva seña''; despliega un campo de texto para
+        crear una etiqueta que todavía no existe (RF-T-01, CU-07). El
+        nombre se valida contra el patrón \texttt{\^{}[a-z0-9\_]\{1,32\}\$}
+        antes de aceptarse. \\
+        (4) & Buscador de señas (filtro de texto); aparece solo cuando hay
+        más de seis etiquetas conocidas, para facilitar encontrar una en
+        una lista larga. \\
+        (5) & Vista previa de la cámara con los landmarks superpuestos,
+        igual que en P-02. \\
+        (6) & Cuenta regresiva (3, 2, 1) antes de empezar a grabar cada
+        repetición (RF-T-03). \\
+        (7) & Indicador ``GRABANDO'', visible mientras se capturan los 45
+        frames de la muestra actual. \\
+        (8) & Indicador ``MUESTRA \emph{n} / \emph{N}''; solo se muestra
+        cuando se configuraron más de una repetición. \\
+        (9) & Control numérico ``Repeticiones''; cantidad de muestras a
+        grabar de corrido para la etiqueta seleccionada. \\
+        (10) & Botón ``Empezar'' (inicia la secuencia de grabación) que se
+        reemplaza por ``Detener'' mientras hay una grabación en curso
+        (extensión 6a de CU-06: detener cancela la repetición actual sin
+        guardarla). \\
+        (11) & Botón ``Volver a Inferencia''; regresa a P-02. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+% ============================================================================
+\subsection{P-05 --- Pantalla de Consentimiento}
+\textit{Diseñado --- pendiente de implementación. Cubre el requisito oficial RF-03.}
+
+Pantalla modal prevista para \texttt{/paciente}, mostrada antes de invocar
+\texttt{navigator.mediaDevices.getUserMedia()} y antes de cualquier otro
+elemento de P-02. Bloquea el acceso a la cámara hasta que el paciente
+otorgue el consentimiento explícito (CU-09; RF-03 oficial). Diseño nuevo,
+sin componente real todavía; se describe aquí en el mismo nivel de
+fidelidad que el resto de los wireframes para dejar constancia de su
+disposición y contenido mínimo.
+
+\diagrama{04_mockup_p05_consentimiento}{0.75\textwidth}{Mockup de P-05 --- Pantalla de Consentimiento}{fig:mock-p05}
+
+\begin{table}[H]
+    \centering
+    \caption{Elementos de la Pantalla P-05 (diseñada, pendiente de implementación)}
+    \label{tab:mock-p05}
+    \begin{tabularx}{\textwidth}{c X}
+        \toprule
+        \textbf{Callout} & \textbf{Elemento} \\
+        \midrule
+        (1) & Logotipo de LSA Salud, en el encabezado del modal. \\
+        (2) & Título ``Consentimiento para usar la cámara''. \\
+        (3) & Texto explicativo en lenguaje simple: qué capta la cámara,
+        para qué se usa (traducir señas) y que no se guarda video ni
+        imágenes (RNF-03 oficial). \\
+        (4) & Botón ``Acepto y continúo''; otorga el consentimiento
+        (CU-09) y activa la cámara. \\
+        (5) & Botón ``No acepto''; deja la cámara inactiva y muestra una
+        alternativa (por ejemplo, solicitar asistencia del personal). \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Al igual que en P-02/P-03, el botón (4) es la única acción manual
+requerida en todo el flujo del paciente: es una excepción deliberada al
+principio de ``sin confirmación manual'' (ver introducción de esta
+sección), porque el consentimiento exige una decisión explícita y
+consciente, no una confirmación automática por temporización.

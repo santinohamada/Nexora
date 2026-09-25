@@ -1,0 +1,33 @@
+@startsalt 04_mockup_p04_captura
+{+
+  { <b>LSA SALUD</b>  (1) | . | . | [Volver a Inferencia] | (11) }
+  ==
+  <b>Modo de Captura</b>
+  .
+  {
+    {^"Seña a grabar  (2)"
+      { "Nueva seña...    " | [+ Nueva seña] | (3) }
+      { "Buscar seña...          " | (4) }
+      {#
+        <b>Seña</b> | <b>Muestras</b>
+        cabeza   | 12
+        dolor    | 9
+        idle     | 20
+        respirar | 7
+        yo       | 11
+      }
+    } | {^"Grabación"
+      {+
+        .
+        <&camera-slr>  Video de cámara con landmarks  (5)
+        .
+        <b>3</b>  cuenta regresiva  (6)
+        .
+      }
+      { <&media-record> GRABANDO  (7) | . | MUESTRA 2 / 3  (8) }
+      { Repeticiones: | ^3^ | (9) | [Empezar] | (10) | [Detener] }
+      Grabando para: <b>dolor</b> (9 muestras)
+    }
+  }
+}
+@endsalt

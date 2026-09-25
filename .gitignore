@@ -27,3 +27,9 @@ Thumbs.db
 voices/
 web/public/models/
 web/public/mediapipe/
+
+docs/tools/*.jar
+docs/build/
+docs/_legacy/
+docs/referencias/*Firmado*.pdf
+docs/referencias/*Registro de Interesados*.xlsx
