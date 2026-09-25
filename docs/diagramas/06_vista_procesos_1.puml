@@ -5,9 +5,9 @@ title Vista de Procesos (1/3) — Captura y predicción
 skinparam maxMessageSize 150
 
 actor Paciente
-participant "Navegador\nEstación Paciente" as NavP
+participant "Estación del Paciente\n(navegador)" as NavP
 participant "FastAPI\n(event loop)" as EventLoop
-participant "LSTM" as LSTM
+participant "Hilo de inferencia\n(LSTM)" as LSTM
 
 == Captura y predicción (RF-01, RF-05) ==
 Paciente -> NavP : realiza una seña
@@ -16,13 +16,14 @@ loop mientras la cámara está activa
   NavP -> NavP : acumula en buffer (hasta 45)
 end
 NavP -> EventLoop : WS /ws/predict\n(cada 8 frames)
-note over EventLoop
-  async def: bloquea el event loop
-  durante la inferencia.
-end note
 EventLoop -> LSTM : clasificar ventana (45 frames)
+note over EventLoop
+  El event loop delega la inferencia
+  y sigue atendiendo otros mensajes.
+end note
 LSTM --> EventLoop : seña, confianza, top-3
 EventLoop --> NavP : predicción (WS)
-NavP -> NavP : useSentenceBuilder:\nacumular palabra si confianza >= 70%
+NavP -> NavP : acumula la palabra\nsi la confianza es >= 70%
+NavP -> Paciente : muestra las señas reconocidas
 
 @enduml

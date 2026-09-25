@@ -111,14 +111,17 @@ Puntos relevantes del diagrama:
 La Vista de Procesos muestra la concurrencia en tiempo de ejecución del
 sistema: el bucle de captura del navegador, la comunicación asincrónica por
 WebSocket, el manejo diferenciado de solicitudes en el backend FastAPI, y la
-sincronización entre estaciones por \texttt{BroadcastChannel}, que es
-completamente independiente del backend.
+sincronización entre la Estación del Paciente y la Estación de Recepción por
+\texttt{BroadcastChannel}, que es completamente independiente del backend.
+Los tres diagramas siguen la misma disposición: el Paciente y la Estación del
+Paciente a la izquierda, los procesos del backend en el centro, y la Estación
+de Recepción y el Personal de Recepción o Enfermería a la derecha.
 
 \diagrama{06_vista_procesos_1}{\textwidth}{Vista de Procesos de LSA Salud (1/3): captura y predicción}{fig:arq-vista-procesos-1}
 
 \diagrama{06_vista_procesos_2}{\textwidth}{Vista de Procesos de LSA Salud (2/3): cierre de oración y traducción}{fig:arq-vista-procesos-2}
 
-\diagrama{06_vista_procesos_3}{\textwidth}{Vista de Procesos de LSA Salud (3/3): sincronización entre estaciones y respuesta}{fig:arq-vista-procesos-3}
+\diagrama{06_vista_procesos_3}{\textwidth}{Vista de Procesos de LSA Salud (3/3): sincronización, respuesta y fin de atención}{fig:arq-vista-procesos-3}
 
 Puntos relevantes de la concurrencia representada:
 \begin{itemize}
@@ -128,17 +131,15 @@ Puntos relevantes de la concurrencia representada:
     descarta envíos mientras una predicción anterior sigue en curso, salvo
     que esté obsoleta (más de 2000 ms), para no saturar el WebSocket.
     \item \textbf{\texttt{/ws/predict} en el \emph{event loop}:} el
-    \textit{handler} es \texttt{async def}, pero la inferencia del modelo
-    LSTM (\texttt{model(input\_tensor)}) es una operación de CPU/GPU que se
-    ejecuta de forma sincrónica dentro de ese \textit{handler}: mientras dura
-    la predicción, bloquea el único hilo del \textit{event loop} de FastAPI.
+    \textit{handler} es asincrónico y atiende el WebSocket en el
+    \textit{event loop} de FastAPI; la inferencia del modelo LSTM, que es una
+    operación intensiva de CPU/GPU, se delega a un hilo de inferencia, de modo
+    que el \textit{event loop} sigue atendiendo otros mensajes mientras dura
+    la predicción.
     \item \textbf{\texttt{/process\_sentence} en el \textit{threadpool} de
-    Starlette:} al ser un \textit{handler} sincrónico (\texttt{def}, no
-    \texttt{async def}), FastAPI lo ejecuta automáticamente en el
-    \textit{threadpool} interno de Starlette; por eso las llamadas
-    bloqueantes a Ollama (HTTP, hasta 8 s de espera) y a Piper TTS
-    \textbf{no} bloquean el \textit{event loop}, a diferencia de
-    \texttt{/ws/predict}.
+    Starlette:} al ser un \textit{handler} sincrónico, FastAPI lo ejecuta en
+    el \textit{threadpool} interno de Starlette; por eso las llamadas
+    bloqueantes a Ollama y a Piper TTS no bloquean el \textit{event loop}.
     \item \textbf{Ollama como proceso local independiente:} se invoca por
     HTTP a \texttt{localhost:11434}; su disponibilidad no está garantizada,
     y su ausencia se degrada según RNF-T-01 (texto original sin reconstruir),
@@ -146,9 +147,12 @@ Puntos relevantes de la concurrencia representada:
     \item \textbf{\texttt{BroadcastChannel} como canal sin red:} la
     propagación de un mensaje entre la Estación del Paciente y la Estación
     de Recepción no pasa por el backend ni por ninguna red: es un mecanismo
-    del navegador entre pestañas del mismo origen. Por eso se representa como
-    una rama concurrente (\texttt{par}) independiente de la exhibición y
-    reproducción de audio en la propia estación de origen.
+    del navegador entre pestañas del mismo origen, independiente de la
+    exhibición y reproducción de audio en la Estación del Paciente.
+    \item \textbf{Fin de atención (CU-12):} el Personal de Recepción o
+    Enfermería vacía la conversación en su estación y el evento
+    \texttt{CLEAR} viaja por el mismo canal hacia la Estación del Paciente,
+    que también la vacía; ningún dato de la atención queda persistido.
 \end{itemize}
 
 % ============================================================================
@@ -270,7 +274,7 @@ indica, para cada paso del escenario, qué elemento de cada vista participa.
 
     Envío y predicción por WebSocket &
     \texttt{useSign\allowbreak Web\allowbreak Socket} $\to$ \texttt{app.py} &
-    WS \texttt{/ws/predict} en el \textit{event loop} de FastAPI &
+    WS \texttt{/ws/predict} en el \textit{event loop}; inferencia en hilo propio &
     \texttt{web/hooks} $\to$ \texttt{app.py} (HTTP/WS) &
     Pestaña Paciente $\leftrightarrow$ proceso Uvicorn (\texttt{:8000}) &
     RF-01.2, RF-01.3, CU-01, CU-02 \\

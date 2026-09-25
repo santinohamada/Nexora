@@ -1,28 +1,31 @@
 @startuml 06_vista_procesos_3
 !include _estilo.iuml
 
-title Vista de Procesos (3/3) — Sincronización entre estaciones y respuesta
+title Vista de Procesos (3/3) — Sincronización, respuesta y fin de atención
 skinparam maxMessageSize 130
 
-participant "Navegador\nEstación Paciente" as NavP
-participant "BroadcastChannel\nnexora-chat" as BC
-participant "Navegador\nEstación Recepción" as NavR
-actor Recepcionista
 actor Paciente
+participant "Estación del Paciente\n(navegador)" as NavP
+participant "BroadcastChannel\n(canal de la estación)" as BC
+participant "Estación de Recepción\n(navegador)" as NavR
+actor "Personal de Recepción\no Enfermería" as Personal
 
-== Sincronización entre estaciones (RF-01) ==
-par publicación y exhibición en Estación Paciente
-  NavP -> BC : postMessage(MESSAGE)\n(mismo origen, sin red)
-  NavP -> NavP : exhibir texto (1000 ms)\nluego reproducir audio
-else propagación a Estación Recepción
-  BC -> NavR : evento MESSAGE
-  NavR -> Recepcionista : mostrar mensaje (ChatBubble)
-end
+== Sincronización del mensaje del paciente (RF-01) ==
+NavP -> BC : postMessage(MESSAGE)\n(mismo origen, sin red)
+BC -> NavR : evento MESSAGE
+NavR -> Personal : muestra el mensaje
 
-== Respuesta del recepcionista (RF-02) ==
-Recepcionista -> NavR : escribe o dicta respuesta
+== Respuesta del personal (RF-02) ==
+Personal -> NavR : escribe o dicta la respuesta
 NavR -> BC : postMessage(MESSAGE)
 BC -> NavP : evento MESSAGE
-NavP -> Paciente : mostrar respuesta (ChatBubble)
+NavP -> Paciente : muestra la respuesta
+
+== Fin de atención (CU-12) ==
+Personal -> NavR : finaliza la atención
+NavR -> NavR : vacía la conversación
+NavR -> BC : postMessage(CLEAR)
+BC -> NavP : evento CLEAR
+NavP -> NavP : vacía la conversación
 
 @enduml
