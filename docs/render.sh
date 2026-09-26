@@ -62,8 +62,6 @@ fi
 (
   cd diagramas/dominio
   "$PYTHON" gen_modelo_dominio.py
-  for v in a b; do
-    "$DRAWIO" --export --format pdf --crop \
-      --output "../../img/01_modelo_dominio_$v.pdf" "01_modelo_dominio_$v.drawio"
-  done
+  "$DRAWIO" --export --format pdf --crop \
+    --output "../../img/01_modelo_dominio.pdf" "01_modelo_dominio.drawio"
 )
