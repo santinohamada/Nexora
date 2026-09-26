@@ -22,7 +22,7 @@ MULT = (
 
 W = {"L": 195, "C": 175, "R": 195}
 X = {"L": 0, "C": 300, "R": 580}
-ROW = {0: 60, 1: 200, 2: 320, 3: 450, 4: 600}
+ROW = {0: 60, 1: 200, 2: 320, 3: 450, 4: 600, 5: 740, 6: 930}
 LINE = 19
 
 
@@ -76,12 +76,12 @@ class Diagram:
         x, y, w, h = self.boxes[cid]
         return (x + w * fx, y + h * fy)
 
-    def link(self, points, label, m_start, m_end, style=EDGE, m_off=(0, -11)):
+    def link(self, points, label, m_start, m_end, style=EDGE, m_off=(0, -11), pos=(-0.8, 0.8)):
         self.n += 1
         eid = f"e{self.n}"
         self.cells.append(xml_edge(eid, label, style, points))
-        self.cells.append(xml_mult(f"{eid}s", m_start, eid, -0.8, m_off))
-        self.cells.append(xml_mult(f"{eid}t", m_end, eid, 0.8, m_off))
+        self.cells.append(xml_mult(f"{eid}s", m_start, eid, pos[0], m_off))
+        self.cells.append(xml_mult(f"{eid}t", m_end, eid, pos[1], m_off))
 
     def h(self, a, b, label, ma, mb, y=None, style=EDGE):
         ax, ay, aw, ah = self.boxes[a]
@@ -111,8 +111,8 @@ class Diagram:
         print(f"wrote {out}")
 
 
-def vista_comunicacion():
-    d = Diagram("Modelo de Dominio — LSA Salud (vista A: comunicación y atención)")
+def modelo_dominio():
+    d = Diagram("Modelo de Dominio — LSA Salud")
     d.cls("consent", "L", 0, ["ConsentimientoDeCámara"], ["otorgado", "marcaTemporal"])
     d.cls("paciente", "L", 1, ["Paciente"], h=56)
     d.cls("secuencia", "L", 2, ["SecuenciaDeSeñas"], ["estado", "marcaTemporalInicio"])
@@ -166,25 +166,22 @@ def vista_comunicacion():
     d.link([(sx + sw / 2, sy + sh), (sx + sw / 2, y_gap), (mx + mw * 0.85, y_gap), (mx + mw * 0.85, my)],
            "redacta", "1", "0..*")
 
-    d.write("01_modelo_dominio_a")
+    # Recognition and model management, below the communication block.
+    d.cls("palabra", "L", 5, ["PalabraReconocida"], ["confianza", "posición", "marcaTemporal"])
+    d.cls("clase", "L", 6, ["ClaseDeSeña"], ["nombre"])
+    d.cls("modelo", "C", 5, ["ModeloDe", "Reconocimiento"], ["versión", "cantidadDeClases", "exactitudDeValidación"])
+    d.cls("dev", "R", 5, ["Desarrollador de IA /", "Equipo de Proyecto"])
+    d.cls("muestra", "R", 6, ["MuestraDe", "Entrenamiento"], ["cantidadDeFrames", "fechaCaptura", "cantidadDeBlendshapes"])
 
-
-def vista_reconocimiento():
-    d = Diagram("Modelo de Dominio — LSA Salud (vista B: reconocimiento y gestión del modelo)")
-    d.cls("paciente", "L", 0, ["Paciente"])
-    d.cls("secuencia", "L", 1, ["SecuenciaDeSeñas"], ["estado", "marcaTemporalInicio"])
-    d.cls("palabra", "L", 2, ["PalabraReconocida"], ["confianza", "posición", "marcaTemporal"], dy=50)
-    d.cls("clase", "L", 4, ["ClaseDeSeña"], ["nombre"], dy=40)
-    d.cls("modelo", "C", 2, ["ModeloDe", "Reconocimiento"], ["versión", "cantidadDeClases", "exactitudDeValidación"], dy=50)
-    d.cls("dev", "R", 2, ["Desarrollador de IA /", "Equipo de Proyecto"], dy=50)
-    d.cls("muestra", "R", 4, ["MuestraDe", "Entrenamiento"], ["cantidadDeFrames", "fechaCaptura", "cantidadDeBlendshapes"], dy=40)
-
+    qx, qy, qw, qh = d.boxes["secuencia"]
     wx, wy, ww, wh = d.boxes["palabra"]
     ox, oy, ow, oh = d.boxes["modelo"]
     kx, ky, kw, kh = d.boxes["clase"]
 
-    d.v("paciente", "secuencia", "realiza", "1", "0..*")
-    d.v("secuencia", "palabra", "compuesta por", "1", "1..*", style=COMPOSITION)
+    # Secuencia sits above the translation chain, so the composition runs down a left lane.
+    lane_l = -45
+    d.link([(qx, qy + qh / 2), (lane_l, qy + qh / 2), (lane_l, wy + wh / 2), (wx, wy + wh / 2)],
+           "compuesta por", "1", "1..*", style=COMPOSITION, pos=(-0.95, 0.95))
     d.v("palabra", "clase", "corresponde a", "0..*", "1")
     d.h("modelo", "palabra", "clasifica", "1", "0..*", y=wy + 30)
     d.h("dev", "modelo", "entrena", "1", "0..*", y=wy + 30)
@@ -194,9 +191,8 @@ def vista_reconocimiento():
     d.link([(ox + ow * 0.5, oy + oh), (ox + ow * 0.5, y_gap), (kx + kw * 0.8, y_gap), (kx + kw * 0.8, ky)],
            "reconoce", "1", "1..*")
 
-    d.write("01_modelo_dominio_b")
+    d.write("01_modelo_dominio")
 
 
 if __name__ == "__main__":
-    vista_comunicacion()
-    vista_reconocimiento()
+    modelo_dominio()

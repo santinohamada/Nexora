@@ -25,25 +25,17 @@ lectura sugerida por el nombre del rol.
 
 \subsection{Diagrama de clases conceptuales}
 
-Para que cada figura se lea sin cruces de líneas, el modelo se presenta en
-dos vistas parciales, como admite la técnica de Larman: un mismo concepto
-puede aparecer en más de una vista, pero sus atributos y asociaciones son
-los mismos en ambas.
+La Figura~\ref{fig:modelo-dominio} presenta el modelo completo en un único
+diagrama. La parte superior cubre la \textbf{comunicación y atención}: los
+actores humanos, la Estación de Atención, la Conversación, los Mensajes y
+su traducción y síntesis de voz, y los conceptos de consentimiento, reporte
+de traducción y auditoría. La parte inferior cubre el \textbf{reconocimiento
+de señas y la gestión del modelo}: las palabras reconocidas que componen
+cada secuencia de señas, sus clases, y el modelo de reconocimiento con las
+muestras de entrenamiento a cargo del Desarrollador de IA / Equipo de
+Proyecto.
 
-La \textbf{vista A} (Figura~\ref{fig:modelo-dominio}) cubre la
-\textbf{comunicación y atención}: los actores humanos, la Estación de
-Atención, la Conversación, los Mensajes y su traducción y síntesis de voz, y
-los conceptos de consentimiento, reporte de traducción y auditoría.
-
-\diagrama{01_modelo_dominio_a}{\textwidth}{Modelo de Dominio de LSA Salud, vista A: comunicación y atención}{fig:modelo-dominio}
-
-La \textbf{vista B} (Figura~\ref{fig:modelo-dominio-b}) cubre el
-\textbf{reconocimiento de señas y la gestión del modelo}: la secuencia de
-señas que realiza el Paciente, las palabras reconocidas y sus clases, y el
-modelo de reconocimiento con las muestras de entrenamiento a cargo del
-Desarrollador de IA / Equipo de Proyecto.
-
-\diagrama{01_modelo_dominio_b}{\textwidth}{Modelo de Dominio de LSA Salud, vista B: reconocimiento y gestión del modelo}{fig:modelo-dominio-b}
+\diagrama{01_modelo_dominio}{\textwidth}{Modelo de Dominio de LSA Salud}{fig:modelo-dominio}
 
 Los tres conceptos de la Sección~\ref{sec:dom-pendientes} cubren los
 requisitos RF-03, RF-04 y RF-06 (\textit{Consentimiento},
