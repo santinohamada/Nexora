@@ -3,7 +3,7 @@
 Este directorio contiene los entregables académicos de Ingeniería de
 Software del proyecto **LSA Salud** (UTN-FRT, Proyecto Final), escritos en
 LaTeX siguiendo la metodología de Larman (UML y Patrones, Proceso
-Unificado), Kruchten (vistas 4+1) y UML 2.5. El nombre del repositorio de
+Unificado), vistas arquitectónicas lógica y física, y UML 2.5. El nombre del repositorio de
 código, "Nexora", es un alias técnico interno y no el nombre del proyecto
 académico.
 
@@ -45,7 +45,7 @@ Entregables (numeración según el orden del Documento Maestro):
 | 03 | Modelos de Casos de Uso | `LSASALUD-G9-MCU` | `03_Modelos_Casos_Uso.tex` | `contenido/03_modelos_casos_uso.tex` |
 | 04 | Mockups | `LSASALUD-G9-MCK` | `04_Mockups.tex` | `contenido/04_mockups.tex` |
 | 05 | ERS (IEEE Std 830-1998) | `LSASALUD-G9-ERS` | `05_ERS_IEEE830.tex` | `contenido/05_ers_ieee830.tex` |
-| 06 | Arquitectura: Vistas (4+1) | `LSASALUD-G9-ARQ` | `06_Arquitectura_Vistas.tex` | `contenido/06_arquitectura_vistas.tex` |
+| 06 | Arquitectura: Vistas (Lógica y Física) | `LSASALUD-G9-ARQ` | `06_Arquitectura_Vistas.tex` | `contenido/06_arquitectura_vistas.tex` |
 | 07 | Casos de Uso Reales | `LSASALUD-G9-CUR` | `07_Casos_Uso_Reales.tex` | `contenido/07_casos_uso_reales.tex` |
 | 08 | Diagramas de Colaboración | `LSASALUD-G9-DCO` | `08_Diagramas_Colaboracion.tex` | `contenido/08_diagramas_colaboracion.tex` |
 | 09 | Modelo de Base de Datos | `LSASALUD-G9-MBD` | `09_Modelo_Datos.tex` | `contenido/09_modelo_datos.tex` |

@@ -9,8 +9,8 @@
 #    con draw.io desktop. Requiere el venv de Python y draw.io instalado.
 # 3. Diagrama de casos de uso (diagramas/casos_uso/gen_casos_uso.py): mismo
 #    flujo draw.io, con el formato de docs/referencias/formato Diag caso de uso.jpeg.
-# 4. Modelo de Dominio (diagramas/dominio/gen_modelo_dominio.py) y Vista de
-#    Desarrollo (diagramas/arquitectura/gen_vista_desarrollo.py): mismo flujo
+# 4. Modelo de Dominio (diagramas/dominio/gen_modelo_dominio.py) y Vistas
+#    Lógica y Física (diagramas/arquitectura/gen_vista_*.py): mismo flujo
 #    draw.io; se generaron a mano (en vez de PlantUML/smetana) porque esos
 #    grafos muy interconectados no entran en formato retrato legible con el
 #    layout automático de smetana (ver guía de figuras del entregable).
@@ -54,9 +54,6 @@ fi
   "$PYTHON" gen_vista_logica.py
   "$DRAWIO" --export --format pdf --crop \
     --output "../../img/06_vista_logica.pdf" "06_vista_logica.drawio"
-  "$PYTHON" gen_vista_desarrollo.py
-  "$DRAWIO" --export --format pdf --crop \
-    --output "../../img/06_vista_desarrollo.pdf" "06_vista_desarrollo.drawio"
   "$PYTHON" gen_vista_fisica.py
   "$DRAWIO" --export --format pdf --crop \
     --output "../../img/06_vista_fisica.pdf" "06_vista_fisica.drawio"
