@@ -4,7 +4,7 @@ PlantUML/smetana no logra un layout retrato legible para este diagrama (el
 mismo motivo documentado en render.sh para el Modelo de Dominio y la Vista
 de Desarrollo): al tener varios nodos hermanos muy conectados, smetana los
 distribuye en fila en vez de columna. Por eso se genera a mano, en una sola
-columna angosta, igual que gen_vista_desarrollo.py / gen_modelo_dominio.py.
+columna angosta, igual que gen_vista_logica.py / gen_modelo_dominio.py.
 
 Uso: C:\\Nexora\\venv\\Scripts\\python.exe gen_vista_fisica.py
 Escribe docs/diagramas/arquitectura/06_vista_fisica.drawio.

@@ -9,29 +9,21 @@
 \subsection{Propósito y alcance}
 
 Este documento describe la arquitectura de software de \textbf{LSA Salud}
-mediante el modelo de vistas \textbf{4+1} de Kruchten, aplicando la
+mediante sus dos vistas arquitectónicas, la \textbf{Vista Lógica} y la
+\textbf{Vista Física}, aplicando la
 metodología de diseño usada en el resto de los entregables (Larman / Proceso
 Unificado, notación UML 2.5 --- ver Referencias de la ERS, Entregable 05).
 Incluye los componentes que realizan los requisitos RF-03, RF-04 y
 RF-06 (consentimiento, auditoría y reporte de traducción). Mientras que el Modelo de Dominio (Entregable 01) describe los conceptos del
 \emph{problema}, este documento describe las decisiones de \emph{diseño} del
-software que lo resuelve: módulos, procesos concurrentes, organización del
-código fuente y despliegue físico.
+software que lo resuelve: sus módulos de diseño y su despliegue físico.
 
-Se presentan cuatro vistas independientes más una vista de escenarios que
-las integra:
+Se presentan dos vistas:
 \begin{itemize}
     \item \textbf{Vista Lógica} (\ref{sec:vista-logica}): módulos de diseño
     del frontend y del backend, y sus dependencias.
-    \item \textbf{Vista de Procesos} (\ref{sec:vista-procesos}): concurrencia
-    en tiempo de ejecución entre el navegador, el backend y los procesos
-    locales invocados.
-    \item \textbf{Vista de Desarrollo} (\ref{sec:vista-desarrollo}):
-    organización del repositorio y dependencias entre sus paquetes.
     \item \textbf{Vista Física} (\ref{sec:vista-fisica}): nodos de despliegue,
     procesos en ejecución, puertos y protocolos.
-    \item \textbf{Vista de Escenarios} (\ref{sec:vista-escenarios}): traza
-    CU-01 y CU-04 a través de las cuatro vistas anteriores.
 \end{itemize}
 
 Este documento no repite contenido de otros entregables: el detalle de la
@@ -89,7 +81,7 @@ Puntos relevantes del diagrama:
     \texttt{CaptureMode} (captura de muestras de entrenamiento y consulta de
     clases/estadísticas). El resto de los \texttt{hooks} y \texttt{components}
     es puramente de interfaz de usuario o de sincronización intra-navegador
-    (\texttt{useChatChannel}, ver Vista de Procesos).
+    (\texttt{useChatChannel}).
     \item En el backend, \texttt{app.py} concentra todos los endpoints y
     delega la clasificación en el módulo del modelo LSTM y la validación de
     capturas en \texttt{capture\_validation}, ambos desacoplados como
@@ -102,154 +94,6 @@ Puntos relevantes del diagrama:
     \texttt{capture\_validation}: ninguno de los \textit{handlers}
     necesita conocer el formato interno del registro de auditoría, solo
     invocar una función.
-\end{itemize}
-
-% ============================================================================
-\section{Vista de Procesos}
-\label{sec:vista-procesos}
-
-La Vista de Procesos muestra la concurrencia en tiempo de ejecución del
-sistema: el bucle de captura del navegador, la comunicación asincrónica por
-WebSocket, el manejo diferenciado de solicitudes en el backend FastAPI, y la
-sincronización entre la Estación del Paciente y la Estación de Recepción por
-\texttt{BroadcastChannel}, que es completamente independiente del backend.
-
-Se presenta un diagrama por proceso. Todos siguen la misma disposición: el
-Paciente y la Estación del Paciente a la izquierda, los procesos del backend
-y el canal de la estación en el centro, y la Estación de Recepción y el
-Personal de Recepción o Enfermería a la derecha. En los procesos de gestión
-del modelo, el Desarrollador de IA / Equipo de Proyecto se ubica a la
-derecha. Cada actor y cada proceso aparece una sola vez por diagrama.
-
-\clearpage
-\subsection{Proceso 1: consentimiento de cámara}
-
-Antes de activar la cámara, la Estación del Paciente muestra el diálogo de
-consentimiento (CU-09, RF-03). La cámara solo se habilita si el paciente
-acepta; en ambos casos la decisión se registra como evento anónimo de
-auditoría.
-
-\diagrama{06_proceso_1_consentimiento}{0.8\textwidth}{Proceso 1: consentimiento de cámara}{fig:arq-proceso-1}
-
-\clearpage
-\subsection{Proceso 2: captura y reconocimiento de señas}
-
-El bucle de captura del navegador corre de forma continua mientras la cámara
-está activa y envía la ventana de frames por WebSocket cada 8 frames. El
-\textit{event loop} de FastAPI recibe la ventana y delega la inferencia del
-modelo a un hilo propio, de modo que sigue atendiendo otros mensajes mientras
-dura la predicción (CU-01, RF-01, RF-05).
-
-\diagrama{06_proceso_2_prediccion}{\textwidth}{Proceso 2: captura y reconocimiento de señas}{fig:arq-proceso-2}
-
-\clearpage
-\subsection{Proceso 3: cierre de oración, traducción y voz}
-
-Al detectar el fin de la oración, la Estación del Paciente envía las palabras
-reconocidas al backend. El \textit{handler} se ejecuta en el
-\textit{threadpool} de Starlette, por lo que las llamadas a Ollama y a Piper
-TTS no bloquean el \textit{event loop}. Ollama solo se invoca cuando no hay
-una plantilla médica ni una traducción en caché; si no está disponible, se
-muestra la oración sin reconstruir (RNF-T-01), sin interrumpir el flujo
-(CU-02, CU-03).
-
-\diagrama{06_proceso_3_traduccion}{\textwidth}{Proceso 3: cierre de oración, traducción y voz}{fig:arq-proceso-3}
-
-\clearpage
-\subsection{Proceso 4: envío del mensaje del paciente al personal}
-
-El mensaje traducido se propaga de la Estación del Paciente a la Estación de
-Recepción por \texttt{BroadcastChannel}: un mecanismo del navegador entre
-pestañas del mismo origen, que no pasa por el backend ni por ninguna red
-(CU-01).
-
-\diagrama{06_proceso_4_sincronizacion}{0.85\textwidth}{Proceso 4: envío del mensaje del paciente al personal}{fig:arq-proceso-4}
-
-\clearpage
-\subsection{Proceso 5: respuesta del personal}
-
-El Personal de Recepción o Enfermería responde por escrito o por voz; el
-dictado se transcribe en el propio navegador. La respuesta viaja por el mismo
-canal hacia la Estación del Paciente (CU-04, CU-05, RF-02).
-
-\diagrama{06_proceso_5_respuesta}{\textwidth}{Proceso 5: respuesta del personal}{fig:arq-proceso-5}
-
-\clearpage
-\subsection{Proceso 6: reporte de una traducción incorrecta}
-
-El paciente o el personal pueden reportar un mensaje traducido desde su
-propia estación. El backend valida el reporte, lo agrega a
-\texttt{logs/reports.jsonl} y registra el evento de auditoría
-correspondiente (CU-10, RF-06).
-
-\diagrama{06_proceso_6_reporte}{\textwidth}{Proceso 6: reporte de una traducción incorrecta}{fig:arq-proceso-6}
-
-\clearpage
-\subsection{Proceso 7: fin de atención}
-
-El Personal de Recepción o Enfermería finaliza la atención: su estación vacía
-la conversación y envía el evento \texttt{CLEAR} por el canal, que vacía
-también la Estación del Paciente. Ningún dato de la atención queda
-persistido; solo se registra el evento anónimo de fin de atención (CU-12,
-RNF-03).
-
-\diagrama{06_proceso_7_fin_atencion}{\textwidth}{Proceso 7: fin de atención}{fig:arq-proceso-7}
-
-\clearpage
-\subsection{Proceso 8: captura de muestras de entrenamiento}
-
-En el modo captura, el Desarrollador de IA / Equipo de Proyecto elige o crea
-la seña y graba un conjunto de repeticiones. Cada muestra se valida en el
-backend antes de guardarse en el sistema de archivos local (CU-06, CU-07).
-
-\diagrama{06_proceso_8_captura_muestras}{0.85\textwidth}{Proceso 8: captura de muestras de entrenamiento}{fig:arq-proceso-8}
-
-\clearpage
-\subsection{Proceso 9: entrenamiento del modelo}
-
-El entrenamiento corre como un proceso independiente del servicio, sin
-afectar la atención en curso. Separa entrenamiento y validación por sesión de
-grabación, guarda el modelo resultante y el servicio lo carga al reiniciarse
-(CU-08).
-
-\diagrama{06_proceso_9_entrenamiento}{0.85\textwidth}{Proceso 9: entrenamiento del modelo}{fig:arq-proceso-9}
-
-% ============================================================================
-\section{Vista de Desarrollo}
-\label{sec:vista-desarrollo}
-
-La Vista de Desarrollo mapea la organización física del código fuente en el
-repositorio y las dependencias entre sus paquetes, relevante para la
-compilación, el empaquetado y la asignación de responsabilidades de
-mantenimiento (RNF-T-03).
-
-\diagrama{06_vista_desarrollo}{\textwidth}{Vista de Desarrollo de LSA Salud: paquetes del repositorio y sus dependencias}{fig:arq-vista-desarrollo}
-
-Puntos relevantes:
-\begin{itemize}
-    \item El frontend (\texttt{web/}) y el backend (\texttt{app.py},
-    \texttt{src/}) son unidades de despliegue independientes, sin
-    dependencia de compilación entre sí: se comunican únicamente en tiempo
-    de ejecución, por HTTP y WebSocket.
-    \item \texttt{train\_lstm.py} es un script de reentrenamiento
-    \textbf{offline}, fuera del proceso del backend: lee \texttt{dataset/} y
-    escribe en \texttt{models/}, sin invocación síncrona desde \texttt{app.py}
-    (ver CU-08 en \texttt{IDS.md}).
-    \item \texttt{eval\_model.py <directorio>} es otro script offline:
-    importa el modelo ya cargado de \texttt{app.py} y evalúa su accuracy
-    sobre un directorio de muestras \texttt{.npy}, sin exponer ningún
-    endpoint ni modificar el proceso del backend.
-    \item \texttt{dataset/}, \texttt{models/} y \texttt{voices/} son
-    carpetas de datos, no paquetes de código: representan la persistencia
-    basada en archivos del sistema (sin base de datos, ver
-    Entregable 09 para el detalle del modelo de datos).
-    \item \texttt{docs/} (esta documentación) no tiene dependencias de
-    código y no participa en el flujo de ejecución.
-    \item \texttt{logs/} es la carpeta de datos que recibe los eventos de
-    auditoría (RF-04.1, \texttt{audit.jsonl}) y los reportes de traducción
-    (RF-06.1, \texttt{reports.jsonl}), escritos por funciones dentro de
-    \texttt{app.py} mismo, con el mismo patrón de persistencia basada en
-    archivos que \texttt{dataset/} (ver Entregable 09).
 \end{itemize}
 
 % ============================================================================
@@ -307,72 +151,12 @@ Puntos relevantes:
     (\texttt{/ws/predict}) y HTTP REST contra su backend; la cara Recepción
     solo HTTP REST. El backend invoca a su propio Ollama local por HTTP
     (\texttt{POST /api/generate}).
+    \item Dentro del proceso del backend, el \textit{event loop} de Uvicorn
+    atiende el WebSocket de predicción y delega cada inferencia del modelo a
+    un hilo propio; los \textit{handlers} HTTP de traducción y síntesis de
+    voz corren en el \textit{threadpool} de Starlette. Así, las llamadas a
+    Ollama y a Piper no bloquean el reconocimiento en curso.
 \end{itemize}
-
-% ============================================================================
-\section{Vista de Escenarios (+1)}
-\label{sec:vista-escenarios}
-
-Esta vista integra las cuatro anteriores mediante dos escenarios de
-ejecución concretos: \textbf{CU-01} (Comunicarse mediante Lengua de Señas
-Argentina) y \textbf{CU-04} (Responder al Paciente). La Tabla~\ref{tab:arq-escenarios}
-indica, para cada paso del escenario, qué elemento de cada vista participa.
-
-\small
-\begin{longtable}{>{\raggedright\arraybackslash}p{2.15cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}p{2.15cm} >{\raggedright\arraybackslash}p{2.55cm} >{\raggedright\arraybackslash}p{1.75cm}}
-    \toprule
-    \textbf{Paso del escenario} & \textbf{Vista Lógica} & \textbf{Vista de Procesos} & \textbf{Vista de Desarrollo} & \textbf{Vista Física} & \textbf{RF / CU} \\
-    \midrule
-    \endhead
-    Captura de landmarks &
-    \texttt{useMediaPipe}, \texttt{lib/\allowbreak mediapipe.ts} &
-    Bucle de captura (hilo principal del navegador) &
-    \texttt{web/hooks}, \texttt{web/lib} &
-    Pestaña Estación Paciente (nodo navegador) &
-    RF-01.1, CU-01 \\
-
-    Envío y predicción por WebSocket &
-    \texttt{useSign\allowbreak Web\allowbreak Socket} $\to$ \texttt{app.py} &
-    WS \texttt{/ws/predict} en el \textit{event loop}; inferencia en hilo propio &
-    \texttt{web/hooks} $\to$ \texttt{app.py} (HTTP/WS) &
-    Pestaña Paciente $\leftrightarrow$ proceso Uvicorn (\texttt{:8000}) &
-    RF-01.2, RF-01.3, CU-01, CU-02 \\
-
-    Cierre de oración y traducción &
-    \texttt{useSentence\allowbreak Builder} $\to$ \texttt{app.py} &
-    POST \texttt{/process\_sentence} en el \textit{threadpool} de Starlette; llamada a Ollama &
-    \texttt{app.py} $\to$ \texttt{dataset/}, \texttt{models/} (indirectamente vía LSTM) &
-    Proceso Uvicorn $\to$ proceso Ollama (\texttt{:11434}) &
-    RF-01.4, RF-01.5, CU-02 \\
-
-    Síntesis de voz &
-    \texttt{app.py} (Piper embebido) &
-    Llamada sincrónica a Piper dentro del \textit{threadpool} &
-    \texttt{app.py} $\to$ \texttt{voices/} &
-    Piper TTS embebido en el proceso Uvicorn &
-    RF-01.6, CU-03 \\
-
-    Publicación del mensaje del paciente &
-    \texttt{useChat\allowbreak Channel} &
-    Rama \texttt{par}: exhibición local + propagación por \texttt{Broadcast\allowbreak Channel} &
-    \texttt{web/hooks} (sin dependencia de \texttt{app.py}) &
-    Pestaña Paciente $\leftrightarrow$ Pestaña Recepción (intra-navegador) &
-    RF-01.7, CU-01, CU-04 \\
-
-    Respuesta del personal &
-    \texttt{Reception\allowbreak Controls}, \texttt{useSpeech\allowbreak To\allowbreak Text}, \texttt{useChat\allowbreak Channel} &
-    Evento \texttt{MESSAGE} propagado de vuelta a la Estación Paciente &
-    \texttt{web/\allowbreak components}, \texttt{web/hooks} &
-    Pestaña Recepción $\leftrightarrow$ Pestaña Paciente (intra-navegador) &
-    RF-02.1, RF-02.2, CU-04, CU-05 \\
-    \bottomrule
-    \caption{Escenario CU-01 / CU-04 trazado a través de las cuatro vistas}
-    \label{tab:arq-escenarios}
-\end{longtable}
-
-Este recorrido confirma que ningún paso del escenario requiere un nodo,
-proceso o dependencia fuera de la PC local descripta en la Vista Física, lo
-que sostiene la decisión de procesamiento local por privacidad (RNF-03).
 
 % ============================================================================
 \section{Decisiones arquitectónicas}
@@ -461,7 +245,7 @@ vistas anteriores.
     infraestructura de orquestación entre servicios. &
     Todos los endpoints comparten el mismo proceso, el mismo \textit{event
     loop} y el mismo \textit{threadpool}: una carga alta en un endpoint
-    puede afectar la latencia de los demás (ver Vista de Procesos). \\
+    puede afectar la latencia de los demás (ver Vista Física). \\
 
     Cachés LRU en memoria para traducción (\texttt{\_translation\_cache},
     200 entradas) y para audio sintetizado (\texttt{\_audio\_cache}, 50
@@ -490,9 +274,9 @@ Sección~4 --- con la vista o el mecanismo arquitectónico que lo atiende.
     \midrule
     \endhead
     RNF-T-01 & Fiabilidad &
-    Vista de Procesos: reconexión automática del WebSocket cada 2 s,
-    degradación sin interrupción si falla Ollama o Piper (ver
-    sección~\ref{sec:vista-procesos}). \\
+    Vista Lógica: \texttt{useSignWebSocket} reconecta el WebSocket
+    automáticamente cada 2 s, y el backend degrada sin interrumpir el flujo
+    si fallan Ollama o Piper (sección~\ref{sec:vista-logica}). \\
 
     RNF-T-02 & Disponibilidad &
     Vista Física: todos los procesos críticos corren en la PC local, sin
@@ -511,20 +295,20 @@ Sección~4 --- con la vista o el mecanismo arquitectónico que lo atiende.
 
     RNF-T-04 & Portabilidad &
     Vista Física: stack multiplataforma (Python/Uvicorn, Node.js/Next.js);
-    probado en Windows (sección~\ref{sec:vista-fisica}). \\
+    (sección~\ref{sec:vista-fisica}). \\
 
     RNF-T-05 & Usabilidad / accesibilidad &
-    Vista de Procesos: la ventana de exhibición previa a la reproducción de
-    audio actúa como confirmación automática, sin botón manual
-    (sección~\ref{sec:vista-procesos}). \\
+    Vista Lógica: \texttt{useSentenceBuilder} exhibe la oración antes de
+    reproducir el audio, como confirmación automática sin botón manual
+    (sección~\ref{sec:vista-logica}). \\
 
     RNF-01.1 & Rendimiento &
-    Vista de Procesos: separación event loop / \textit{threadpool}, y
+    Vista Física: separación \textit{event loop} / \textit{threadpool}, y
     decisiones arquitectónicas de streaming por WebSocket y cachés LRU
-    (secciones~\ref{sec:vista-procesos} y~\ref{sec:decisiones}). \\
+    (secciones~\ref{sec:vista-fisica} y~\ref{sec:decisiones}). \\
 
     RNF-02.1 & Precisión &
-    Vista de Desarrollo: la exactitud de validación se calcula en
+    La exactitud de validación se calcula en
     \texttt{train\_lstm.py} y se evalúa con \texttt{eval\_model.py},
     ambos fuera del proceso del backend (ver ERS, Sección~3.3). \\
 
@@ -534,8 +318,9 @@ Sección~4 --- con la vista o el mecanismo arquitectónico que lo atiende.
     la calibración se realizan durante la instalación de cada estación. \\
 
     RNF-05.1 / RNF-06.1 & Dataset clínico &
-    Vista de Desarrollo: árbol único \texttt{dataset/custom}, con landmarks
-    y \textit{blendshapes} en la misma muestra (sección~\ref{sec:vista-desarrollo});
+    Vista Física: árbol único \texttt{dataset/custom} en el sistema de
+    archivos local, con landmarks y \textit{blendshapes} en la misma muestra
+    (sección~\ref{sec:vista-fisica});
     la validación lingüística por intérpretes de LSA es un procedimiento
     operativo del proyecto (ver ERS, Sección~2.6). \\
 
