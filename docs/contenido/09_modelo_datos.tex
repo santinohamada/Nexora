@@ -424,22 +424,3 @@ intencionalmente sin persistir).
     \caption{Mapeo entre entidades lógicas y persistencia física}
     \label{tab:dat-mapeo-fisico}
 \end{longtable}
-
-\subsection{Migración futura a base de datos relacional (fuera de alcance)}
-
-El esquema basado en archivos descripto en este entregable cubre las
-necesidades de LSA Salud (una instancia local por estación, sin consultas
-relacionales, sin historial persistente de conversaciones). Si el proyecto
-necesitara en algún momento desplegar múltiples instancias concurrentes
-compartiendo el mismo vocabulario y dataset, ofrecer reportes o consultas
-sobre las muestras capturadas (por ejemplo, filtrar por rango de fechas o
-por desarrollador que capturó cada muestra), o conservar un historial de
-conversaciones entre sesiones, esos requisitos sí justificarían introducir
-una base de datos relacional: los metadatos de cada muestra
-(\textit{etiqueta}, \textit{timestamp}, quién la capturó) y el registro de
-\textit{Conversación}/\textit{Mensaje} son los candidatos naturales para
-migrar a tablas, mientras que los arreglos \texttt{.npy} y los pesos del
-modelo probablemente seguirían viviendo como archivos referenciados desde
-esas tablas (un patrón híbrido común para datos binarios de gran tamaño).
-Este análisis queda explícitamente fuera del alcance del sistema descripto
-en este entregable y no implica ningún compromiso de implementación.
