@@ -47,8 +47,8 @@ Personal de Recepción o Enfermería: necesita recibir el mensaje del
 paciente en español, de forma clara y oportuna. \\
 \textbf{Precondiciones} &
 El paciente otorgó el consentimiento explícito de cámara (CU-09).
-Estación del Paciente abierta, cámara autorizada, backend en ejecución,
-modelo de reconocimiento cargado. \\
+Estación del Paciente abierta, cámara autorizada, el sistema está
+operativo y el modelo de reconocimiento está disponible. \\
 \textbf{Garantías de éxito} &
 El mensaje traducido queda registrado en la conversación compartida y, si
 corresponde, se reprodujo en voz. \\
@@ -81,9 +81,9 @@ corresponde, se reprodujo en voz. \\
     clara: descarta el resultado y no genera mensaje.
     \item[7a.] La síntesis de voz no está disponible: el sistema continúa
     sin reproducir audio.
-    \item[8a.] El WebSocket de predicción se desconecta: el sistema
-    reintenta la conexión automáticamente cada 2 segundos y reanuda el
-    reconocimiento sin intervención del paciente.
+    \item[*a.] En cualquier momento, se pierde la conexión con el servicio
+    de reconocimiento: el sistema la restablece automáticamente y reanuda
+    el reconocimiento sin intervención del paciente.
 \end{itemize} \\
 \textbf{Requisitos especiales} & RNF-T-01, RNF-T-05, RNF-01.1 (ver ERS, sección 3.5). \\
 \textbf{Variantes de tecnología y datos} &
@@ -91,7 +91,8 @@ Captura de landmarks de manos, pose y rostro (blendshapes) mediante
 MediaPipe en cada frame; los blendshapes faciales aportan los marcadores no
 manuales gramaticales de la LSA (preguntas, negación, intensidad) como
 parte de las características de reconocimiento; transporte de los frames
-al backend vía WebSocket. \\
+al backend vía WebSocket, con reconexión automática cada 2 segundos ante
+una pérdida de conexión. \\
 \textbf{Frecuencia} &
 Continua durante toda la sesión de atención; se repite cada vez que el
 paciente forma una idea completa. \\
@@ -135,29 +136,35 @@ forma una idea clara. \\
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[3a.] No hay coincidencia con ninguna plantilla: el sistema busca
-    la combinación entre las traducciones generadas recientemente
-    (3a.1); si tampoco encuentra coincidencia, delega la construcción de
-    la oración a un modelo de lenguaje local, indicándole que respete la
-    persona gramatical y que no agregue síntomas no mencionados (3a.2).
-    \item[3a.2a.] El modelo de lenguaje no responde a tiempo o falla: el
-    sistema usa como traducción las palabras originales, sin interrumpir
-    el flujo.
-    \item[3a.2b.] El modelo de lenguaje determina que la combinación no
-    forma una idea clara: el sistema descarta la traducción y no genera
-    mensaje.
+    \item[3a.] No hay coincidencia con ninguna plantilla:
+    \begin{itemize}[leftmargin=*, itemsep=2pt]
+        \item[3a1.] El sistema busca la combinación entre las traducciones
+        generadas recientemente.
+        \item[3a2.] Si tampoco encuentra coincidencia, delega la
+        construcción de la oración a un modelo de lenguaje local,
+        indicándole que respete la persona gramatical y que no agregue
+        síntomas no mencionados.
+        \item[3a2a.] El modelo de lenguaje no responde a tiempo o falla:
+        el sistema usa como traducción las palabras originales, sin
+        interrumpir el flujo.
+        \item[3a2b.] El modelo de lenguaje determina que la combinación no
+        forma una idea clara: el sistema descarta la traducción y no
+        genera mensaje.
+    \end{itemize}
 \end{itemize} \\
 \textbf{Requisitos especiales} & RNF-T-01, RF-01.5. \\
 \textbf{Variantes de tecnología y datos} &
 Plantillas médicas precalculadas (diccionario en el backend); caché de
 traducciones recientes; modelo de lenguaje local Qwen2 1.5B servido por
-Ollama en \texttt{localhost:11434}. \\
+Ollama en \texttt{localhost:11434}; la restricción de no inventar
+síntomas se indica mediante instrucciones (\textit{prompt}) al modelo de
+lenguaje. \\
 \textbf{Frecuencia} & Una vez por cada secuencia de señas cerrada. \\
 \textbf{Temas abiertos} &
 La cobertura de plantillas médicas sigue el vocabulario clínico del
-dataset del sistema. La restricción de no inventar síntomas se indica en
-el prompt del modelo de lenguaje y se refuerza con una verificación de
-fidelidad clínica sobre la oración generada (RF-01.8) antes de mostrarla. \\
+dataset del sistema. La restricción de no inventar síntomas se refuerza
+con una verificación de fidelidad clínica sobre la oración generada
+(RF-01.8) antes de mostrarla. \\
 \bottomrule
 \end{longtable}
 
@@ -184,8 +191,7 @@ disponible. \\
     \item El sistema verifica si ya generó audio antes para esa misma
     oración.
     \item El sistema sintetiza el audio con voz en español rioplatense.
-    \item El sistema entrega el audio para su reproducción, tras una
-    breve ventana de exhibición del texto en pantalla.
+    \item El sistema entrega el audio para su reproducción.
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
@@ -199,7 +205,8 @@ disponible. \\
 \textbf{Variantes de tecnología y datos} &
 Motor Piper TTS con modelo de voz en español argentino
 (\texttt{es\_AR-daniela-high}); caché de audio en memoria (hasta 50
-oraciones). \\
+oraciones); la interfaz exhibe el texto en pantalla durante una breve
+ventana antes de reproducir el audio. \\
 \textbf{Frecuencia} & Una vez por cada oración traducida exitosamente. \\
 \textbf{Temas abiertos} & Ninguno relevado. \\
 \bottomrule
@@ -273,8 +280,8 @@ pierde la conversación. \\
 Personal de Recepción o Enfermería: quiere responder sin escribir, por
 ejemplo mientras atiende otras tareas. \\
 \textbf{Precondiciones} &
-El navegador soporta reconocimiento de voz; el personal está en el
-punto de extensión ``ingreso de texto'' de CU-04. \\
+El sistema tiene disponible el reconocimiento de voz; el personal está en
+el punto de extensión ``ingreso de texto'' de CU-04. \\
 \textbf{Garantías de éxito} &
 El texto dictado queda disponible como respuesta, lista para enviarse
 (el flujo continúa en CU-04 desde el paso de confirmación). \\
@@ -292,7 +299,7 @@ El texto dictado queda disponible como respuesta, lista para enviarse
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[1a.] El navegador no soporta reconocimiento de voz: el sistema
+    \item[1a.] El reconocimiento de voz no está disponible: el sistema
     informa la limitación y el personal continúa con el flujo
     principal de CU-04 (escribir).
     \item[2a.] Ocurre un error de micrófono o de reconocimiento: el
@@ -301,10 +308,12 @@ El texto dictado queda disponible como respuesta, lista para enviarse
 \textbf{Requisitos especiales} & RF-02.2; restricción de compatibilidad de navegador (ver ERS, secciones 3.4 y 3.6). \\
 \textbf{Variantes de tecnología y datos} &
 Web Speech API nativa del navegador, configurada en español argentino
-(\texttt{es-AR}). \\
+(\texttt{es-AR}); la Estación de Recepción usa Google Chrome, que la
+soporta. \\
 \textbf{Frecuencia} & Opcional, a criterio del personal de recepción o enfermería, en cualquier respuesta. \\
 \textbf{Temas abiertos} &
-Requiere Google Chrome; sin soporte confirmado en otros navegadores. \\
+La disponibilidad del dictado por voz depende del entorno utilizado por
+el personal. \\
 \bottomrule
 \end{longtable}
 
@@ -323,8 +332,8 @@ reconocible de forma simple. \newline
 Paciente: se beneficia indirectamente de un vocabulario más amplio en el
 futuro. \\
 \textbf{Precondiciones} &
-Estación del Paciente abierta en Modo Captura; cámara autorizada; backend
-en ejecución. \\
+Estación del Paciente abierta en Modo Captura; cámara autorizada; el
+sistema está operativo. \\
 \textbf{Garantías de éxito} &
 Una o más muestras quedaron grabadas y asociadas a la etiqueta de seña
 correspondiente. \\
@@ -340,8 +349,7 @@ correspondiente. \\
     repetición.
     \item El sistema graba los movimientos del desarrollador durante una
     ventana de tiempo fija.
-    \item El sistema envía la muestra grabada al backend y la guarda
-    asociada a la etiqueta.
+    \item El sistema guarda la muestra grabada asociada a la etiqueta.
     \item El sistema repite los pasos 5 a 7 hasta completar las
     repeticiones indicadas.
     \item El sistema confirma que las muestras quedaron guardadas y
@@ -380,7 +388,7 @@ depende del criterio del desarrollador. \\
 \textbf{Personal involucrado e intereses} &
 Desarrollador de IA / Equipo de Proyecto: necesita saber qué señas ya
 existen y cuántas muestras tiene cada una, para decidir qué grabar. \\
-\textbf{Precondiciones} & Backend en ejecución. \\
+\textbf{Precondiciones} & El sistema está operativo. \\
 \textbf{Garantías de éxito} &
 El desarrollador cuenta con la lista actualizada de etiquetas conocidas y
 con la cantidad de muestras disponibles por etiqueta. \\
@@ -447,7 +455,7 @@ sesiones. \\
     \item El sistema conserva la versión del modelo con mejor exactitud
     de validación.
     \item El sistema deja disponible el modelo entrenado y su lista de
-    clases para que el backend lo cargue en el próximo inicio.
+    clases para cargarlos en el próximo inicio.
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
@@ -458,13 +466,13 @@ sesiones. \\
 \textbf{Variantes de tecnología y datos} &
 Aumento de datos por recorte aleatorio, ruido gaussiano y escalado
 durante el entrenamiento; separación 80/20 con semilla fija para
-reproducibilidad. \\
+reproducibilidad; se ejecuta desde la línea de comandos del servidor, sin
+interfaz web ni disparo automático. \\
 \textbf{Frecuencia} &
 Bajo demanda del desarrollador, típicamente después de acumular nuevas
 muestras de varias sesiones de captura. \\
 \textbf{Temas abiertos} &
-Proceso manual, sin disparo automático ni interfaz web; requiere acceso a
-la línea de comandos del servidor. \\
+El entrenamiento se inicia manualmente, sin disparo automático. \\
 \bottomrule
 \end{longtable}
 
@@ -491,42 +499,45 @@ La cámara se activa únicamente si el paciente otorgó el consentimiento; si
 lo rechaza, la cámara permanece inactiva y CU-01 no puede comenzar. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-    \item Al entrar a \texttt{/paciente}, el sistema muestra un diálogo
-    modal de consentimiento (P-05) sobre el resto de la página, que queda
-    inerte, antes de solicitar permiso de cámara al navegador.
-    \item El diálogo explica, en lenguaje simple, qué captura la cámara,
+    \item Al abrir la Estación del Paciente, el sistema presenta al
+    paciente una solicitud de consentimiento, antes de solicitar acceso a
+    la cámara.
+    \item El sistema explica, en lenguaje simple, qué captura la cámara,
     para qué se usa y que no se guarda video ni imágenes (RNF-03).
-    \item El paciente presiona ``Acepto y continúo''.
+    \item El paciente otorga el consentimiento.
     \item El sistema registra el consentimiento como evento de auditoría
-    anónimo (\texttt{type: "consent"}, \texttt{consent: "accepted"}, sin
-    datos identificatorios) y habilita la captura de cámara.
+    anónimo, sin datos identificatorios, y habilita la captura de cámara.
     \item El flujo continúa en el paso 1 de CU-01.
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[3a.] El paciente presiona ``No acepto'': el sistema registra el
-    evento de auditoría con \texttt{consent: "declined"}, no activa la
-    cámara y muestra un mensaje con la opción ``Reconsiderar'' para volver
-    al diálogo; CU-01 no puede iniciar.
-    \item[3b.] El navegador deniega el permiso de cámara después de un
-    consentimiento otorgado: el hook de captura informa el error
-    (\texttt{status: "error"}) sin activar el flujo de reconocimiento.
+    \item[3a.] El paciente rechaza el consentimiento: el sistema registra
+    el evento de auditoría correspondiente, no activa la cámara y ofrece
+    al paciente la opción de reconsiderar su decisión; CU-01 no puede
+    iniciar.
+    \item[3b.] El acceso a la cámara es denegado después de un
+    consentimiento otorgado: el sistema informa el error sin activar el
+    flujo de reconocimiento.
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-03.1; RNF-03.1 (sin almacenamiento de video). \\
 \textbf{Variantes de tecnología y datos} &
-Diálogo modal dentro de \texttt{PacientePage}
-(\texttt{web/app/paciente/page.tsx}); el estado \texttt{consentState}
-(\texttt{pending}/\texttt{accepted}/\texttt{declined}) se pasa como
-\texttt{enabled} al hook de captura (\texttt{useMediaPipe}), que solo
-invoca \texttt{navigator.mediaDevices.getUserMedia()} cuando
-\texttt{enabled === true}. \\
+Diálogo modal de consentimiento (Pantalla P-05) dentro de
+\texttt{PacientePage} (\texttt{web/app/paciente/page.tsx}), mostrado
+sobre el resto de la página al entrar a \texttt{/paciente}, con los
+botones ``Acepto y continúo'' / ``No acepto''; el estado
+\texttt{consentState} (\texttt{pending}/\texttt{accepted}/\texttt{declined})
+se pasa como \texttt{enabled} al hook de captura (\texttt{useMediaPipe}),
+que solo invoca \texttt{navigator.mediaDevices.getUserMedia()} cuando
+\texttt{enabled === true}; el evento de auditoría registra
+\texttt{type: "consent"} con \texttt{consent: "accepted"} o
+\texttt{"declined"}; un permiso de cámara denegado se refleja como
+\texttt{status: "error"} en el hook de captura. \\
 \textbf{Frecuencia} & Una vez por sesión de la Estación del Paciente. \\
 \textbf{Temas abiertos} &
-El consentimiento vive en el estado en memoria del componente y no
-persiste entre recargas de la página, en línea con la política de no
-almacenamiento persistente (RNF-03); el texto legal del diálogo se valida
-con el Comité de Ética del Sanatorio durante la instalación de cada
-estación. \\
+El consentimiento no se conserva entre recargas de la página, en línea
+con la política de no almacenamiento persistente (RNF-03); el texto legal
+de la solicitud se valida con el Comité de Ética del Sanatorio durante la
+instalación de cada estación. \\
 \bottomrule
 \end{longtable}
 
@@ -555,33 +566,30 @@ sin exponer datos identificatorios del paciente. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
     \item El actor revisa un mensaje del paciente en la conversación
-    (punto de extensión ``revisión de mensaje'' de CU-01 o CU-04); cada
-    burbuja de mensaje del paciente muestra el botón ``Reportar
-    traducción''.
-    \item El actor presiona el botón.
-    \item El sistema pasa el botón a estado ``Enviando...'' y envía
-    \texttt{POST /report} con el texto del mensaje, la estación de origen
-    y, si están disponibles, las palabras crudas reconocidas.
-    \item El backend valida el payload y lo registra, asociado al mensaje
-    señalado (texto, estación, palabras, marca temporal).
-    \item El sistema confirma al actor: el botón pasa a estado
-    ``Reportado''.
+    (punto de extensión ``revisión de mensaje'' de CU-01 o CU-04).
+    \item El actor indica que desea reportar el mensaje.
+    \item El sistema envía el reporte con el texto del mensaje, la
+    estación de origen y, si están disponibles, las palabras crudas
+    reconocidas.
+    \item El sistema valida la información y la registra, asociada al
+    mensaje señalado (texto, estación, palabras, marca temporal).
+    \item El sistema confirma al actor que el reporte fue registrado.
     \item El flujo vuelve al punto de extensión de origen (CU-01 o
     CU-04).
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[3a.] La petición \texttt{POST /report} falla (red o validación):
-    el botón vuelve a estado disponible y se muestra el mensaje ``No se
-    pudo enviar el reporte. Probá de nuevo.''; el actor puede reintentar.
+    \item[3a.] El envío del reporte falla (red o validación): el sistema
+    informa que no pudo enviarse y permite reintentar.
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-06.1; RNF-03.1 (reporte sin datos identificatorios ni imágenes). \\
 \textbf{Variantes de tecnología y datos} &
 Botón ``Reportar traducción'' en \texttt{ChatBubble}
 (\texttt{web/components/chat/ChatBubble.tsx}), visible solo en mensajes
-del paciente; la estación (\texttt{paciente}/\texttt{recepcion}) se
-deriva de la ruta actual con \texttt{usePathname}. El backend valida el
-payload con \texttt{validate\_report\_payload} y lo persiste en
+del paciente, con los estados ``Enviando...''/``Reportado''; la estación
+(\texttt{paciente}/\texttt{recepcion}) se deriva de la ruta actual con
+\texttt{usePathname}. El envío usa \texttt{POST /report}; el backend
+valida el payload con \texttt{validate\_report\_payload} y lo persiste en
 \texttt{logs/reports.jsonl} (ver Entregable 04, mockups, y Entregable 09,
 Modelo de Datos). \\
 \textbf{Frecuencia} &
@@ -617,40 +625,44 @@ marca temporal y resultado, sin datos identificatorios ni imágenes o
 video. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-    \item El sistema completa una operación relevante: predicción LSTM
-    (\texttt{/predict} o \texttt{/ws/predict}), traducción y síntesis de
-    voz (\texttt{/process\_sentence}), reporte de traducción
-    (\texttt{/report}), consentimiento de cámara, traducción mostrada en
-    pantalla o fin de atención (CU-12).
+    \item El sistema completa una operación relevante: predicción de una
+    seña, traducción y síntesis de voz, reporte de una traducción,
+    consentimiento de cámara, traducción mostrada en pantalla o fin de
+    atención (CU-12).
     \item El sistema arma un evento de auditoría anónimo con el tipo de
-    evento (\texttt{prediction}, \texttt{sentence}, \texttt{report},
-    \texttt{consent}, \texttt{translation\_displayed} o
-    \texttt{fin\_atencion}), la marca temporal
-    UTC y los campos propios del tipo (p.\ ej.\ \texttt{lstm\_ms} y
-    \texttt{confidence} para \texttt{prediction}), sin identidad del
-    paciente ni contenido de imagen, video o texto de la conversación.
-    \item El sistema persiste el evento agregándolo a
-    \texttt{logs/audit.jsonl}.
+    operación, la marca temporal y los datos propios del tipo de evento,
+    sin identidad del paciente ni contenido de imagen, video o texto de
+    la conversación.
+    \item El sistema persiste el evento.
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[--] No hay un camino de excepción propio: si el payload de un
-    evento enviado por el frontend (\texttt{consent},
-    \texttt{translation\_displayed}) no pasa la validación, \texttt{POST
-    /audit} responde 400 y el evento simplemente no se registra; el
-    envío es \textit{fire-and-forget} desde el frontend (no bloquea la
-    operación que lo originó).
+    \item[--] No hay un camino de excepción propio: si la información de
+    un evento originado en la Estación del Paciente o de Recepción no
+    pasa la validación, el sistema simplemente no lo registra, sin
+    interrumpir la operación que lo originó.
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-04.1; RNF-03.1 (anonimato, sin imágenes ni video). \\
 \textbf{Variantes de tecnología y datos} &
 Persistencia basada en archivos: helpers \texttt{\_log\_audit} /
 \texttt{\_append\_jsonl} en \texttt{app.py}, con un \texttt{threading.Lock}
-para escritura concurrente, consistente con el resto del sistema (ver
-Entregable 09, Modelo de Datos). \\
+para escritura concurrente, sobre \texttt{logs/audit.jsonl}, consistente
+con el resto del sistema (ver Entregable 09, Modelo de Datos). Las
+operaciones que disparan el registro corresponden a los endpoints
+\texttt{/predict}, \texttt{/ws/predict}, \texttt{/process\_sentence},
+\texttt{/report} y \texttt{POST /audit} (consentimiento y traducción
+mostrada en pantalla); el tipo de evento toma los valores
+\texttt{prediction}, \texttt{sentence}, \texttt{report}, \texttt{consent},
+\texttt{translation\_displayed} o \texttt{fin\_atencion}, con campos
+propios por tipo (p.\ ej.\ \texttt{lstm\_ms} y \texttt{confidence} para
+\texttt{prediction}); el envío desde el frontend es \textit{fire-and-forget}
+y, si el payload no pasa la validación, \texttt{POST /audit} responde 400
+sin registrar el evento; las métricas agregadas (conteos, latencias
+p50/p95/máx.) se exponen bajo demanda mediante \texttt{GET /metrics}. \\
 \textbf{Frecuencia} & Una vez por cada operación de sistema relevante. \\
 \textbf{Temas abiertos} &
-\texttt{GET /metrics} agrega los eventos acumulados (conteos, latencias
-p50/p95/máx.) bajo demanda; el Equipo de Proyecto exporta esas métricas
+El sistema agrega los eventos acumulados en métricas (conteos, latencias
+p50/p95/máx.) disponibles bajo demanda; el Equipo de Proyecto las exporta
 periódicamente para evaluar el impacto operativo del sistema. \\
 \bottomrule
 \end{longtable}
@@ -678,8 +690,8 @@ La conversación queda vacía en las dos caras de la estación y no persiste
 ningún dato de la sesión atendida. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
-    \item El personal de recepción o enfermería presiona ``Finalizar
-    atención'' en su estación (Pantalla P-03).
+    \item El personal de recepción o enfermería indica que finaliza la
+    atención.
     \item El sistema borra la conversación mostrada en esa cara de la
     estación.
     \item El sistema notifica el cierre a la otra cara de la estación
@@ -699,8 +711,9 @@ ningún dato de la sesión atendida. \\
 \end{itemize} \\
 \textbf{Requisitos especiales} & RNF-03 (privacidad por diseño); RF-04.1 (auditoría). \\
 \textbf{Variantes de tecnología y datos} &
-Mismo canal de sincronización entre las dos caras de la estación que usa
-CU-04 para propagar mensajes. \\
+Botón ``Finalizar atención'' (Pantalla P-03); mismo canal de
+sincronización entre las dos caras de la estación que usa CU-04 para
+propagar mensajes. \\
 \textbf{Frecuencia} & Una vez por paciente atendido. \\
 \textbf{Temas abiertos} & Ninguno relevado. \\
 \bottomrule
