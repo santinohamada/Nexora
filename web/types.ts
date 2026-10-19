@@ -4,6 +4,8 @@ export type ChatMessage = {
   text: string;
   time: string;
   words?: string[];
+  /** Set when the translation was reported as incorrect or ambiguous (CU-10); synced across stations. */
+  reported?: boolean;
 };
 
 export type PredictionItem = {

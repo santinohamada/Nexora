@@ -1,83 +1,104 @@
 @startuml 09_modelo_logico
 !include _estilo.iuml
-title Modelo de Base de Datos - Modelo Lógico (notación pata de gallo)\nNota: cada "entidad" es un patrón de archivo/directorio, no una tabla de una base de datos relacional
+title Modelo de Base de Datos - Modelo Lógico (notación pata de gallo)\nTablas de SQLite (data/lsa_salud.db) y patrones de archivo del dataset/modelo
 
-entity "MuestraDeEntrenamiento" as MDE {
-    * etiqueta : varchar(32) <<PK, FK>>
-    * timestamp_ms : bigint <<PK>>
-    --
-    shapeLandmarks : varchar = '(45,75,4)'
-    shapeBlendshapes : varchar = '(45,52)'
+package "SQLite - data/lsa_salud.db" {
+    entity "reported_message\n(MensajeReportado)" as MSG {
+        * id : INTEGER <<PK, autoincrement>>
+        --
+        client_message_id : INTEGER {nullable}
+        * text : TEXT CHECK (1..500 caracteres)
+        * first_reported_at : TEXT (ISO 8601 UTC)
+        UNIQUE (client_message_id, text)
+    }
+
+    entity "recognized_word\n(PalabraReconocida)" as WRD {
+        * message_id : INTEGER <<PK, FK>>
+        * position : INTEGER <<PK>> CHECK (>= 0)
+        --
+        * word : TEXT CHECK (1..32 caracteres)
+    }
+
+    entity "translation_report\n(ReporteDeTraducción)" as REP {
+        * id : INTEGER <<PK, autoincrement>>
+        --
+        * message_id : INTEGER <<FK>> (indexado)
+        * station : TEXT CHECK IN (paciente, recepcion)
+        * reported_at : TEXT (ISO 8601 UTC)
+    }
+
+    entity "audit_event\n(EventoDeAuditoría)" as EDA {
+        * id : INTEGER <<PK, autoincrement>>
+        --
+        * type : TEXT CHECK IN (prediction, sentence, report,\nconsent, translation_displayed, fin_atencion)
+        * occurred_at : TEXT (ISO 8601 UTC)
+        station : TEXT {nullable}
+        consent : TEXT {accepted | declined} {nullable}
+        lstm_ms, confidence : REAL {nullable}
+        translation_ms, tts_ms, total_ms, e2e_ms : REAL {nullable}
+        source : TEXT {nullable}
+        word_count : INTEGER {nullable}
+        INDEX (type, occurred_at)
+    }
 }
 
-entity "ClaseDeSeña" as CDS {
-    * etiqueta : varchar(32) <<PK>>
+package "Sistema de archivos" {
+    entity "MuestraDeEntrenamiento" as MDE {
+        * etiqueta : varchar(32) <<PK, FK>>
+        * timestamp_ms : bigint <<PK>>
+        --
+        shapeLandmarks : '(45,75,4)'
+        shapeBlendshapes : '(45,52)'
+    }
+
+    entity "ClaseDeSeña" as CDS {
+        * etiqueta : varchar(32) <<PK>>
+    }
+
+    entity "VocabularioDelModelo" as VOC {
+        * indice : int <<PK>>
+        --
+        etiqueta : varchar(32) <<FK>>
+    }
+
+    entity "ModeloDeReconocimiento" as MOD {
+        * archivo : varchar <<PK>>
+        --
+        framesPorMuestra : int
+    }
 }
 
-entity "VocabularioDelModelo" as VOC {
-    * indice : int <<PK>>
-    --
-    etiqueta : varchar(32) <<FK>>
-}
-
-entity "ModeloDeReconocimiento" as MOD {
-    * archivo : varchar <<PK>>
-    --
-    framesPorMuestra : int
-}
-
-entity "EventoDeAuditoría" as EDA {
-    (sin PK: una línea JSON más\nen logs/audit.jsonl, sin id)
-    --
-    tipo : varchar {prediction | sentence |\nreport | consent | translation_displayed |\nfin_atencion}
-    timestamp : varchar (ISO 8601 UTC)
-    lstm_ms, confidence : float (tipo=prediction)
-    translation_ms, tts_ms, total_ms,\nsource, word_count : (tipo=sentence)
-    station : varchar (report | consent | translation_displayed | fin_atencion)
-    consent : varchar {accepted | declined} (tipo=consent)
-    e2e_ms : float (tipo=translation_displayed)
-}
-
-entity "ReporteDeTraducción" as RDT {
-    (sin PK: una línea JSON más\nen logs/reports.jsonl, sin id)
-    --
-    texto : varchar(500)
-    estacion : varchar {paciente | recepcion}
-    palabras : varchar[] {nullable}
-    timestamp : varchar (ISO 8601 UTC)
-}
+MSG ||--|{ REP : "message_id\n(ON DELETE CASCADE)"
+MSG ||--o{ WRD : "message_id\n(ON DELETE CASCADE)"
 
 CDS ||--o{ MDE : etiqueta
 CDS ||--o{ VOC : etiqueta
 MOD ||--|{ VOC : "vocabulario de"
 
-' --- Enlaces ocultos: fuerzan dos columnas verticales angostas (layout, no semántica) ---
+' --- Enlaces ocultos: layout (no semántica) ---
+REP -[hidden]-> EDA
 MDE -[hidden]-> CDS
-CDS -[hidden]-> VOC
 VOC -[hidden]-> MOD
-EDA -[hidden]-> RDT
 
-note top of MDE
-  PK compuesta = ruta fisica
-  (directorio <etiqueta> +
-  archivo <timestamp_ms>.npy,
-  con landmarks y blendshapes
-  en el mismo archivo)
+note right of MSG
+  Único lugar donde persiste el texto
+  de un mensaje: solo los reportados
+  (CU-10). Si las dos estaciones reportan
+  el mismo mensaje, se reutiliza la fila
+  (UNIQUE client_message_id + text) y se
+  agrega otro translation_report.
 end note
 
-note bottom of MOD
-  archivo: lstm.pth
-  (mejor modelo del ultimo
-  reentrenamiento)
+note bottom of WRD
+  recognized_word.word se corresponde
+  con ClaseDeSeña.etiqueta, pero sin FK
+  física: ClaseDeSeña vive en el sistema
+  de archivos (nombre de directorio).
 end note
 
-note bottom of RDT
-  EventoDeAuditoría y ReporteDeTraducción:
-  sin FK hacia el resto del modelo
-  (persistencia independiente, anonima,
-  formato JSON Lines). El consentimiento
-  (RF-03) no tiene entidad propia: es
-  un EventoDeAuditoría con tipo="consent".
+note bottom of MDE
+  PK compuesta = ruta física
+  dataset/custom/<etiqueta>/<timestamp_ms>.npy
 end note
 
 @enduml

@@ -5,151 +5,231 @@
 % ============================================================================
 \section{Modelo de Base de Datos}
 
-\subsection{Justificación de la persistencia basada en archivos}
+\subsection{Justificación del modelo de persistencia híbrido}
 
-LSA Salud no utiliza un motor de base de datos relacional. Toda la información
-que el sistema persiste se guarda como archivos en el sistema de archivos
-local del backend (\texttt{dataset/}, \texttt{models/}, \texttt{voices/}).
-Esta decisión de diseño responde a las siguientes razones, verificables
-contra el código y contra la ERS de Fase 1:
+LSA Salud adopta una \textbf{arquitectura de persistencia híbrida}, que combina
+un motor de base de datos relacional embebido (\textbf{SQLite}) para la
+información estructurada del sistema con el \textbf{sistema de archivos local}
+para los artefactos binarios de aprendizaje automático y procesamiento de audio.
+
+Esta decisión de diseño responde a las siguientes razones técnicas y
+arquitectónicas, verificables contra el código fuente y contra los requisitos
+de la ERS:
 
 \begin{itemize}
-    \item \textbf{Escala de despliegue.} RNF-T-02 establece que cada
-    estación fija opera de forma autónoma en su propia PC local, con un
-    par paciente-personal por instancia de backend y sin datos
-    compartidos con las demás estaciones del sistema (admisión, recepción,
-    triaje, guardia). No existe un escenario de múltiples instancias
-    concurrentes escribiendo sobre el mismo dataset, por lo que los
-    problemas que una base de datos relacional resuelve (control de
-    concurrencia entre muchos escritores, replicación, transacciones
-    distribuidas) no se presentan en este contexto.
+    \item \textbf{Motor relacional embebido (SQLite en \texttt{data/lsa\_salud.db}).}
+    Los reportes de traducción (RF-06.1) y los eventos de auditoría y métricas
+    (RF-04.1) son registros estructurados que exigen integridad referencial,
+    consistencia transaccional (ACID) y consultas analíticas agregadas (por
+    ejemplo, distribución de reportes por palabra, latencias percentiladas y
+    conteo de eventos por estación). Usar archivos de texto plano (\texttt{.jsonl})
+    obligaba al backend a implementar un motor de consulta ad-hoc en memoria,
+    leyendo todo el archivo secuencialmente en cada llamada a \texttt{GET /metrics}
+    o \texttt{GET /reports/summary}, con riesgo de líneas truncadas ante
+    apagados imprevistos. SQLite resuelve esto en un único archivo local, sin
+    requerir servicios ni demonios adicionales, mediante transacciones
+    protegidas por WAL (\textit{Write-Ahead Logging}).
 
-    \item \textbf{Formato nativo del modelo.} Las muestras de entrenamiento
-    se capturan y se consumen como arreglos \texttt{numpy}
-    (\texttt{float32}) y los pesos del modelo como \texttt{state\_dict} de
-    PyTorch. Guardarlos directamente como \texttt{.npy} y \texttt{.pth} evita
-    una capa de serialización/deserialización adicional (por ejemplo, un
-    ORM o un mapeo objeto-relacional) entre el formato de disco y el
-    formato que \texttt{train\_lstm.py} y \texttt{app.py} usan en memoria.
+    \item \textbf{Localidad y autonomía (RNF-T-02 y RNF-03.1).} Cada estación
+    fija opera de forma autónoma en una PC estándar sin conexión a servidores
+    centrales ni puertos de base de datos abiertos hacia la red. Un servidor de
+    base de datos relacional externo (como PostgreSQL o MySQL) introduciría una
+    superficie de ataque innecesaria, dependencias de infraestructura y
+    consumo de memoria ocioso en el puesto de atención. SQLite reside en el
+    mismo proceso del backend Python (\texttt{import sqlite3}), garantizando
+    que ningún dato abandone la máquina física.
 
-    \item \textbf{Sin necesidad de consultas relacionales.} El acceso a los
-    datos persistidos es siempre por lectura completa de un directorio
-    (todas las muestras de una etiqueta, para \texttt{GET /dataset\_stats}
-    o para \texttt{train\_lstm.py}) o por nombre de archivo exacto (una
-    muestra puntual). No hay filtros, \emph{joins} ni agregaciones más
-    complejas que un conteo de archivos por carpeta, por lo que el costo de
-    modelar y mantener un esquema relacional no se justifica.
+    \item \textbf{Formato nativo para tensores de aprendizaje automático.} Las
+    muestras de señas se capturan y consumen como arreglos multidimensionales
+    de NumPy (\texttt{float32}) de forma $(45, 75, 4)$ para landmarks y
+    $(45, 52)$ para blendshapes faciales; los pesos del modelo corresponden a un
+    \texttt{state\_dict} de PyTorch y la voz sintética a un grafo ONNX.
+    Almacenar estos blobs binarios en tablas relacionales solo añadiría capas
+    de serialización y sobrecarga de I/O sin aportar capacidades de consulta.
+    Por ello, se mantienen directamente en el sistema de archivos
+    (\texttt{dataset/}, \texttt{models/}, \texttt{voices/}).
 
-    \item \textbf{Privacidad y localidad.} RNF-03.1 exige que todo el
-    procesamiento y almacenamiento ocurra en la máquina local, sin que el
-    dato de salud del paciente salga del equipo. Un archivo en el sistema de
-    archivos local ya cumple ese objetivo sin necesidad de un servidor de
-    base de datos adicional (con su propia superficie de configuración,
-    puertos y credenciales) que administrar.
-
-    \item \textbf{La conversación no se persiste, por decisión de
-    producto.} El historial de mensajes entre paciente y personal de
-    recepción o enfermería
-    vive únicamente como estado de React sincronizado entre pestañas por
-    \texttt{BroadcastChannel} (ver \texttt{web/hooks/useChatChannel.ts}) y
-    se pierde al cerrar o recargar la pestaña. Esto no es una limitación
-    técnica: es consistente con RNF-03.1 (no persistencia de conversaciones)
-    y evita que LSA Salud acumule un historial de conversaciones médicas del
-    paciente sin necesidad funcional de conservarlo.
+    \item \textbf{Política estricta sobre la conversación médica (RNF-03.1).}
+    El historial de conversación ordinario entre el paciente y el personal de
+    recepción o enfermería \textbf{no se persiste en disco}. Vive
+    exclusivamente en la memoria del navegador como estado de React sincronizado
+    en tiempo real entre pestañas mediante \texttt{BroadcastChannel("nexora-chat")}
+    (ver \texttt{web/hooks/useChatChannel.ts}). Al cerrar la pestaña o al pulsar
+    el botón de finalización de atención (CU-12), la memoria se libera por
+    completo. Esto evita acumular información médica sensible innecesaria.
 \end{itemize}
 
-En consecuencia, este entregable no presenta un esquema de base de datos
-relacional, sino un modelo de los datos que LSA Salud persiste, expresado con
-las mismas técnicas de modelado (entidad-relación) que se usarían para una
-base de datos, pero mapeado explícitamente a archivos y directorios en la
-Sección~\ref{sec:dat-mapeo-fisico}.
+% ----------------------------------------------------------------------------
+\subsection{¿Dónde y cómo persiste el mensaje?}
+\label{sec:dat-donde-persiste}
 
+Uno de los puntos críticos del diseño de datos de LSA Salud es la respuesta
+precisa a la persistencia del mensaje:
+
+\begin{enumerate}[leftmargin=*]
+    \item \textbf{En el flujo normal de atención (CU-01 y CU-04):} el mensaje
+    \textbf{no se persiste en ninguna base de datos ni archivo}. El texto
+    traducido o dictado se envía mediante el canal \texttt{BroadcastChannel}
+    de la API web hacia las pestañas de ambas caras de la estación. Reside
+    en memoria RAM del cliente y desaparece cuando concluye la sesión.
+    
+    \item \textbf{En el flujo de reporte de error o ambigüedad (CU-10):} aquí se
+    produce la \textbf{única excepción controlada} a la regla de no
+    persistencia. Cuando el paciente o el personal hacen clic en ``Reportar
+    traducción'', el sistema envía una petición \texttt{POST /report} al backend.
+    En ese instante exacto:
+    \begin{itemize}[leftmargin=*, itemsep=2pt]
+        \item El texto del mensaje señalado se inserta en la tabla relacional
+        \textbf{\texttt{reported\_message}} dentro de \texttt{data/lsa\_salud.db}.
+        Si ambas caras de la estación reportan el mismo mensaje, la restricción
+        de unicidad \texttt{UNIQUE (client\_message\_id, text)} evita
+        duplicar el contenido textual, vinculando ambos reportes a la misma fila.
+        \item Las palabras reconocidas de la seña que dieron origen a la
+        traducción se registran en la tabla secundaria
+        \textbf{\texttt{recognized\_word}}, asociadas por clave foránea al
+        mensaje (\texttt{ON DELETE CASCADE}).
+        \item Cada acción de reporte individual se graba en la tabla
+        \textbf{\texttt{translation\_report}}, indicando qué estación
+        (\texttt{paciente} o \texttt{recepcion}) emitió el reclamo y la marca
+        temporal exacta.
+        \item En el frontend, el mensaje se marca como reportado en ambas caras
+        de la estación, se exhibe tachado (\textit{strikethrough}) y se
+        solicita al paciente la repetición de la seña, evitando que el
+        personal tome como válida una traducción equívoca.
+    \end{itemize}
+\end{enumerate}
+
+De este modo, LSA Salud cumple de forma simultánea con el principio de
+minimización de datos clínicos (RNF-03.1) y con la necesidad de ingeniería de
+capturar los casos de falla reales como insumo de reentrenamiento del modelo
+de IA (RF-06.1 y CU-08).
+
+% ----------------------------------------------------------------------------
 \subsection{Modelo conceptual (Entidad-Relación)}
 
-La Figura~\ref{fig:dat-er-conceptual} presenta el modelo conceptual de la
-información persistida por LSA Salud. Se reutilizan, con el mismo nombre y
-significado, los conceptos \textit{ClaseDeSeña}, \textit{MuestraDeEntrenamiento}
-y \textit{ModeloDeReconocimiento} ya definidos en el Modelo de Dominio
-(Entregable 01); a diferencia de aquel diagrama —que modela el problema sin
-elementos de diseño—, aquí estos mismos conceptos se presentan enfocados en
-lo que efectivamente queda grabado en disco.
+La Figura~\ref{fig:dat-er-conceptual} presenta el modelo conceptual de datos de
+LSA Salud. Se aprecian con claridad tres subsistemas: los artefactos binarios
+del sistema de archivos, las tablas de la base de datos relacional SQLite y la
+representación volátil del mensaje en el navegador.
 
 \diagrama{09_er_conceptual}{\textwidth}{Diagrama Entidad-Relación conceptual de la persistencia de LSA Salud}{fig:dat-er-conceptual}
 
-Se agregan dos conceptos sin equivalente directo en el Modelo de Dominio,
-porque pertenecen al diseño de persistencia y no al problema de negocio:
-\textit{VocabularioDelModelo} (la lista ordenada de clases que un
-\textit{ModeloDeReconocimiento} concreto es capaz de reconocer) y
-\textit{ArchivoDeVoz} (el modelo de síntesis de voz Piper, un activo de
-terceros pre-entrenado, sin relación con el resto de las entidades). Cada
-\textit{MuestraDeEntrenamiento} persiste, en un mismo registro, tanto los
-landmarks de manos y pose como los blendshapes faciales del gesto: MediaPipe
-extrae ambas señales en una única pasada por frame, por lo que no existe una
-entidad de blendshapes separada. Quedan fuera de este modelo, por no
-persistirse, los conceptos \textit{Conversación}, \textit{Mensaje} y los
-cachés de traducción y de audio; se documentan igualmente en la
-Sección~\ref{sec:dat-mapeo-fisico} para dejar constancia explícita de que
-fueron considerados y descartados.
+El modelo explicita las siguientes relaciones esenciales:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{\textit{Mensaje} $\rightarrow$ \textit{MensajeReportado} (0..1):}
+    representa el paso de la memoria volátil a disco. De todos los mensajes
+    emitidos en una consulta médica, solo aquellos que son objeto de un reporte
+    llegan a grabarse en la base de datos.
+    \item \textbf{\textit{MensajeReportado} $\rightarrow$ \textit{ReporteDeTraducción} (1..*):}
+    un mensaje reportado cuenta con al menos un reporte y puede acumular
+    múltiples reportes si es señalado de forma independiente por el paciente y
+    por el personal de recepción.
+    \item \textbf{\textit{MensajeReportado} $\rightarrow$ \textit{PalabraReconocida} (0..20):}
+    composición que registra los términos crudos identificados por el clasificador
+    antes de la síntesis gramatical.
+    \item \textbf{\textit{PalabraReconocida} $\rightarrow$ \textit{ClaseDeSeña} (0..1):}
+    correspondencia semántica con las clases del vocabulario de entrenamiento
+    que permite al equipo de IA priorizar qué señas requieren más muestras.
+    \item \textbf{\textit{EventoDeAuditoría}:} entidad independiente para
+    trazabilidad y métricas de latencia y consentimiento (RF-03/04).
+\end{itemize}
 
-Se agregan además dos entidades que cubren los requisitos RF-03,
-RF-04 y RF-06: \textit{EventoDeAuditoría} (RF-04.1, cuyo campo \texttt{tipo}
-también cubre el consentimiento de RF-03.1 con el valor \texttt{consent} ---
-no existe una entidad \textit{EventoDeConsentimiento} separada ni un
-archivo \texttt{logs/consent.jsonl}: el consentimiento es un evento de
-auditoría más) y \textit{ReporteDeTraducción} (RF-06.1). Ambas son, por
-diseño, anónimas --- sin identidad del paciente ni contenido de imagen o
-video --- consistentes con RNF-03.1, y se persisten con el mismo patrón
-basado en archivos que el resto del modelo (ver
-Sección~\ref{sec:dat-mapeo-fisico}).
-
+% ----------------------------------------------------------------------------
 \subsection{Modelo lógico (notación pata de gallo)}
 
-La Figura~\ref{fig:dat-modelo-logico} traduce el modelo conceptual a un
-esquema lógico con claves primarias, claves foráneas y cardinalidad en
-notación pata de gallo (\emph{crow's foot}), tal como se usaría para diseñar
-las tablas de una base de datos relacional.
+La Figura~\ref{fig:dat-modelo-logico} traduce el modelo conceptual a un esquema
+lógico con claves primarias (\texttt{PK}), foráneas (\texttt{FK}), tipos de datos,
+restricciones y cardinalidad en notación pata de gallo (\textit{crow's foot}).
 
 \diagrama{09_modelo_logico}{\textwidth}{Modelo lógico de la persistencia de LSA Salud (notación pata de gallo)}{fig:dat-modelo-logico}
 
-\textbf{Aclaración importante:} estas ``entidades'' no son tablas de una
-base de datos. Cada una es, en realidad, un patrón de archivo o de
-directorio del sistema de archivos local:
-
-\begin{itemize}
-    \item La clave primaria compuesta de \textit{MuestraDeEntrenamiento}
-    (\texttt{etiqueta} + \texttt{timestamp\_ms}) se materializa como la ruta
-    física \texttt{dataset/\allowbreak{}custom/\allowbreak{}<etiqueta>/\allowbreak{}<timestamp\_ms>.npy}
-    para los landmarks, con los blendshapes del mismo gesto en el archivo
-    hermano
-    \texttt{dataset/\allowbreak{}custom/\allowbreak{}<etiqueta>/\allowbreak{}<timestamp\_ms>.blendshapes.npy}:
-    \texttt{etiqueta} es el nombre del subdirectorio y \texttt{timestamp\_ms}
-    es el nombre base compartido por ambos archivos, emparejados por
-    convención de nombre y no por una clave foránea almacenada en ningún
-    lado.
-    \item \textit{ClaseDeSeña} no tiene un archivo propio: es un valor
-    derivado (el nombre de cada subdirectorio bajo \texttt{dataset/custom/}).
-    \item \textit{VocabularioDelModelo} es el arreglo JSON completo de
-    \texttt{models/custom\_classes.json}; el ``índice'' de cada fila es la
-    posición dentro del arreglo, que a su vez es el índice de salida de la
-    capa final del modelo.
-    \item \textit{ModeloDeReconocimiento} es un único archivo binario
-    (\texttt{state\_dict} de PyTorch), no una fila de una tabla.
+Las tablas de SQLite implementan las siguientes restricciones relacionales:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item \textbf{\texttt{reported\_message}:} clave primaria autoincremental
+    \texttt{id}. Restricción \texttt{UNIQUE (client\_message\_id, text)} para
+    evitar duplicaciones al sincronizar entre las dos caras de la estación.
+    \item \textbf{\texttt{recognized\_word}:} clave primaria compuesta
+    (\texttt{message\_id}, \texttt{position}) que garantiza el orden exacto de
+    las palabras, con clave foránea referenciando a \texttt{reported\_message(id)}
+    con política \texttt{ON DELETE CASCADE}.
+    \item \textbf{\texttt{translation\_report}:} clave foránea indexada
+    \texttt{message\_id} y validación \texttt{CHECK (station IN ('paciente', 'recepcion'))}.
+    \item \textbf{\texttt{audit\_event}:} tabla con índice compuesto
+    \texttt{(type, occurred\_at)} para resolver de forma instantánea las
+    consultas analíticas por rango de fechas de \texttt{GET /metrics}.
 \end{itemize}
 
-Ningún motor de base de datos participa en la lectura o escritura de estas
-``entidades''; toda la integridad referencial (por ejemplo, que
-\texttt{VocabularioDelModelo} esté alineado con la capa de salida del
-\texttt{ModeloDeReconocimiento} cargado) se garantiza por convención en el
-código (\texttt{app.py}, \texttt{train\_lstm.py}) y no por restricciones de
-esquema.
-
+% ----------------------------------------------------------------------------
 \subsection{Diccionario de datos}
 
-Las Tablas~\ref{tab:dat-dic-muestra} a~\ref{tab:dat-dic-conversacion}
-detallan, para cada entidad lógica, sus atributos, tipos, formato/forma y
-restricciones. Las restricciones de validación provienen de
-\texttt{capture\_validation.py} y de las verificaciones adicionales en el
-endpoint \texttt{POST /capture} de \texttt{app.py}.
+Las Tablas~\ref{tab:dat-dic-reported-msg} a~\ref{tab:dat-dic-conversacion}
+detallan los atributos, tipos, formatos y restricciones de validación aplicadas
+por el esquema SQL y por los validadores de backend (\texttt{storage.py} y
+\texttt{capture\_validation.py}).
+
+\begin{longtable}{p{3.2cm} p{2.2cm} p{3.2cm} p{5.2cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo SQL} & \textbf{Formato} & \textbf{Restricciones / Descripción} \\
+    \midrule
+    \endhead
+    id & \texttt{INTEGER} & autonumérico & Clave primaria (\texttt{PRIMARY KEY AUTOINCREMENT}). \\
+    client\_message\_id & \texttt{INTEGER} & timestamp ms & Identificador asignado por el frontend en el navegador (\texttt{nullable}). \\
+    text & \texttt{TEXT} & string UTF-8 & Texto del mensaje señalado; restricción \texttt{CHECK (length(text) BETWEEN 1 AND 500)}. \\
+    first\_reported\_at & \texttt{TEXT} & ISO 8601 UTC & Fecha y hora del primer reporte registrado (\texttt{NOT NULL}). \\
+    \bottomrule
+    \caption{Diccionario de datos — reported\_message (SQLite)}
+    \label{tab:dat-dic-reported-msg}
+\end{longtable}
+
+\begin{longtable}{p{3.2cm} p{2.2cm} p{3.2cm} p{5.2cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo SQL} & \textbf{Formato} & \textbf{Restricciones / Descripción} \\
+    \midrule
+    \endhead
+    message\_id & \texttt{INTEGER} & FK entera & Clave foránea hacia \texttt{reported\_message(id)} con eliminación en cascada. \\
+    position & \texttt{INTEGER} & entero $\geq 0$ & Posición secuencial de la palabra dentro de la frase; parte de la PK compuesta. \\
+    word & \texttt{TEXT} & string & Etiqueta de la seña reconocida; \texttt{CHECK (length(word) BETWEEN 1 AND 32)}. \\
+    \bottomrule
+    \caption{Diccionario de datos — recognized\_word (SQLite)}
+    \label{tab:dat-dic-rec-word}
+\end{longtable}
+
+\begin{longtable}{p{3.2cm} p{2.2cm} p{3.2cm} p{5.2cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo SQL} & \textbf{Formato} & \textbf{Restricciones / Descripción} \\
+    \midrule
+    \endhead
+    id & \texttt{INTEGER} & autonumérico & Clave primaria. \\
+    message\_id & \texttt{INTEGER} & FK indexada & Referencia al mensaje reportado (\texttt{reported\_message(id)}). \\
+    station & \texttt{TEXT} & string enumerado & Estación que reportó; \texttt{CHECK (station IN ('paciente', 'recepcion'))}. \\
+    reported\_at & \texttt{TEXT} & ISO 8601 UTC & Marca temporal en la que se realizó la acción de reporte. \\
+    \bottomrule
+    \caption{Diccionario de datos — translation\_report (SQLite)}
+    \label{tab:dat-dic-trans-report}
+\end{longtable}
+
+\begin{longtable}{p{3.2cm} p{2.2cm} p{3.2cm} p{5.2cm}}
+    \toprule
+    \textbf{Atributo} & \textbf{Tipo SQL} & \textbf{Formato} & \textbf{Restricciones / Descripción} \\
+    \midrule
+    \endhead
+    id & \texttt{INTEGER} & autonumérico & Clave primaria. \\
+    type & \texttt{TEXT} & enumerado & \texttt{CHECK (type IN ('prediction', 'sentence', 'report', 'consent', 'translation\_displayed', 'fin\_atencion'))}. \\
+    occurred\_at & \texttt{TEXT} & ISO 8601 UTC & Marca temporal de ocurrencia; indexado junto con \texttt{type}. \\
+    station & \texttt{TEXT} & enumerado & \texttt{NULL} o \texttt{'paciente'} / \texttt{'recepcion'}. \\
+    consent & \texttt{TEXT} & enumerado & \texttt{NULL} o \texttt{'accepted'} / \texttt{'declined'} (cubre RF-03.1). \\
+    lstm\_ms & \texttt{REAL} & milisegundos & Tiempo de inferencia de la red LSTM. \\
+    confidence & \texttt{REAL} & porcentaje & Nivel de confianza retornado por el modelo. \\
+    translation\_ms & \texttt{REAL} & milisegundos & Tiempo de generación de oración en lenguaje natural. \\
+    tts\_ms & \texttt{REAL} & milisegundos & Tiempo de síntesis de voz Piper. \\
+    total\_ms & \texttt{REAL} & milisegundos & Latencia de procesamiento completa en backend. \\
+    e2e\_ms & \texttt{REAL} & milisegundos & Latencia extremo a extremo percibida en frontend ($0 \leq \mathrm{e2e} \leq 60000$). \\
+    source & \texttt{TEXT} & string & Origen de la traducción (\texttt{'template'}, \texttt{'cache'}, \texttt{'llm'}). \\
+    word\_count & \texttt{INTEGER} & entero $\geq 0$ & Cantidad de palabras en la frase procesada. \\
+    \bottomrule
+    \caption{Diccionario de datos — audit\_event (SQLite)}
+    \label{tab:dat-dic-audit-event}
+\end{longtable}
 
 \begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
     \toprule
@@ -162,28 +242,19 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
 
     timestamp\_ms & \texttt{int64} & epoch ms (nombre de archivo) &
     Generado por el backend como \texttt{int(time.time() * 1000)}; único
-    dentro de la carpeta de la etiqueta (dos capturas en el mismo
-    milisegundo sobrescribirían el archivo previo); es el nombre base
-    compartido por el archivo de landmarks y el de blendshapes de la misma
-    muestra. \\
+    dentro de la carpeta de la etiqueta; es el nombre base compartido por
+    el archivo de landmarks y el de blendshapes. \\
 
-    frames & \texttt{float32} & \texttt{(45, 75, 4)} & El backend exige un
-    mínimo de 5 frames por muestra (\texttt{len(frames) < 5} rechaza la
-    petición); el flujo de captura normal siempre envía 45 frames (RF-T-03),
-    por lo que en la práctica la forma es \texttt{(45, 75, 4)}. Todos los
-    valores deben ser finitos (\texttt{np.isfinite}); cada frame tiene 75
-    landmarks con 4 componentes (\texttt{x, y, z, visibility}). \\
+    frames & \texttt{float32} & \texttt{(45, 75, 4)} & Mínimo 5 frames
+    (\texttt{len(frames) < 5} rechaza); flujo normal de 45 frames (RF-T-03).
+    Valores finitos (\texttt{np.isfinite}); 75 landmarks por frame
+    con 4 componentes (\texttt{x, y, z, visibility}). \\
 
     blendshapes & \texttt{float32} & \texttt{(45, 52)} &
-    Coeficientes faciales capturados en la misma pasada de MediaPipe que los
-    landmarks, con los marcadores no manuales gramaticales de la LSA
-    (preguntas, negación, intensidad); la cantidad de filas debe igualar la
-    cantidad de frames de landmarks (\texttt{frame\_count}), cada fila debe
-    tener exactamente 52 coeficientes (\texttt{BLENDSHAPE\_COUNT}), y todos
-    los valores deben ser finitos (validado por
-    \texttt{validate\_capture\_blendshapes}). \\
+    52 coeficientes faciales de marcadores no manuales de LSA extraídos en la
+    misma pasada de MediaPipe; valores finitos. \\
     \bottomrule
-    \caption{Diccionario de datos — MuestraDeEntrenamiento (landmarks y blendshapes)}
+    \caption{Diccionario de datos — MuestraDeEntrenamiento (filesystem)}
     \label{tab:dat-dic-muestra}
 \end{longtable}
 
@@ -197,11 +268,9 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
 
     etiqueta & \texttt{str} & string dentro de un array JSON &
     \texttt{models/custom\_classes.json} es un arreglo JSON de strings,
-    escrito por \texttt{train\_lstm.py} antes de iniciar el entrenamiento,
-    a partir de los subdirectorios existentes en
-    \texttt{dataset/custom/}. \\
+    escrito por \texttt{train\_lstm.py} antes de entrenar. \\
     \bottomrule
-    \caption{Diccionario de datos — VocabularioDelModelo}
+    \caption{Diccionario de datos — VocabularioDelModelo (filesystem)}
     \label{tab:dat-dic-vocabulario}
 \end{longtable}
 
@@ -214,14 +283,12 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
     \texttt{models/lstm.pth}: mejor checkpoint del último reentrenamiento. \\
 
     contenido & binario & \texttt{state\_dict} serializado &
-    Escrito con \texttt{torch.save} al finalizar el entrenamiento, sobre el
-    checkpoint de mejor exactitud de validación; no es legible sin cargarlo
-    con PyTorch. \\
+    Escrito con \texttt{torch.save}; checkpoint de mejor exactitud de validación. \\
 
     frames\-Por\-Muestra & \texttt{int} & escalar &
     45 (ventana fija de reconocimiento, ver RF-01.3). \\
     \bottomrule
-    \caption{Diccionario de datos — ModeloDeReconocimiento}
+    \caption{Diccionario de datos — ModeloDeReconocimiento (filesystem)}
     \label{tab:dat-dic-modelo}
 \end{longtable}
 
@@ -231,41 +298,13 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
     \midrule
     \endhead
     modelo & binario & \texttt{.onnx} &
-    \texttt{voices/es\_AR-daniela-high.onnx}; activo de terceros
-    (voz Piper TTS en español argentino), no generado por LSA Salud. \\
+    \texttt{voices/es\_AR-daniela-high.onnx}; modelo Piper TTS. \\
 
     configuración & JSON & sidecar &
-    \texttt{voices/es\_AR-daniela-high.onnx.json}; metadata fonémica y de
-    configuración que \texttt{PiperVoice.load} requiere junto al
-    \texttt{.onnx}. \\
+    \texttt{voices/es\_AR-daniela-high.onnx.json}; metadatos fonémicos. \\
     \bottomrule
-    \caption{Diccionario de datos — ArchivoDeVoz}
+    \caption{Diccionario de datos — ArchivoDeVoz (filesystem)}
     \label{tab:dat-dic-voz}
-\end{longtable}
-
-\begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
-    \toprule
-    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
-    \midrule
-    \endhead
-    clave (traducción) & \texttt{str} & texto normalizado &
-    Secuencia de palabras normalizada, ordenada y sin duplicados; clave de
-    \texttt{\_translation\_cache} (\texttt{OrderedDict}, máximo 200
-    entradas, política LRU). \\
-
-    valor (traducción) & \texttt{str} & oración en español &
-    Resultado de la traducción (plantilla, caché o modelo de lenguaje). \\
-
-    clave (audio) & \texttt{str} & texto de la oración &
-    Clave de \texttt{\_audio\_cache} (\texttt{OrderedDict}, máximo 50
-    entradas, política LRU). \\
-
-    valor (audio) & \texttt{str} & WAV codificado en base64 &
-    Ninguno de los dos cachés se persiste en disco: viven únicamente en la
-    memoria del proceso del backend y se pierden al reiniciarlo. \\
-    \bottomrule
-    \caption{Diccionario de datos — Cachés en memoria (traducción y audio)}
-    \label{tab:dat-dic-caches}
 \end{longtable}
 
 \begin{longtable}{p{2.8cm} p{2.2cm} p{3.2cm} p{5.6cm}}
@@ -281,145 +320,72 @@ endpoint \texttt{POST /capture} de \texttt{app.py}.
 
     text & \texttt{str} & texto libre & Contenido del mensaje. \\
 
-    time & \texttt{str} & hora de envío & Sin persistencia: el arreglo
-    \texttt{chatHistory} vive solo como estado de React de cada pestaña y
-    se sincroniza entre pestañas del mismo navegador mediante
-    \texttt{Broadcast\allowbreak Channel("nexora-chat")}; no hay backend ni disco
-    involucrados. Se pierde al cerrar o recargar la pestaña, y el personal
-    de recepción o enfermería lo borra explícitamente en ambas caras de la
-    estación al finalizar cada atención (CU-12). \\
+    time & \texttt{str} & hora de envío & Hora local formateada. \\
+
+    reported & \texttt{boolean} & booleano opcional & \texttt{true} si fue
+    reportado por CU-10; sincronizado por \texttt{BroadcastChannel}. \\
     \bottomrule
-    \caption{Diccionario de datos — Conversación / Mensaje (no persistido)}
+    \caption{Diccionario de datos — Conversación / Mensaje (memoria volátil)}
     \label{tab:dat-dic-conversacion}
 \end{longtable}
 
-\subsubsection{Entidades de consentimiento, auditoría y reporte (RF-03/04/06)}
-
-Las Tablas~\ref{tab:dat-dic-auditoria} y~\ref{tab:dat-dic-reporte} detallan
-estas dos entidades. A diferencia de \textit{MuestraDeEntrenamiento}
-(un archivo \texttt{.npy} por muestra), cada una es una \textbf{línea JSON}
-dentro de un único archivo compartido y de solo anexado
-(\texttt{logs/audit.jsonl}, \texttt{logs/reports.jsonl}): no hay clave
-primaria de archivo, sino orden de aparición en el archivo; la escritura
-está protegida por un \texttt{threading.Lock} compartido entre ambos
-archivos (\texttt{\_append\_jsonl} en \texttt{app.py}).
-
-\begin{longtable}{p{2.8cm} p{2.2cm} p{3.6cm} p{5.2cm}}
-    \toprule
-    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
-    \midrule
-    \endhead
-    tipo & \texttt{str} & \texttt{"prediction"} \textbar\ \texttt{"sentence"} \textbar\ \texttt{"report"} \textbar\ \texttt{"consent"} \textbar\ \texttt{"translation\_displayed"} \textbar\ \texttt{"fin\_atencion"} &
-    Identifica el evento; \texttt{"consent"} cubre RF-03.1 (no existe una
-    entidad ni un archivo de consentimiento separados) y
-    \texttt{"fin\_atencion"} cubre el cierre de atención de CU-12. \\
-
-    timestamp & \texttt{str} & ISO 8601 UTC &
-    Generado por \texttt{\_log\_audit} con
-    \texttt{datetime.now(timezone.\allowbreak utc).\allowbreak isoformat()};
-    no es un nombre de archivo, es un campo más de la línea JSON. \\
-
-    campos según tipo & \texttt{float} \textbar\ \texttt{str} \textbar\ \texttt{int} &
-    varía por \texttt{tipo} &
-    \texttt{prediction}: \texttt{lstm\_ms}, \texttt{confidence}.
-    \texttt{sentence}: \texttt{translation\_ms}, \texttt{tts\_ms},
-    \texttt{total\_ms}, \texttt{source}, \texttt{word\_count}.
-    \texttt{report}: \texttt{station}.
-    \texttt{consent}: \texttt{station}, \texttt{consent}
-    (\texttt{"accepted"}\textbar\texttt{"declined"}).
-    \texttt{translation\_displayed}: \texttt{station}, \texttt{e2e\_ms}
-    (validado finito, $0 \leq$ e2e\_ms $\leq$ 60000, por
-    \texttt{validate\_audit\_payload}).
-    \texttt{fin\_atencion}: \texttt{station}. \\
-    \bottomrule
-    \caption{Diccionario de datos — EventoDeAuditoría}
-    \label{tab:dat-dic-auditoria}
-\end{longtable}
-
-\begin{longtable}{p{2.8cm} p{2.2cm} p{3.6cm} p{5.2cm}}
-    \toprule
-    \textbf{Atributo} & \textbf{Tipo} & \textbf{Formato / forma} & \textbf{Restricciones} \\
-    \midrule
-    \endhead
-    texto & \texttt{str} & texto libre, máx.\ 500 caracteres &
-    Texto del \texttt{ChatMessage} señalado en el momento del reporte
-    (validado por \texttt{validate\_report\_payload}); como la conversación
-    no se persiste (Tabla~\ref{tab:dat-dic-conversacion}), el reporte
-    guarda directamente el texto, no una referencia al \texttt{id} del
-    mensaje. \\
-
-    estacion & \texttt{str} & \texttt{"paciente"} \textbar\ \texttt{"recepcion"} &
-    Estación desde la que se reportó (derivada de \texttt{usePathname} en
-    \texttt{ChatBubble}). \\
-
-    palabras & \texttt{list[str]} \textbar\ \texttt{null} & hasta 20
-    palabras, cada una $\leq$ 32 caracteres &
-    Palabras crudas reconocidas del mensaje, cuando están disponibles;
-    ausente (\texttt{null}) si el mensaje no las tiene. \\
-
-    timestamp & \texttt{str} & ISO 8601 UTC &
-    Generado por \texttt{report\_translation} con
-    \texttt{datetime.now(timezone.\allowbreak utc).\allowbreak isoformat()}. \\
-    \bottomrule
-    \caption{Diccionario de datos — ReporteDeTraducción}
-    \label{tab:dat-dic-reporte}
-\end{longtable}
-
+% ----------------------------------------------------------------------------
 \subsection{Mapeo físico}
 \label{sec:dat-mapeo-fisico}
 
-La Tabla~\ref{tab:dat-mapeo-fisico} resume el mapeo entre cada entidad
-lógica y su representación física en disco (o su ausencia de
-representación física, para los elementos que LSA Salud mantiene
-intencionalmente sin persistir).
+La Tabla~\ref{tab:dat-mapeo-fisico} consolida el mapeo exhaustivo entre el
+modelo conceptual, el esquema relacional lógico y su implementación concreta
+en disco o memoria.
 
 \small
-\begin{longtable}{>{\raggedright\arraybackslash}p{4.3cm} >{\raggedright\arraybackslash}p{5.6cm} >{\raggedright\arraybackslash}p{3.9cm}}
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.0cm} >{\raggedright\arraybackslash}p{4.8cm} >{\raggedright\arraybackslash}p{5.0cm}}
     \toprule
-    \textbf{Entidad lógica} & \textbf{Patrón de ruta física} & \textbf{Formato de archivo} \\
+    \textbf{Entidad conceptual} & \textbf{Destino físico / Implementación} & \textbf{Formato y motor} \\
     \midrule
     \endhead
-    Muestra\-De\-Entrenamiento (landmarks) &
-    \texttt{dataset/\allowbreak custom/\allowbreak<etiqueta>/\allowbreak<timestamp\_ms>.npy} &
-    numpy \texttt{float32} \texttt{(45,75,4)} \\
+    MensajeReportado &
+    \texttt{data/lsa\_salud.db} $\rightarrow$ tabla \texttt{reported\_message} &
+    SQLite (relacional con WAL) \\
 
-    Muestra\-De\-Entrenamiento (blendshapes) &
-    \texttt{dataset/\allowbreak custom/\allowbreak<etiqueta>/\allowbreak<timestamp\_ms>.blendshapes.npy} &
-    numpy \texttt{float32} \texttt{(45,52)} \\
+    PalabraReconocida &
+    \texttt{data/lsa\_salud.db} $\rightarrow$ tabla \texttt{recognized\_word} &
+    SQLite (relacional con clave foránea) \\
 
-    Vocabulario\-Del\-Modelo &
-    \texttt{models/custom\_classes.json} &
-    JSON --- arreglo de strings \\
+    ReporteDeTraducción &
+    \texttt{data/lsa\_salud.db} $\rightarrow$ tabla \texttt{translation\_report} &
+    SQLite (relacional indexado) \\
 
-    Modelo\-De\-Reconocimiento &
-    \texttt{models/lstm.pth} &
-    PyTorch \texttt{state\_dict} serializado \\
+    EventoDeAuditoría (incluye \texttt{consent}, RF-03.1) &
+    \texttt{data/lsa\_salud.db} $\rightarrow$ tabla \texttt{audit\_event} &
+    SQLite (relacional indexado por tipo y fecha) \\
 
-    Archivo\-De\-Voz &
-    \texttt{voices/es\_AR-daniela-high.onnx} +
-    \texttt{voices/es\_AR-daniela-high.onnx.json} &
-    ONNX + configuración JSON (Piper) \\
+    MuestraDeEntrenamiento (landmarks) &
+    \texttt{dataset/\allowbreak custom/\allowbreak <etiqueta>/\allowbreak <timestamp\_ms>.npy} &
+    NumPy binario \texttt{float32 (45, 75, 4)} \\
 
-    Caché de traducciones &
-    en memoria (proceso del backend) &
-    no persistido en disco \\
+    MuestraDeEntrenamiento (blendshapes) &
+    \texttt{dataset/\allowbreak custom/\allowbreak <etiqueta>/\allowbreak <timestamp\_ms>.blendshapes.npy} &
+    NumPy binario \texttt{float32 (45, 52)} \\
 
-    Caché de audio TTS &
-    en memoria (proceso del backend) &
-    no persistido en disco \\
+    VocabularioDelModelo &
+    \texttt{models/\allowbreak custom\_classes.json} &
+    JSON plano (arreglo de strings) \\
 
-    Conversación / Mensaje &
-    estado de React en el navegador, sincronizado por
-    \texttt{BroadcastChannel} &
-    no persistido \\
+    ModeloDeReconocimiento &
+    \texttt{models/\allowbreak lstm.pth} &
+    PyTorch serializado (\texttt{state\_dict}) \\
 
-    Evento\-De\-Auditoría (incluye \texttt{consent}, RF-03.1) &
-    \texttt{logs/audit.jsonl} &
-    JSON Lines --- un evento anónimo por línea \\
+    ArchivoDeVoz &
+    \texttt{voices/es\_AR-daniela-high.onnx} + \texttt{.json} &
+    ONNX runtime + metadata JSON \\
 
-    Reporte\-De\-Traducción &
-    \texttt{logs/reports.jsonl} &
-    JSON Lines --- un reporte por línea \\
+    Caché de traducciones y audio &
+    Memoria del proceso FastAPI &
+    \texttt{OrderedDict} LRU en RAM (volátil) \\
+
+    Conversación ordinaria &
+    Memoria del navegador (\texttt{useChatChannel}) &
+    React State vía \texttt{BroadcastChannel} (volátil) \\
     \bottomrule
     \caption{Mapeo entre entidades lógicas y persistencia física}
     \label{tab:dat-mapeo-fisico}

@@ -141,12 +141,15 @@ Puntos relevantes:
     sincronización intra-navegador, sin cruzar ningún límite de nodo ni de
     proceso y sin tráfico de red.
     \item El sistema de archivos local de cada estación (\texttt{dataset/},
-    \texttt{models/}, \texttt{voices/}) es leído y escrito únicamente por el
-    proceso del backend de esa estación; no hay motor de base de datos ni
-    almacenamiento compartido entre estaciones. La carpeta \texttt{logs/}
-    (eventos de auditoría y consentimiento en \texttt{audit.jsonl}, reportes
-    de traducción en \texttt{reports.jsonl}) también es escrita únicamente
-    por ese proceso (RF-03, RF-04, RF-06).
+    \texttt{models/}, \texttt{voices/}) y la base de datos relacional embebida
+    (\texttt{data/lsa\_salud.db}) son leídos y escritos únicamente por el
+    proceso del backend de esa estación; no hay servidor de base de datos
+    externo ni almacenamiento compartido en red entre estaciones. La base de
+    datos SQLite almacena los eventos de auditoría y consentimiento
+    (\texttt{audit\_event}), los reportes de traducción
+    (\texttt{translation\_report}) y el texto de los mensajes reportados
+    (\texttt{reported\_message}) con sus palabras reconocidas
+    (\texttt{recognized\_word}) (RF-03, RF-04, RF-06).
     \item Dentro de cada estación, la cara Paciente usa WebSocket
     (\texttt{/ws/predict}) y HTTP REST contra su backend; la cara Recepción
     solo HTTP REST. El backend invoca a su propio Ollama local por HTTP
@@ -180,17 +183,17 @@ vistas anteriores.
     en la máquina (ver ERS 2.7, Suposiciones); no hay escalado horizontal
     posible sin rediseño. \\
 
-    Auditoría basada en archivos (\texttt{logs/audit.jsonl}) mediante
-    funciones simples dentro de \texttt{app.py}
-    (\texttt{\_log\_audit}/\texttt{\_append\_jsonl}), sin un módulo
-    separado &
-    RF-04.1 exige registrar logs de uso y métricas operativas
-    anónimas para auditoría, sin agregar un servicio ni una base de datos
-    nueva (coherente con la decisión de persistencia basada en archivos). &
-    Cada \textit{handler} existente agrega una línea de invocación a
-    \texttt{\_log\_audit}; el formato de línea (JSON Lines) permite anexar
-    sin reescribir el archivo completo; la escritura comparte un
-    \texttt{threading.Lock} con \texttt{/report}. \\
+    Persistencia relacional embebida en SQLite (\texttt{data/lsa\_salud.db})
+    mediante módulo de repositorio (\texttt{storage.py}) para auditoría y
+    reportes &
+    RF-04.1 y RF-06.1 exigen registrar métricas y reportes estructurados
+    con integridad referencial, claves foráneas y consultas analíticas
+    agregadas eficientes (percentiles, conteos), sin agregar un servidor
+    de base de datos externo ni violar la autonomía local. &
+    Garantía de transacciones ACID y modo WAL; endpoints como \texttt{/metrics}
+    y \texttt{/reports/summary} ejecutan consultas SQL instantáneas indexadas
+    en lugar de escanear archivos planos en memoria; el esquema garantiza
+    consistencia de claves foráneas con eliminación en cascada. \\
 
     Gateo de consentimiento dentro del propio \texttt{paciente/page}
     (\texttt{consentState} pasado como \texttt{enabled} al hook de

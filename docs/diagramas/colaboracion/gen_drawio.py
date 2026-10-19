@@ -691,29 +691,27 @@ def dc06() -> Diagram:
 
 # ---------------------------------------------------------------------------
 # DC-07 — registrarEventoAuditoria(operacion) — realiza CU-11 (RF-04)
-# compact straight horizontal chain: any handler -> _log_audit -> _append_jsonl
-# -> logs/audit.jsonl. _log_audit and _append_jsonl are both plain functions
-# in app.py (no audit_log module); _append_jsonl writes under a
-# threading.Lock shared by /report and /audit (see nota).
+# compact straight horizontal chain: any handler -> _log_audit ->
+# storage.log_audit_event -> SQLite (data/lsa_salud.db).
 # ---------------------------------------------------------------------------
 def dc07() -> Diagram:
     objects = [
         Obj("handler", "handler (predict / websocket_predict /\nprocess_sentence / report / audit_event)", 0, 200, 300, 64),
         Obj("logAudit", "_log_audit() : app.py", 340, 200, 170, 64),
-        Obj("appendJsonl", "_append_jsonl() : app.py", 550, 200, 180, 64),
-        Obj("fileAudit", "logs/audit.jsonl", 770, 200, 170, 64),
+        Obj("storage", "log_audit_event() : storage.py", 550, 200, 200, 64),
+        Obj("db", "data/lsa_salud.db\n(audit_event)", 790, 200, 160, 64),
     ]
     links = [
         Link("handler", "logAudit", [Msg("1", "_log_audit(tipo, **campos)", "ab")]),
-        Link("logAudit", "appendJsonl", [Msg("1.1", "_append_jsonl(AUDIT_LOG_PATH, record)", "ab")]),
-        Link("appendJsonl", "fileAudit", [Msg("1.2", "write(json.dumps(record))", "ab")]),
+        Link("logAudit", "storage", [Msg("1.1", "log_audit_event(DB_PATH, tipo, **campos)", "ab")]),
+        Link("storage", "db", [Msg("1.2", "INSERT INTO audit_event", "ab")]),
     ]
     notes = [
         Note(
-            "appendJsonl",
-            520,
+            "storage",
+            530,
             60,
-            "Escritura protegida por threading.Lock,\ncompartido con /report; en /ws/predict\nse despacha con asyncio.to_thread\npara no bloquear el loop de eventos.",
+            "Persistencia relacional en SQLite con WAL;\nen /ws/predict se despacha con\nasyncio.to_thread para no bloquear\nel loop de eventos.",
             230,
             76,
         )
@@ -730,24 +728,21 @@ def dc07() -> Diagram:
 
 # ---------------------------------------------------------------------------
 # DC-08 — reportarTraduccion(mensaje) — realiza CU-10 (RF-06)
-# 2-row layout: bubble -> backend -> validation straight H on row 1;
-# backend -> appendJsonl (same x-center, straight down) -> fileReports on
-# row 2; backend's self-loop covers the extra audit event it also emits
-# (_log_audit('report', ...), full chain in DC-07).
 # ---------------------------------------------------------------------------
 def dc08() -> Diagram:
     objects = [
-        Obj("bubble", "ChatBubble", 0, 200, 170, 64),
-        Obj("backend", "report_translation : app.py", 260, 200, 210, 64),
-        Obj("validation", "validate_report_payload() :\ncapture_validation.py", 570, 200, 240, 64),
-        Obj("appendJsonl", "_append_jsonl() : app.py", 260, 420, 210, 64),
-        Obj("fileReports", "logs/reports.jsonl", 570, 420, 200, 64),
+        Obj("bubble", "ChatBubble", 0, 200, 160, 64),
+        Obj("backend", "report_translation : app.py", 230, 200, 200, 64),
+        Obj("validation", "validate_report_payload() :\ncapture_validation.py", 490, 200, 210, 64),
+        Obj("storage", "save_report() : storage.py", 230, 420, 200, 64),
+        Obj("db", "data/lsa_salud.db\n(reported_message, translation_report)", 490, 420, 260, 64),
+        Obj("bc", "BroadcastChannel\n(canal nexora-chat)", 0, 420, 160, 64),
     ]
     links = [
-        Link("bubble", "backend", [Msg("1", "POST /report({text, station, words})", "ab")]),
-        Link("backend", "validation", [Msg("1.1", "validate_report_payload(text, station, words)", "ab")]),
-        Link("backend", "appendJsonl", [Msg("1.2", "_append_jsonl(REPORTS_LOG_PATH, record)", "ab")]),
-        Link("appendJsonl", "fileReports", [Msg("1.3", "write(json.dumps(record))", "ab")]),
+        Link("bubble", "backend", [Msg("1", "POST /report(payload)", "ab")]),
+        Link("backend", "validation", [Msg("1.1", "validate_report_payload(...)", "ab")]),
+        Link("backend", "storage", [Msg("1.2", "save_report(DB_PATH, ...)", "ab")]),
+        Link("storage", "db", [Msg("1.3", "INSERT message & report", "ab")]),
         Link(
             "backend",
             "backend",
@@ -756,6 +751,7 @@ def dc08() -> Diagram:
             self_side="bottom",
             self_frac=(0.05, 0.30),
         ),
+        Link("bubble", "bc", [Msg("2", "postMessage({REPORTED, id})", "ab")]),
     ]
     return Diagram(
         "08_colaboracion_dc08",

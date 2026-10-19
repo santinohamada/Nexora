@@ -491,8 +491,9 @@ habilitando la cámara y la Pantalla P-02. \\
 \texttt{report\_translation} o \texttt{audit\_event}) completó una
 operación de sistema, o recibió un evento anónimo del frontend. \\
 \textbf{Postcondiciones} & Un evento anónimo (tipo, marca temporal UTC y
-campos propios del tipo) quedó agregado a \texttt{logs/audit.jsonl}, sin
-datos identificatorios ni imágenes, video o texto de la conversación. \\
+campos propios del tipo) quedó registrado en la tabla \texttt{audit\_event}
+de la base de datos SQLite (\texttt{data/lsa\_salud.db}), sin datos
+identificatorios ni imágenes, video o texto de la conversación. \\
 \bottomrule
 \end{tabularx}
 \caption{Contrato de la operación SO-07 --- registrarEventoAuditoria(operacion)}
@@ -506,17 +507,17 @@ datos identificatorios ni imágenes, video o texto de la conversación. \\
 \subsubsection{Patrones GRASP aplicados}
 
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item \textbf{Experto en información:} \texttt{\_log\_audit} concentra
-    el conocimiento del formato del evento anónimo (tipo, marca temporal),
-    por lo que es responsable de armarlo antes de delegar la escritura.
+    \item \textbf{Experto en información:} \texttt{\_log\_audit} y el
+    módulo de persistencia \texttt{storage.py} concentran el conocimiento
+    del esquema de eventos de auditoría (tipo, marca temporal y métricas),
+    asegurando la consistencia transaccional.
     \item \textbf{Bajo acoplamiento:} ningún \textit{handler} necesita
-    conocer el formato de persistencia de auditoría ni el archivo de
-    destino: cada uno invoca \texttt{\_log\_audit(tipo, **campos)} con sus
-    propios campos.
-    \item \textbf{Alta cohesión:} \texttt{\_append\_jsonl} concentra la
-    única responsabilidad de escribir una línea JSON bajo el
-    \texttt{threading.Lock} compartido, reutilizada tanto por los eventos
-    de auditoría como por los reportes (DC-08).
+    conocer las sentencias SQL ni la ruta física de la base de datos: cada
+    uno invoca \texttt{\_log\_audit(tipo, **campos)} con sus propios campos.
+    \item \textbf{Fabricación pura:} \texttt{storage.log\_audit\_event}
+    concentra la responsabilidad de inserción estructurada en SQLite
+    (\texttt{data/lsa\_salud.db}), aislando la lógica de negocio de FastAPI
+    del acceso a datos.
 \end{itemize}
 
 \subsubsection{Objetos del diagrama y su ubicación en el código}
@@ -528,9 +529,9 @@ datos identificatorios ni imágenes, video o texto de la conversación. \\
 \textbf{Objeto} & \textbf{Ubicación real} \\
 \midrule
 \texttt{handler} & Cualquiera de los \textit{handlers} FastAPI que completan una operación de sistema (\texttt{predict}, \texttt{websocket\_predict}, \texttt{process\_sentence}, \texttt{report}, \texttt{audit\_event}) $\rightarrow$ \texttt{app.py} \\
-\texttt{\_log\_audit()} & Función $\rightarrow$ \texttt{app.py} \\
-\texttt{\_append\_jsonl()} & Función $\rightarrow$ \texttt{app.py} \\
-\texttt{logs/audit.jsonl} & Archivo persistido en disco $\rightarrow$ \texttt{logs/} \\
+\texttt{\_log\_audit()} & Función envoltura $\rightarrow$ \texttt{app.py} \\
+\texttt{storage.log\_audit\_event()} & Función de persistencia relacional $\rightarrow$ \texttt{storage.py} \\
+\texttt{data/lsa\_salud.db} & Base de datos SQLite persistida en disco $\rightarrow$ \texttt{data/} \\
 \bottomrule
 \end{tabularx}
 \caption{Trazabilidad de objetos --- DC-07}
@@ -551,11 +552,17 @@ datos identificatorios ni imágenes, video o texto de la conversación. \\
 \textbf{Precondiciones} & Existe un mensaje del paciente visible en el
 panel de conversación de P-02 o P-03; el actor hizo clic en su botón
 ``Reportar traducción''. \\
-\textbf{Postcondiciones} & El reporte (texto, estación y palabras del
-mensaje señalado) quedó persistido en \texttt{logs/reports.jsonl}, sin
-datos identificatorios del paciente; también se registró un evento de
-auditoría \texttt{report} en \texttt{logs/audit.jsonl} (ver DC-07); el
-botón de \texttt{ChatBubble} pasó a estado ``Reportado''. \\
+\textbf{Postcondiciones} & El mensaje y su reporte (texto, estación,
+palabras reconocidas y marca temporal) quedaron persistidos en las tablas
+\texttt{reported\_message}, \texttt{recognized\_word} y
+\texttt{translation\_report} de SQLite (\texttt{data/lsa\_salud.db}), sin
+datos identificatorios del paciente; se registró un evento de auditoría
+\texttt{report} en \texttt{audit\_event} (ver DC-07); el componente
+\texttt{ChatBubble} emitió el evento \texttt{REPORTED} mediante
+\texttt{BroadcastChannel} sincronizando el estado a la otra cara de la
+estación; el texto del mensaje quedó marcado como tachado con advertencia
+operativa y botón en estado permanente ``Traducción reportada'' en ambas
+pantallas. \\
 \bottomrule
 \end{tabularx}
 \caption{Contrato de la operación SO-08 --- reportarTraduccion(mensaje)}
@@ -569,23 +576,24 @@ botón de \texttt{ChatBubble} pasó a estado ``Reportado''. \\
 \subsubsection{Patrones GRASP aplicados}
 
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item \textbf{Bajo acoplamiento:} \texttt{ChatBubble} llama
-    directamente a \texttt{POST /report} con el texto, la estación
-    (derivada de \texttt{usePathname}) y las palabras del mensaje; no hay
-    un componente de página intermediario, ni \texttt{ChatBubble} conoce el
-    formato de persistencia.
+    \item \textbf{Bajo acoplamiento:} \texttt{ChatBubble} llama a
+    \texttt{POST /report} con el payload estructurado y, ante la respuesta
+    exitosa, notifica a su hook \texttt{useChatChannel} para propagar el
+    evento por \texttt{BroadcastChannel}. No conoce detalles del motor de
+    base de datos ni del esquema SQL.
     \item \textbf{Experto en información:} \texttt{validate\_report\_payload}
-    es quien conoce las reglas de validez del reporte (longitud, estación,
-    cantidad de palabras), por lo que es responsable de aplicarlas antes de
-    persistir.
-    \item \textbf{Alta cohesión:} \texttt{\_append\_jsonl} concentra la
-    única responsabilidad de escribir una línea JSON, reutilizada tanto
-    para \texttt{logs/reports.jsonl} (aquí) como para
-    \texttt{logs/audit.jsonl} (DC-07).
-    \item \textbf{Indirección:} \texttt{report\_translation} media entre
-    \texttt{ChatBubble} y el sistema de archivos, igual que
-    \texttt{capture} media entre \texttt{CaptureMode} y \texttt{dataset/}
-    en DC-05.
+    valida las restricciones de longitud, estación y palabras reconocidas.
+    El módulo \texttt{storage.py} garantiza la unicidad del mensaje
+    reportado (\texttt{UNIQUE (client\_message\_id, text)}) y asocia
+    múltiples reportes si ambas estaciones lo señalan.
+    \item \textbf{Fabricación pura:} \texttt{storage.save\_report}
+    encapsula la transacción relacional ACID (inserción de
+    \texttt{reported\_message}, \texttt{recognized\_word} y
+    \texttt{translation\_report}), protegiendo la base de datos contra
+    inconsistencias.
+    \item \textbf{Controlador:} el handler \texttt{report\_translation} en
+    \texttt{app.py} coordina la validación, la persistencia en base de
+    datos y el registro del evento de auditoría.
 \end{itemize}
 
 \subsubsection{Objetos del diagrama y su ubicación en el código}
@@ -596,11 +604,12 @@ botón de \texttt{ChatBubble} pasó a estado ``Reportado''. \\
 \toprule
 \textbf{Objeto} & \textbf{Ubicación real} \\
 \midrule
-\texttt{ChatBubble} & Componente $\rightarrow$ \texttt{web/components/chat/ChatBubble.tsx} \\
+\texttt{ChatBubble} & Componente de interfaz $\rightarrow$ \texttt{web/components/chat/ChatBubble.tsx} \\
+\texttt{useChatChannel} & Hook con \texttt{BroadcastChannel("nexora-chat")} $\rightarrow$ \texttt{web/hooks/useChatChannel.ts} \\
 \texttt{report\_translation} & Handler FastAPI (\texttt{POST /report}) $\rightarrow$ \texttt{app.py} \\
 \texttt{validate\_report\_payload()} & Función de validación $\rightarrow$ \texttt{capture\_validation.py} \\
-\texttt{\_append\_jsonl()} & Función $\rightarrow$ \texttt{app.py} \\
-\texttt{logs/reports.jsonl} & Archivo persistido en disco $\rightarrow$ \texttt{logs/} \\
+\texttt{storage.save\_report()} & Servicio de persistencia SQLite $\rightarrow$ \texttt{storage.py} \\
+\texttt{data/lsa\_salud.db} & Base de datos relacional SQLite $\rightarrow$ \texttt{data/} \\
 \bottomrule
 \end{tabularx}
 \caption{Trazabilidad de objetos --- DC-08}
