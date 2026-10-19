@@ -1,6 +1,6 @@
 @startuml 09_modelo_logico
 !include _estilo.iuml
-title Modelo de Base de Datos - Modelo Lógico (notación pata de gallo)\nTablas de SQLite (data/lsa_salud.db) y patrones de archivo del dataset/modelo
+title Modelo de Base de Datos - Modelo Lógico\nTablas de SQLite (data/lsa_salud.db) y patrones de archivo del dataset/modelo
 
 package "SQLite - data/lsa_salud.db" {
     entity "reported_message\n(MensajeReportado)" as MSG {

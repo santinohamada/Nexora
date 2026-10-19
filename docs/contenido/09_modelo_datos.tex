@@ -22,13 +22,11 @@ de la ERS:
     (RF-04.1) son registros estructurados que exigen integridad referencial,
     consistencia transaccional (ACID) y consultas analíticas agregadas (por
     ejemplo, distribución de reportes por palabra, latencias percentiladas y
-    conteo de eventos por estación). Usar archivos de texto plano (\texttt{.jsonl})
-    obligaba al backend a implementar un motor de consulta ad-hoc en memoria,
-    leyendo todo el archivo secuencialmente en cada llamada a \texttt{GET /metrics}
-    o \texttt{GET /reports/summary}, con riesgo de líneas truncadas ante
-    apagados imprevistos. SQLite resuelve esto en un único archivo local, sin
-    requerir servicios ni demonios adicionales, mediante transacciones
-    protegidas por WAL (\textit{Write-Ahead Logging}).
+    conteo de eventos por estación). SQLite resuelve estos requerimientos de
+    forma nativa en un único archivo local mediante transacciones protegidas
+    por WAL (\textit{Write-Ahead Logging}), garantizando durabilidad y
+    consultas indexadas sin requerir servicios externos ni demonios
+    adicionales.
 
     \item \textbf{Localidad y autonomía (RNF-T-02 y RNF-03.1).} Cada estación
     fija opera de forma autónoma en una PC estándar sin conexión a servidores
@@ -135,13 +133,13 @@ El modelo explicita las siguientes relaciones esenciales:
 \end{itemize}
 
 % ----------------------------------------------------------------------------
-\subsection{Modelo lógico (notación pata de gallo)}
+\subsection{Modelo lógico}
 
 La Figura~\ref{fig:dat-modelo-logico} traduce el modelo conceptual a un esquema
 lógico con claves primarias (\texttt{PK}), foráneas (\texttt{FK}), tipos de datos,
-restricciones y cardinalidad en notación pata de gallo (\textit{crow's foot}).
+restricciones y cardinalidades.
 
-\diagrama{09_modelo_logico}{\textwidth}{Modelo lógico de la persistencia de LSA Salud (notación pata de gallo)}{fig:dat-modelo-logico}
+\diagrama{09_modelo_logico}{\textwidth}{Modelo lógico de la persistencia de LSA Salud}{fig:dat-modelo-logico}
 
 Las tablas de SQLite implementan las siguientes restricciones relacionales:
 \begin{itemize}[leftmargin=*, itemsep=2pt]

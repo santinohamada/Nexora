@@ -191,9 +191,8 @@ vistas anteriores.
     agregadas eficientes (percentiles, conteos), sin agregar un servidor
     de base de datos externo ni violar la autonomía local. &
     Garantía de transacciones ACID y modo WAL; endpoints como \texttt{/metrics}
-    y \texttt{/reports/summary} ejecutan consultas SQL instantáneas indexadas
-    en lugar de escanear archivos planos en memoria; el esquema garantiza
-    consistencia de claves foráneas con eliminación en cascada. \\
+    y \texttt{/reports/summary} ejecutan consultas SQL instantáneas indexadas;
+    el esquema garantiza consistencia de claves foráneas con eliminación en cascada. \\
 
     Gateo de consentimiento dentro del propio \texttt{paciente/page}
     (\texttt{consentState} pasado como \texttt{enabled} al hook de
