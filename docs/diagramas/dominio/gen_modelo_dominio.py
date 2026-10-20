@@ -143,7 +143,7 @@ def modelo_dominio():
     d.h("traduccion", "mensaje", "genera", "1", "1", y=my + 30)
     d.v("mensaje", "sintesis", "tiene", "1", "0..1")
     d.h("mensaje", "conversacion", "pertenece a", "0..*", "1", y=cy + 26)
-    d.v("mensaje", "reporte", "puede tener", "1", "0..1")
+    d.v("mensaje", "reporte", "puede tener", "1", "0..*")
 
     d.link([(ex + ew * 0.8, ey), (ex + ew * 0.8, ay + ah / 2), (ax, ay + ah / 2)],
            "origina", "1", "0..*")

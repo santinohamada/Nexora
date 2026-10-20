@@ -562,11 +562,10 @@ identificados para priorizar el reentrenamiento del modelo (CU-08). \\
 Existe al menos un mensaje en la conversación (generado por CU-01 o
 CU-04). \\
 \textbf{Garantías de éxito} &
-El reporte queda registrado en la base de datos relacional local asociado al
-mensaje señalado, el mensaje queda visualmente marcado como traducción reportada
-(tachado) en ambas caras de la estación (sincronizado entre paciente y personal
-mediante el canal del navegador), y se instruye al paciente a repetir la
-seña; todo ello sin almacenar datos identificatorios del paciente. \\
+El reporte queda registrado asociado al mensaje señalado, el mensaje queda
+marcado como traducción reportada en ambas caras de la estación, y se
+instruye al paciente a repetir la seña; todo ello sin almacenar datos
+identificatorios del paciente. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
     \item El actor revisa un mensaje del paciente en la conversación
@@ -575,13 +574,11 @@ seña; todo ello sin almacenar datos identificatorios del paciente. \\
     \item El sistema envía el reporte con el identificador del mensaje, su
     texto, la estación de origen y, si están disponibles, las palabras
     crudas reconocidas.
-    \item El sistema valida la información y persiste el reporte en la
-    base de datos relacional local (\texttt{reported\_message} y
-    \texttt{translation\_report} en SQLite).
-    \item El sistema notifica a ambas caras de la estación mediante el
-    canal de comunicación del navegador.
-    \item El sistema actualiza el mensaje en los dos paneles: lo marca como
-    traducción reportada (tachado) y exhibe un aviso operativo (al paciente
+    \item El sistema valida la información y registra el reporte asociado
+    al mensaje señalado.
+    \item El sistema notifica el reporte a ambas caras de la estación.
+    \item El sistema actualiza el mensaje en las dos caras: lo marca como
+    traducción reportada y exhibe un aviso operativo (al paciente
     se le solicita repetir la seña y al personal se le advierte no actuar
     sobre esa traducción).
     \item El flujo vuelve al punto de extensión de origen (CU-01 o

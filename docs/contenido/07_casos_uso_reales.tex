@@ -457,20 +457,10 @@ repetir la seña. \\
 \endhead
 1. El actor hace clic en el botón ``Reportar traducción'' de una burbuja
 del paciente (callout (10) en P-02 o (8) en P-03). &
-2. El botón pasa a estado ``Enviando...'' y el sistema envía la solicitud
-(\texttt{POST /report}) con el texto, la estación, el identificador del
-mensaje y las palabras reconocidas al servidor. \\
+2. El botón pasa a estado ``Enviando...'' y el sistema registra el
+reporte con el texto del mensaje, la estación y las palabras reconocidas. \\
 &
-3. El backend valida el payload y persiste el mensaje y su reporte en
-SQLite (\texttt{reported\_message} y \texttt{translation\_report}). \\
-&
-4. El sistema emite un evento de auditoría \texttt{report} en la base de
-datos. \\
-&
-5. La estación emisora emite el evento \texttt{REPORTED} mediante
-\texttt{BroadcastChannel("nexora-chat")} para sincronizar a la otra cara. \\
-&
-6. En ambas pantallas (P-02 y P-03), la burbuja del mensaje se actualiza
+3. En ambas pantallas (P-02 y P-03), la burbuja del mensaje se actualiza
 inmediatamente:
 \begin{itemize}[leftmargin=*, itemsep=2pt]
     \item El texto del mensaje queda tachado (\textit{strikethrough}) y con
