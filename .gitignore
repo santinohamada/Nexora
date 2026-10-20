@@ -36,14 +36,17 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 docs/tools/*.jar
-docs/build/
+docs/*/build/
 docs/_legacy/
-docs/*.aux
-docs/*.log
-docs/*.out
-docs/*.toc
-docs/*.lof
-docs/*.lot
+docs/*/*.aux
+docs/*/*.log
+docs/*/*.out
+docs/*/*.toc
+docs/*/*.lof
+docs/*/*.lot
+
+# Course statement and templates for each TP (third-party material)
+docs/*/Enunciado/
 docs/referencias/*Firmado*.pdf
 docs/referencias/*Registro de Interesados*.xlsx
 

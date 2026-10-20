@@ -229,8 +229,8 @@ RF-04.1, RF-06.1), **6 RF técnicos sin RF base** (RF-T-01–RF-T-06).
 | EventoDeAuditoría | Registro anónimo de una operación de sistema relevante, sin datos identificatorios ni imágenes/video (RF-04). |
 | ReporteDeTraducción | Señalamiento de un mensaje del paciente como traducción incorrecta o ambigua, hecho por el paciente o el personal (RF-06). |
 
-Diagrama de clases: `docs/diagramas/dominio/gen_modelo_dominio.py` → `docs/img/01_modelo_dominio.pdf`.
-Diagrama de casos de uso: `docs/diagramas/02_casos_uso.puml` → `docs/img/02_casos_uso.pdf`.
+Diagrama de clases: `docs/TP7/diagramas/dominio/gen_modelo_dominio.py` → `docs/TP7/img/01_modelo_dominio.pdf`.
+Diagrama de casos de uso: `docs/TP7/diagramas/02_casos_uso.puml` → `docs/TP7/img/02_casos_uso.pdf`.
 
 ---
 
@@ -267,4 +267,4 @@ misma pantalla). El Entregable 07 referencia estos callouts como
 | SO-08 | `reportarTraduccion(mensaje)` | CU-10 | DC-08 |
 | SO-09 | `limpiarConversacion()` | CU-12 (fin de atención, borrado sincronizado en ambas caras) | DC-09 |
 
-Diagramas: `docs/diagramas/colaboracion/08_colaboracion_dc0N.drawio` → `docs/img/08_colaboracion_dc0N.pdf`.
+Diagramas: `docs/TP7/diagramas/colaboracion/08_colaboracion_dc0N.drawio` → `docs/TP7/img/08_colaboracion_dc0N.pdf`.

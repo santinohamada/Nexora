@@ -11,29 +11,30 @@ académico.
 
 ```
 docs/
-├── lsasalud.sty                # Estilo compartido (portada, tablas, \diagrama, etc.)
-├── IDS.md                      # Registro canónico de IDs (actores, CU, RF, RNF, pantallas...)
-├── TP7_Análisis y Diseño.tex        # Documento maestro con los 9 entregables (\part por entregable)
-├── 0N_Nombre_Entregable.tex    # Wrapper standalone de cada entregable (portada + \input propio)
-├── contenido/
-│   └── 0N_nombre_entregable.tex   # Cuerpo de cada entregable (sin preámbulo, se reutiliza
-│                                   # tanto en el wrapper standalone como en el maestro)
-├── diagramas/
-│   ├── _estilo.iuml            # skinparams compartidos (incluir con !include _estilo.iuml)
-│   ├── 0N_*.puml                # Fuente de cada diagrama PlantUML (salvo casos de uso y colaboración)
-│   ├── casos_uso/
-│   │   ├── gen_casos_uso.py     # Genera 02_casos_uso.drawio
-│   │   └── 02_casos_uso.drawio  # Fuente editable en draw.io
-│   └── colaboracion/
-│       ├── gen_drawio.py        # Genera los 8 .drawio de colaboración (DC-01..DC-08)
-│       └── 08_colaboracion_dc0N.drawio  # Fuente editable en draw.io (notación Larman/UML 2.5)
-├── img/
-│   └── 0N_*.pdf                 # Diagramas renderizados (generados por render.sh, no editar a mano)
-├── build/
-│   └── *.pdf                    # PDF finales compilados de cada entregable y del maestro
+├── IDS.md                      # Registro canónico de IDs (actores, CU, RF, RNF, pantallas...), compartido por todos los TP
 ├── tools/
 │   └── plantuml-1.2026.8.jar    # Jar de PlantUML embebido (no requiere instalación aparte)
-└── render.sh                    # Script de renderizado de diagramas
+├── referencias/                 # Material de contexto (no versionado, salvo RESUMEN_REFERENCIAS.md)
+├── TP7/                         # TP7 — Análisis y Diseño (autocontenido)
+│   ├── lsasalud.sty             # Estilo (portada, tablas, \diagrama, etc.)
+│   ├── TP7_Análisis y Diseño.tex/.pdf   # Documento maestro con los 9 entregables (\part por entregable)
+│   ├── 0N_Nombre_Entregable.tex # Wrapper standalone de cada entregable (portada + \input propio)
+│   ├── contenido/
+│   │   └── 0N_nombre_entregable.tex   # Cuerpo de cada entregable (sin preámbulo, se reutiliza
+│   │                                   # tanto en el wrapper standalone como en el maestro)
+│   ├── diagramas/
+│   │   ├── _estilo.iuml         # skinparams compartidos (incluir con !include _estilo.iuml)
+│   │   ├── 0N_*.puml            # Fuente de cada diagrama PlantUML
+│   │   ├── casos_uso/           # gen_casos_uso.py → 02_casos_uso.drawio
+│   │   ├── colaboracion/        # gen_drawio.py → 08_colaboracion_dc0N.drawio (DC-01..DC-09)
+│   │   ├── dominio/             # gen_modelo_dominio.py → 01_modelo_dominio.drawio
+│   │   └── arquitectura/        # gen_vista_logica.py / gen_vista_fisica.py
+│   ├── img/
+│   │   └── 0N_*.pdf             # Diagramas renderizados (generados por render.sh, no editar a mano)
+│   ├── build/                   # PDF compilados (no versionado)
+│   └── render.sh                # Script de renderizado de diagramas
+└── TP8/                         # TP8 — Testing
+    └── Enunciado/               # Enunciado y plantillas de la cátedra (no versionado)
 ```
 
 Entregables (numeración según el orden del Documento Maestro):
@@ -82,7 +83,7 @@ venv del proyecto) y `DRAWIO` (ejecutable de draw.io desktop). Ejemplo en
 Windows (Git Bash):
 
 ```bash
-cd docs/
+cd docs/TP7/
 JAVA="/c/Program Files/Microsoft/jdk-21.0.12.101-hotspot/bin/java.exe" \
 PYTHON="$(cd .. && pwd)/venv/Scripts/python.exe" \
 DRAWIO="$LOCALAPPDATA/Programs/draw.io/draw.io.exe" \
@@ -102,7 +103,7 @@ Requisitos:
 Para renderizar todo:
 
 ```bash
-cd docs/
+cd docs/TP7/
 ./render.sh
 ```
 
@@ -156,8 +157,8 @@ generan como archivos **draw.io** (`.drawio`, XML editable) en
   ```bash
   "$DRAWIO" \
     --export --format pdf --crop \
-    --output docs/img/08_colaboracion_dc01.pdf \
-    docs/diagramas/colaboracion/08_colaboracion_dc01.drawio
+    --output docs/TP7/img/08_colaboracion_dc01.pdf \
+    docs/TP7/diagramas/colaboracion/08_colaboracion_dc01.drawio
   ```
 
   `render.sh` ya hace esto automáticamente para los 9 diagramas después de
@@ -168,7 +169,7 @@ generan como archivos **draw.io** (`.drawio`, XML editable) en
 
 ## Compilar en Overleaf
 
-1. Subí la carpeta `docs/` completa a un proyecto de Overleaf (o subí un
+1. Subí la carpeta `docs/TP7/` completa a un proyecto de Overleaf (o subí un
    `.zip` de la carpeta), preservando la estructura de subcarpetas
    (`lsasalud.sty`, `contenido/`, `img/`, `IDS.md` es solo referencia y no
    hace falta subirlo si el proyecto ya está completo).

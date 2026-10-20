@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# render.sh — Renderiza todos los diagramas de docs/ a PDF vectorial en img/.
+# render.sh — Renderiza todos los diagramas de docs/TP7/ a PDF vectorial en img/.
 #
 # 1. Diagramas PlantUML (diagramas/*.puml, salvo casos de uso y colaboración):
 #    requiere Java 21 y el jar embebido en tools/. No requiere Graphviz
@@ -15,12 +15,12 @@
 #    grafos muy interconectados no entran en formato retrato legible con el
 #    layout automático de smetana (ver guía de figuras del entregable).
 #
-# Uso: ejecutar desde docs/  ->  ./render.sh
+# Uso: ejecutar desde docs/TP7/  ->  ./render.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
 JAVA="${JAVA:-java}"
-JAR="${PLANTUML_JAR:-tools/plantuml-1.2026.8.jar}"
+JAR="${PLANTUML_JAR:-../tools/plantuml-1.2026.8.jar}"
 PYTHON="${PYTHON:-python}"
 DRAWIO="${DRAWIO:-draw.io}"
 
