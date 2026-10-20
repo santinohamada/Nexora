@@ -46,3 +46,7 @@ docs/*.lof
 docs/*.lot
 docs/referencias/*Firmado*.pdf
 docs/referencias/*Registro de Interesados*.xlsx
+
+# Local reference material (third-party and personal files)
+docs/referencias/*
+!docs/referencias/RESUMEN_REFERENCIAS.md
