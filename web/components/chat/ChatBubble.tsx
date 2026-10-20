@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Flag, AlertTriangle } from "lucide-react";
 import { ChatMessage } from "../../types";
@@ -21,7 +21,12 @@ export const ChatBubble = memo(function ChatBubble({
   const [sendState, setSendState] = useState<SendState>("idle");
   const isReported = Boolean(msg.reported);
 
+  const inFlight = useRef(false);
+
   const handleReport = async () => {
+    // A ref (not state) so a fast double-click cannot fire two POSTs before the re-render disables the button.
+    if (inFlight.current || isReported) return;
+    inFlight.current = true;
     setSendState("sending");
     try {
       const res = await fetch(`${API_URL}/report`, {
@@ -39,6 +44,8 @@ export const ChatBubble = memo(function ChatBubble({
       onReported?.(msg.id);
     } catch {
       setSendState("error");
+    } finally {
+      inFlight.current = false;
     }
   };
 

@@ -11,11 +11,16 @@ ambiguous translation (RF-06.1), stored in `reported_message`.
 
 import json
 import os
+import math
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 
-DEFAULT_DB_PATH = os.environ.get("NEXORA_DB_PATH", os.path.join("data", "lsa_salud.db"))
+from capture_validation import validate_report_payload
+
+BASE_DIR = Path(__file__).resolve().parent
+DEFAULT_DB_PATH = os.environ.get("NEXORA_DB_PATH", str(BASE_DIR / "data" / "lsa_salud.db"))
 
 AUDIT_EVENT_TYPES = (
     "prediction",
@@ -116,28 +121,26 @@ def save_report(
     """Persist a translation report and the reported message (reused if already reported)."""
     now = utc_now_iso()
     with _connect(db_path) as conn:
-        row = None
-        if client_message_id is not None:
-            row = conn.execute(
-                "SELECT id FROM reported_message WHERE client_message_id = ? AND text = ?",
-                (client_message_id, text),
-            ).fetchone()
-
-        if row is not None:
-            message_id = row["id"]
-            is_new_message = False
-        else:
-            cur = conn.execute(
-                "INSERT INTO reported_message (client_message_id, text, first_reported_at) VALUES (?, ?, ?)",
-                (client_message_id, text, now),
-            )
+        # Atomic insert-or-ignore: stations reporting the same message concurrently cannot race.
+        # A NULL client_message_id never conflicts (NULLs are distinct in UNIQUE), so it always inserts.
+        cur = conn.execute(
+            "INSERT INTO reported_message (client_message_id, text, first_reported_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(client_message_id, text) DO NOTHING",
+            (client_message_id, text, now),
+        )
+        is_new_message = cur.rowcount == 1
+        if is_new_message:
             message_id = cur.lastrowid
-            is_new_message = True
             if words:
                 conn.executemany(
                     "INSERT INTO recognized_word (message_id, position, word) VALUES (?, ?, ?)",
                     [(message_id, pos, word) for pos, word in enumerate(words)],
                 )
+        else:
+            message_id = conn.execute(
+                "SELECT id FROM reported_message WHERE client_message_id = ? AND text = ?",
+                (client_message_id, text),
+            ).fetchone()["id"]
 
         cur = conn.execute(
             "INSERT INTO translation_report (message_id, station, reported_at) VALUES (?, ?, ?)",
@@ -232,9 +235,28 @@ def report_summary(db_path: str, limit: int = 10) -> dict:
     return {"total_reports": total, "top_messages": messages, "top_words": words}
 
 
+def _legacy_ts(value) -> str:
+    """Normalize a legacy timestamp to the module's ISO UTC format; raises ValueError if unparseable."""
+    if value is None:
+        return utc_now_iso()
+    if not isinstance(value, str):
+        raise ValueError("bad timestamp")
+    return to_utc_iso(datetime.fromisoformat(value))
+
+
+def _is_number(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
 def migrate_jsonl(db_path: str, reports_path: str, audit_path: str) -> dict:
-    """One-off import of the legacy logs/*.jsonl files. Malformed lines are skipped."""
-    imported = {"reports": 0, "audit_events": 0}
+    """One-off import of the legacy logs/*.jsonl files.
+
+    Idempotent: once the import commits, each source file is renamed to `<name>.migrated`, so a
+    second run finds nothing to import. Rows that are malformed, not JSON objects, or have invalid
+    fields (same rules as the API) are skipped and counted in `skipped`; they never abort the
+    import. Legacy timestamps are normalized to ISO UTC so the lexicographic `since` filter works.
+    """
+    imported = {"reports": 0, "audit_events": 0, "skipped": 0}
 
     def _lines(path):
         if not os.path.exists(path):
@@ -245,46 +267,82 @@ def migrate_jsonl(db_path: str, reports_path: str, audit_path: str) -> dict:
                 if not line:
                     continue
                 try:
-                    yield json.loads(line)
+                    rec = json.loads(line)
                 except json.JSONDecodeError:
+                    imported["skipped"] += 1
                     continue
+                if isinstance(rec, dict):
+                    yield rec
+                else:
+                    imported["skipped"] += 1
 
     with _connect(db_path) as conn:
         for rec in _lines(reports_path):
-            if not rec.get("text") or rec.get("station") not in ("paciente", "recepcion"):
+            text, station, words = rec.get("text"), rec.get("station"), rec.get("words")
+            try:
+                if not isinstance(text, str) or not isinstance(station, str):
+                    raise ValueError("bad field type")
+                if words is not None and (not isinstance(words, list) or not all(isinstance(w, str) for w in words)):
+                    raise ValueError("bad words")
+                validate_report_payload(text, station, words)
+                ts = _legacy_ts(rec.get("timestamp"))
+            except ValueError:
+                imported["skipped"] += 1
                 continue
-            ts = rec.get("timestamp") or utc_now_iso()
             cur = conn.execute(
                 "INSERT INTO reported_message (client_message_id, text, first_reported_at) VALUES (NULL, ?, ?)",
-                (rec["text"][:500], ts),
+                (text, ts),
             )
             message_id = cur.lastrowid
-            for pos, word in enumerate(rec.get("words") or []):
+            for pos, word in enumerate(words or []):
                 conn.execute(
                     "INSERT INTO recognized_word (message_id, position, word) VALUES (?, ?, ?)",
-                    (message_id, pos, str(word)[:32]),
+                    (message_id, pos, word),
                 )
             conn.execute(
                 "INSERT INTO translation_report (message_id, station, reported_at) VALUES (?, ?, ?)",
-                (message_id, rec["station"], ts),
+                (message_id, station, ts),
             )
             imported["reports"] += 1
 
         for rec in _lines(audit_path):
-            if rec.get("type") not in AUDIT_EVENT_TYPES:
-                continue
             columns = ["type", "occurred_at"]
-            values = [rec["type"], rec.get("timestamp") or utc_now_iso()]
-            for name in AUDIT_TEXT_FIELDS + AUDIT_NUMERIC_FIELDS + AUDIT_INT_FIELDS:
-                if rec.get(name) is not None:
+            try:
+                if rec.get("type") not in AUDIT_EVENT_TYPES:
+                    raise ValueError("bad type")
+                values = [rec["type"], _legacy_ts(rec.get("timestamp"))]
+                for name in AUDIT_TEXT_FIELDS + AUDIT_NUMERIC_FIELDS + AUDIT_INT_FIELDS:
+                    v = rec.get(name)
+                    if v is None:
+                        continue
+                    if name in AUDIT_NUMERIC_FIELDS:
+                        ok = _is_number(v)
+                    elif name in AUDIT_INT_FIELDS:
+                        ok = isinstance(v, int) and not isinstance(v, bool)
+                    elif name == "station":
+                        ok = v in ("paciente", "recepcion")
+                    elif name == "consent":
+                        ok = v in ("accepted", "declined")
+                    else:
+                        ok = isinstance(v, str)
+                    if not ok:
+                        raise ValueError(f"bad {name}")
                     columns.append(name)
-                    values.append(rec[name])
+                    values.append(v)
+            except ValueError:
+                imported["skipped"] += 1
+                continue
             conn.execute(
                 f"INSERT INTO audit_event ({', '.join(columns)}) VALUES ({', '.join('?' for _ in columns)})",
                 values,
             )
             imported["audit_events"] += 1
 
+    # Only reached if the transaction committed.
+    for path in (reports_path, audit_path):
+        if os.path.exists(path):
+            os.replace(path, path + ".migrated")
+    print(f"migrate_jsonl: {imported['skipped']} rows skipped")
     return imported
 
 
@@ -292,7 +350,7 @@ if __name__ == "__main__":
     init_db()
     result = migrate_jsonl(
         DEFAULT_DB_PATH,
-        os.path.join("logs", "reports.jsonl"),
-        os.path.join("logs", "audit.jsonl"),
+        str(BASE_DIR / "logs" / "reports.jsonl"),
+        str(BASE_DIR / "logs" / "audit.jsonl"),
     )
     print(f"Migrated into {DEFAULT_DB_PATH}: {result}")

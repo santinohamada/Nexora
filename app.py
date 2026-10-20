@@ -329,7 +329,11 @@ storage.init_db(DB_PATH)
 
 
 def _log_audit(event_type: str, **fields) -> None:
-    storage.log_audit_event(DB_PATH, event_type, **fields)
+    """Best-effort audit write: an audit failure must never break the primary operation."""
+    try:
+        storage.log_audit_event(DB_PATH, event_type, **fields)
+    except Exception as e:
+        print(f"[Nexora] Audit write failed ({event_type}): {e}")
 
 
 def _percentile(sorted_values: list[float], pct: float) -> float:
@@ -410,7 +414,7 @@ def capture(payload: CapturePayload):
 @app.post("/report")
 def report_translation(payload: ReportPayload):
     try:
-        validate_report_payload(payload.text, payload.station, payload.words)
+        validate_report_payload(payload.text, payload.station, payload.words, payload.message_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -450,7 +454,8 @@ def audit_event(payload: AuditPayload):
         fields["consent"] = payload.consent
     else:
         fields["e2e_ms"] = round(payload.e2e_ms, 2)
-    _log_audit(payload.type, **fields)
+    # Strict: recording the event is this endpoint's whole purpose, so failures reach the caller.
+    storage.log_audit_event(DB_PATH, payload.type, **fields)
 
     return {"status": "ok"}
 
