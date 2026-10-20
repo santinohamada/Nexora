@@ -658,7 +658,8 @@ def dc06() -> Diagram:
         Obj("sendAudit", "sendAudit() : audit.ts", 300, 200, 180, 56),
         Obj("backend", "audit_event : app.py", 550, 200, 170, 56),
         Obj("useMediaPipe", ":useMediaPipe", 30, 420, 170, 56),
-        Obj("fileAudit", "logs/audit.jsonl", 540, 420, 190, 56),
+        Obj("storage", "log_audit_event() : storage.py", 520, 380, 230, 56),
+        Obj("db", "data/lsa_salud.db\n(audit_event)", 555, 560, 160, 64),
     ]
     links = [
         Link("pacientePage", "sendAudit", [Msg("1", "sendAudit({type:'consent', consent})", "ab")]),
@@ -670,7 +671,8 @@ def dc06() -> Diagram:
             self_loop=True,
             self_side="right",
         ),
-        Link("backend", "fileAudit", [Msg("1.3", "_append_jsonl(record)", "ab")]),
+        Link("backend", "storage", [Msg("1.3", "log_audit_event(DB_PATH, 'consent', ...)", "ab")]),
+        Link("storage", "db", [Msg("1.4", "INSERT INTO audit_event", "ab")]),
         Link("pacientePage", "useMediaPipe", [Msg("2", "enabled=true", "ab")]),
         Link(
             "useMediaPipe",
@@ -777,7 +779,8 @@ def dc09() -> Diagram:
         Obj("chatPac", "useChatChannel (Paciente)", 0, 570, 230, 56),
         Obj("sendAudit", "sendAudit() : audit.ts", 360, 230, 200, 56),
         Obj("backend", "audit_event : app.py", 360, 400, 200, 56),
-        Obj("fileAudit", "logs/audit.jsonl", 360, 570, 200, 56),
+        Obj("storage", "log_audit_event() : storage.py", 345, 570, 230, 56),
+        Obj("db", "data/lsa_salud.db\n(audit_event)", 380, 740, 160, 64),
     ]
     links = [
         Link("controls", "chatRec", [Msg("1", "clearHistory()", "ab")]),
@@ -792,7 +795,8 @@ def dc09() -> Diagram:
             self_loop=True,
             self_side="right",
         ),
-        Link("backend", "fileAudit", [Msg("1.2.3", "_append_jsonl(record)", "ab")]),
+        Link("backend", "storage", [Msg("1.2.3", "log_audit_event(DB_PATH, ...)", "ab")]),
+        Link("storage", "db", [Msg("1.2.4", "INSERT INTO audit_event", "ab")]),
     ]
     return Diagram(
         "08_colaboracion_dc09",

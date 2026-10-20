@@ -653,10 +653,11 @@ video. \\
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-04.1; RNF-03.1 (anonimato, sin imágenes ni video). \\
 \textbf{Variantes de tecnología y datos} &
-Persistencia basada en archivos: helpers \texttt{\_log\_audit} /
-\texttt{\_append\_jsonl} en \texttt{app.py}, con un \texttt{threading.Lock}
-para escritura concurrente, sobre \texttt{logs/audit.jsonl}, consistente
-con el resto del sistema (ver Entregable 09, Modelo de Datos). Las
+Persistencia relacional embebida: la función \texttt{\_log\_audit} de
+\texttt{app.py} delega en \texttt{storage.log\_audit\_event} la inserción en
+la tabla \texttt{audit\_event} de la base de datos SQLite
+(\texttt{data/lsa\_salud.db}), consistente con el resto del sistema (ver
+Entregable 09, Modelo de Datos). Las
 operaciones que disparan el registro corresponden a los endpoints
 \texttt{/predict}, \texttt{/ws/predict}, \texttt{/process\_sentence},
 \texttt{/report} y \texttt{POST /audit} (consentimiento y traducción

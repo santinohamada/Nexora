@@ -27,7 +27,7 @@ Se presentan dos vistas:
 \end{itemize}
 
 Este documento no repite contenido de otros entregables: el detalle de la
-persistencia basada en archivos se documenta en el Entregable 09; los IDs de
+persistencia local híbrida (SQLite y archivos) se documenta en el Entregable 09; los IDs de
 actores, casos de uso, RF y RNF se reutilizan tal como están definidos en
 \texttt{IDS.md} y en la ERS (Entregable 05).
 
@@ -54,8 +54,8 @@ no es un componente ni una ruta aparte: vive dentro de
 \texttt{paciente/page} (\texttt{PacientePage}), que gatea el montaje de los
 \texttt{hooks} de captura con la prop \texttt{enabled}. El registro de
 auditoría (RF-04.1) tampoco es un módulo propio: son funciones
-(\texttt{\_log\_audit}, \texttt{\_append\_jsonl}) dentro de \texttt{app.py}
-mismo, invocadas por cada \textit{handler} que completa una operación de
+(\texttt{\_log\_audit}, que delega en \texttt{storage.log\_audit\_event}) dentro de
+\texttt{app.py} mismo, invocadas por cada \textit{handler} que completa una operación de
 sistema, y por el endpoint \texttt{POST /audit} para los eventos que origina
 el frontend (\texttt{consent}, \texttt{translation\_displayed}). El reporte
 de traducción (RF-06.1) se inicia desde \texttt{ChatBubble} y viaja por la
@@ -88,7 +88,7 @@ Puntos relevantes del diagrama:
     módulos propios (RNF-T-03).
     \item El gateo de consentimiento (frontend, dentro de
     \texttt{paciente/page}) y las funciones de auditoría
-    (\texttt{\_log\_audit} / \texttt{\_append\_jsonl}, backend, invocadas
+    (\texttt{\_log\_audit} / \texttt{storage.log\_audit\_event}, backend, invocadas
     desde cada \textit{handler} de \texttt{app.py} que realiza una
     operación de sistema) siguen el mismo patrón de desacoplamiento que
     \texttt{capture\_validation}: ninguno de los \textit{handlers}
@@ -232,15 +232,14 @@ vistas anteriores.
     nuevo dispositivo a una estación requiere sumar su origen a la
     configuración local de esa estación. \\
 
-    Persistencia basada en archivos (\texttt{.npy}, \texttt{.pth},
-    \texttt{.onnx}) en lugar de una base de datos &
-    El dominio no requiere consultas relacionales ni concurrencia de
-    escritura alta: las muestras de entrenamiento y los modelos son
-    artefactos versionables por archivo; simplifica el despliegue
-    \textit{standalone} (ver Entregable 09). &
-    Sin transacciones ni consultas indexadas; la consistencia de
-    \texttt{dataset\_stats} depende de recorrer el árbol de carpetas en
-    cada consulta. \\
+    Artefactos de modelo y dataset (muestras \texttt{.npy}, modelos
+    \texttt{.pth} y \texttt{.onnx}, voces) persistidos como archivos
+    versionables &
+    Las muestras de entrenamiento y los modelos son artefactos binarios
+    que se copian, versionan y reemplazan por archivo; simplifica el
+    despliegue \textit{standalone} (ver Entregable 09). &
+    La consistencia de \texttt{dataset\_stats} depende de recorrer el árbol
+    de carpetas en cada consulta. \\
 
     Backend de un solo archivo (\texttt{app.py}) para todos los endpoints &
     Simplicidad de despliegue en un entorno de consultorio, sin
@@ -287,7 +286,7 @@ Sección~4 --- con la vista o el mecanismo arquitectónico que lo atiende.
     RNF-03.1 & Seguridad / privacidad &
     Vista Física y decisión arquitectónica de procesamiento local
     (sección~\ref{sec:decisiones}): ningún dato de la conversación sale de
-    la máquina; persistencia basada en archivos sin base de datos externa;
+    la máquina; persistencia local embebida (SQLite y archivos) sin servidor de base de datos externo;
     diseño de auditoría y reporte (RF-04.1, RF-06.1) sin imágenes ni video. \\
 
     RNF-T-03 & Mantenibilidad &

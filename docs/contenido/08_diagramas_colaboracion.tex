@@ -421,8 +421,9 @@ informado al Modo Captura. \\
 consentimiento (P-05); la cámara todavía no fue activada
 (\texttt{consentState !== "accepted"}). \\
 \textbf{Postcondiciones} & El consentimiento quedó registrado como evento
-de auditoría anónimo (\texttt{type: "consent"}) en
-\texttt{logs/audit.jsonl}, y --- si fue aceptado --- \texttt{PacientePage}
+de auditoría anónimo (\texttt{type: "consent"}) en la tabla
+\texttt{audit\_event} de la base de datos SQLite
+(\texttt{data/lsa\_salud.db}), y --- si fue aceptado --- \texttt{PacientePage}
 pasó \texttt{enabled: true} al hook de landmarks (\texttt{useMediaPipe}),
 habilitando la cámara y la Pantalla P-02. \\
 \bottomrule
@@ -443,9 +444,9 @@ habilitando la cámara y la Pantalla P-02. \\
     auditoría como la habilitación del hook de captura, como único punto
     de entrada de la operación en el frontend.
     \item \textbf{Experto en información:} \texttt{\_log\_audit} (dentro de
-    \texttt{app.py}) es quien conoce el formato de persistencia de los
-    eventos anónimos, por lo que es responsable de armarlos, en vez de que
-    cada \textit{handler} sepa escribir su propio registro.
+    \texttt{app.py}) delega en \texttt{storage.log\_audit\_event} el
+    conocimiento del formato de persistencia de los eventos anónimos, en
+    vez de que cada \textit{handler} sepa escribir su propio registro.
     \item \textbf{Indirección:} \texttt{sendAudit} (\texttt{audit.ts}) media
     entre \texttt{PacientePage} y el endpoint \texttt{POST /audit}, igual
     que \texttt{capture\_validation} media entre \texttt{capture} y el
@@ -468,7 +469,8 @@ habilitando la cámara y la Pantalla P-02. \\
 \texttt{sendAudit()} & Función $\rightarrow$ \texttt{web/lib/audit.ts} \\
 \texttt{audit\_event} & Handler FastAPI (\texttt{POST /audit}) $\rightarrow$ \texttt{app.py} \\
 \texttt{:useMediaPipe} & Hook $\rightarrow$ \texttt{web/hooks/useMediaPipe.ts} \\
-\texttt{logs/audit.jsonl} & Archivo persistido en disco $\rightarrow$ \texttt{logs/} \\
+\texttt{storage.log\_audit\_event()} & Función de persistencia relacional $\rightarrow$ \texttt{storage.py} \\
+\texttt{data/lsa\_salud.db} & Base de datos SQLite persistida en disco $\rightarrow$ \texttt{data/} \\
 \bottomrule
 \end{tabularx}
 \caption{Trazabilidad de objetos --- DC-06}
@@ -633,8 +635,9 @@ la estación (la conversación no está vacía en al menos una de sus dos
 caras). \\
 \textbf{Postcondiciones} & La conversación quedó vacía en las dos caras de
 la estación; se registró un evento de auditoría anónimo
-(\texttt{type: "fin\_atencion"}) en \texttt{logs/audit.jsonl}; no queda
-ningún dato de la sesión atendida. \\
+(\texttt{type: "fin\_atencion"}) en la tabla \texttt{audit\_event} de la
+base de datos SQLite (\texttt{data/lsa\_salud.db}); no queda ningún dato de
+la sesión atendida. \\
 \bottomrule
 \end{tabularx}
 \caption{Contrato de la operación SO-09 --- limpiarConversacion()}
@@ -677,7 +680,8 @@ ningún dato de la sesión atendida. \\
 \texttt{useChatChannel (Paciente)} & Hook $\rightarrow$ \texttt{web/hooks/useChatChannel.ts} \\
 \texttt{sendAudit()} & Función $\rightarrow$ \texttt{web/lib/audit.ts} \\
 \texttt{audit\_event} & Handler FastAPI (\texttt{POST /audit}) $\rightarrow$ \texttt{app.py} \\
-\texttt{logs/audit.jsonl} & Archivo persistido en disco $\rightarrow$ \texttt{logs/} \\
+\texttt{storage.log\_audit\_event()} & Función de persistencia relacional $\rightarrow$ \texttt{storage.py} \\
+\texttt{data/lsa\_salud.db} & Base de datos SQLite persistida en disco $\rightarrow$ \texttt{data/} \\
 \bottomrule
 \end{tabularx}
 \caption{Trazabilidad de objetos --- DC-09}

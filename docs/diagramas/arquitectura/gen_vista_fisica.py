@@ -24,6 +24,8 @@ ARTIFACT = ("shape=note;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6B
             "fontSize=12;fontFamily=Helvetica;size=10;")
 FOLDER = ("shape=folder;tabWidth=36;tabHeight=12;html=1;whiteSpace=wrap;fillColor=#F5F7FA;"
           "strokeColor=#6B7280;fontSize=12;fontFamily=Helvetica;")
+DB = ("shape=cylinder3;boundedLbl=1;size=6;whiteSpace=wrap;html=1;fillColor=#F5F7FA;"
+      "strokeColor=#6B7280;fontSize=12;fontFamily=Helvetica;")
 SUMMARY = ("rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F5F7FA;strokeColor=#1E448A;"
            "fontSize=13;fontFamily=Helvetica;align=center;verticalAlign=middle;")
 NOTE = ("shape=note;whiteSpace=wrap;html=1;fillColor=#FFF8DC;strokeColor=#B8860B;"
@@ -81,7 +83,7 @@ def build():
     c.append(vertex("fDataset", "dataset/", FOLDER, 225, 515, 75, 40))
     c.append(vertex("fModels", "models/", FOLDER, 310, 515, 75, 40))
     c.append(vertex("fVoices", "voices/", FOLDER, 395, 515, 75, 40))
-    c.append(vertex("fLogs", "logs/", FOLDER, 480, 515, 70, 40))
+    c.append(vertex("fDb", "data/lsa_salud.db (SQLite)", DB, 225, 575, 325, 45))
 
     c.append(edge("e5", "BroadcastChannel", BIDIR, [(235, 168), (365, 168)], label_offset=(0, -14)))
     c.append(edge("e1", "HTTP (páginas)", DEP, [(110, 220), (110, 290)], label_offset=(-50, 0)))

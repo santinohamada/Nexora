@@ -316,6 +316,7 @@ Apéndice~A).
         POST & \texttt{/report} & Registra un reporte de traducción incorrecta o ambigua (CU-10, RF-06.1); invocado por \texttt{ChatBubble}. \\
         POST & \texttt{/audit} & Registra un evento de auditoría anónimo (CU-11, RF-04.1). Los tipos \texttt{consent} y \texttt{translation\_displayed} los envía el frontend (\texttt{PacientePage}, \texttt{useSentenceBuilder}); los tipos \texttt{prediction}, \texttt{sentence} y \texttt{report} los registra el propio backend al completar la operación correspondiente. \\
         GET & \texttt{/metrics?since=} & Consulta y agrega en SQL los eventos de auditoría de SQLite (\texttt{data/lsa\_salud.db}): conteos por tipo, consentimientos aceptados/declinados, fuente de traducción y latencias p50/p95/máx.\ por campo. \\
+        GET & \texttt{/reports/summary?limit=} & Devuelve los mensajes y las palabras reconocidas más reportados (\texttt{limit} entre 1 y 100), agregados en SQL sobre \texttt{reported\_message}, \texttt{recognized\_word} y \texttt{translation\_report}, como insumo para priorizar el reentrenamiento (CU-08, RF-06.1). \\
         \bottomrule
     \end{tabularx}
 \end{table}
