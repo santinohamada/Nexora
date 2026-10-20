@@ -4,79 +4,101 @@ title Modelo de Base de Datos - Diagrama Entidad-Relación Conceptual (LSA Salud
 
 skinparam linetype ortho
 
-class ClaseDeSeña {
-    etiqueta
+package "Sistema de archivos (artefactos binarios del modelo)" {
+    class ClaseDeSeña {
+        etiqueta
+    }
+
+    class MuestraDeEntrenamiento {
+        timestamp
+        cantidadDeFrames
+        cantidadDeCoeficientesDeBlendshapes
+    }
+
+    class VocabularioDelModelo {
+        indice
+        etiqueta
+    }
+
+    class ModeloDeReconocimiento {
+        nombreDeArchivo
+        framesPorMuestra
+    }
+
+    class ArchivoDeVoz {
+        nombreDeArchivo
+        configuracion
+    }
 }
 
-class MuestraDeEntrenamiento {
-    timestamp
-    cantidadDeFrames
-    cantidadDeCoeficientesDeBlendshapes
+package "Base de datos SQLite (data/lsa_salud.db)" {
+    class MensajeReportado {
+        idMensajeCliente
+        texto
+        primeraMarcaDeReporte
+    }
+
+    class PalabraReconocida {
+        posicion
+        palabra
+    }
+
+    class ReporteDeTraducción {
+        estacionQueReporta
+        marcaTemporal
+    }
+
+    class EventoDeAuditoría {
+        tipo {prediction | sentence | report |\nconsent | translation_displayed |\nfin_atencion}
+        marcaTemporal
+        estacion
+        camposSegúnTipo
+    }
 }
 
-class VocabularioDelModelo {
-    indice
-    etiqueta
-}
-
-class ModeloDeReconocimiento {
-    nombreDeArchivo
-    framesPorMuestra
-}
-
-class ArchivoDeVoz {
-    nombreDeArchivo
-    configuracion
-}
-
-' --- Entidades de consentimiento, auditoría y reporte (RF-03/04/06) ---
-class EventoDeAuditoría {
-    tipo {prediction | sentence | report |\nconsent | translation_displayed |\nfin_atencion}
-    marcaTemporal
-    camposSegúnTipo
-}
-
-class ReporteDeTraducción {
-    texto
-    estacion
-    palabras
-    marcaTemporal
+package "Memoria del navegador (no persistido)" {
+    class Mensaje <<volátil>> {
+        id
+        rol
+        texto
+        hora
+        reportado
+    }
 }
 
 ClaseDeSeña "1" -- "0..*" MuestraDeEntrenamiento : ejemplifica >
 ClaseDeSeña "1" -- "0..*" VocabularioDelModelo : aparece en >
 VocabularioDelModelo "0..*" -- "1" ModeloDeReconocimiento : pertenece a >
 
-' --- Enlaces ocultos: fuerzan tres columnas verticales angostas (layout, no semántica) ---
+Mensaje "1" -- "0..1" MensajeReportado : se persiste como >
+MensajeReportado "1" -- "1..*" ReporteDeTraducción : es señalado por >
+MensajeReportado "1" *-- "0..20" PalabraReconocida : se tradujo a partir de >
+PalabraReconocida "0..*" -- "0..1" ClaseDeSeña : corresponde a >
+
+' --- Enlaces ocultos: ordenan el layout (no semántica) ---
 MuestraDeEntrenamiento -[hidden]-> ClaseDeSeña
-
-VocabularioDelModelo -[hidden]-> ModeloDeReconocimiento
 ModeloDeReconocimiento -[hidden]-> ArchivoDeVoz
+ReporteDeTraducción -[hidden]-> EventoDeAuditoría
 
-EventoDeAuditoría -[hidden]-> ReporteDeTraducción
+note right of Mensaje
+  Vive solo como estado de React
+  (BroadcastChannel). Únicamente
+  el mensaje que alguien reporta
+  (CU-10) se copia a la base de
+  datos como MensajeReportado; el
+  resto de la conversación nunca
+  llega a disco (RNF-03.1).
+end note
+
+note bottom of EventoDeAuditoría
+  El consentimiento (RF-03) no es una
+  entidad propia: es un EventoDeAuditoría
+  con tipo = "consent". Anónimo.
+end note
 
 note bottom of ArchivoDeVoz
   Activo de terceros (Piper TTS),
-  pre-entrenado. No tiene
-  relacion con el resto del
-  modelo de datos de LSA Salud.
-end note
-
-note bottom of ReporteDeTraducción
-  RF-03/04/06. Sin relacion
-  con el resto: cada una es independiente,
-  anonima, sin datos de imagen/video.
-  El consentimiento (RF-03) no es una
-  entidad propia: es un EventoDeAuditoría
-  con tipo = "consent".
-end note
-
-note top of ClaseDeSeña
-  Alcance: solo se modelan los
-  conceptos que LSA Salud persiste
-  en disco. Conversacion, Mensaje
-  y los cachés de traducción/audio
-  se excluyen (ver Sección 1 y 5).
+  sin relación con el resto.
 end note
 
 @enduml

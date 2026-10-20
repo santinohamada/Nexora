@@ -110,10 +110,14 @@ Estación de Recepción.
         (9) & Botón ``Ajustes (Modo Captura)''; cambia a la Pantalla P-04. \\
         (10) & Botón ``Reportar traducción'' (ícono de bandera), visible
         solo sobre las burbujas del paciente en el panel (7); dispara CU-10
-        (Reportar Traducción Incorrecta o Ambigua, RF-06.1). Cambia de
-        estado mientras se envía (``Enviando...''), al confirmarse
-        (``Reportado'') o si falla (mensaje de error debajo de la
-        burbuja). \\
+        (Reportar Traducción Incorrecta o Ambigua, RF-06.1). Mientras se
+        envía muestra ``Enviando...''. Al registrarse el reporte, la
+        burbuja queda tachada con fondo ámbar en las dos caras de la
+        estación, el botón se reemplaza por la insignia ``Traducción
+        reportada'' y se muestra el aviso ``Traducción reportada. Repetí
+        la seña para enviar el mensaje de nuevo.''. Si el envío falla,
+        aparece un mensaje de error debajo de la burbuja y el botón queda
+        disponible para reintentar. \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -157,7 +161,10 @@ dictado de voz.
         (8) & Botón ``Reportar traducción'' (ícono de bandera), visible
         solo sobre las burbujas del paciente en el panel (3); dispara CU-10
         (Reportar Traducción Incorrecta o Ambigua, RF-06.1), con los mismos
-        estados que en P-02. \\
+        estados que en P-02. En esta cara el aviso es ``Traducción
+        reportada como incorrecta. No la tomes como válida: el paciente va
+        a repetir la seña.''; la burbuja ``Desde ayer.'' muestra ese
+        estado. \\
         (9) & Botón ``Finalizar atención''. Lo presiona el personal de
         recepción o enfermería al terminar la atención de un paciente;
         borra la conversación mostrada en las dos caras de la estación

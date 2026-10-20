@@ -315,7 +315,8 @@ Apéndice~A).
         \midrule
         POST & \texttt{/report} & Registra un reporte de traducción incorrecta o ambigua (CU-10, RF-06.1); invocado por \texttt{ChatBubble}. \\
         POST & \texttt{/audit} & Registra un evento de auditoría anónimo (CU-11, RF-04.1). Los tipos \texttt{consent} y \texttt{translation\_displayed} los envía el frontend (\texttt{PacientePage}, \texttt{useSentenceBuilder}); los tipos \texttt{prediction}, \texttt{sentence} y \texttt{report} los registra el propio backend al completar la operación correspondiente. \\
-        GET & \texttt{/metrics?since=} & Agrega los eventos de \texttt{logs/audit.jsonl}: conteos por tipo, consentimientos aceptados/declinados, fuente de traducción y latencias p50/p95/máx.\ por campo. \\
+        GET & \texttt{/metrics?since=} & Consulta y agrega en SQL los eventos de auditoría de SQLite (\texttt{data/lsa\_salud.db}): conteos por tipo, consentimientos aceptados/declinados, fuente de traducción y latencias p50/p95/máx.\ por campo. \\
+        GET & \texttt{/reports/summary?limit=} & Devuelve los mensajes y las palabras reconocidas más reportados (\texttt{limit} entre 1 y 100), agregados en SQL sobre \texttt{reported\_message}, \texttt{recognized\_word} y \texttt{translation\_report}, como insumo para priorizar el reentrenamiento (CU-08, RF-06.1). \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -617,7 +618,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \textbf{Descripción} & Antes de activar la cámara, el sistema despliega un diálogo modal de consentimiento explícito (P-05) sobre \texttt{PacientePage} y mantiene el resto de la página inerte (\texttt{inert}) hasta que el paciente decide. El estado de consentimiento (\texttt{pending} / \texttt{accepted} / \texttt{declined}) vive en memoria del componente, sin persistencia entre sesiones. \\
 \textbf{Entrada} & Decisión del paciente (acepta / no acepta), capturada por el diálogo. \\
 \textbf{Proceso} & \texttt{PacientePage} renderiza el diálogo y solo pasa \texttt{enabled: true} al hook de captura de landmarks (\texttt{useMediaPipe} / \texttt{useMediaPipeTasks}) cuando \texttt{consentState === "accepted"}; ese \texttt{enabled} gatea el efecto que invoca \texttt{getUserMedia()}, por lo que la cámara nunca se activa sin consentimiento previo. Cada decisión se registra como un evento de auditoría anónimo (\texttt{type: "consent"}, campo \texttt{consent}: \texttt{accepted}/\texttt{declined}) vía \texttt{POST /audit}. Si el paciente no acepta, puede reconsiderar más tarde desde el mismo diálogo. \\
-\textbf{Salida} & Consentimiento registrado en \texttt{logs/audit.jsonl} y cámara activada, o cámara inactiva con opción de reconsiderar. \\
+\textbf{Salida} & Consentimiento registrado en la base de datos SQLite (\texttt{data/lsa\_salud.db}) y cámara activada, o cámara inactiva con opción de reconsiderar. \\
 \textbf{CU relacionados} & CU-09 (precondición de CU-01). \\
 \bottomrule
 \end{tabularx}
@@ -632,8 +633,8 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \textbf{Prioridad} & Condicional (no bloquea el flujo de comunicación; es una subfunción de auditoría). \\
 \textbf{Descripción} & El sistema registra, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción/síntesis, reporte, consentimiento, traducción mostrada, fin de atención), sin datos identificatorios ni imágenes, video o texto de la conversación, para habilitar métricas operativas de uso . \\
 \textbf{Entrada} & Finalización de una operación de sistema (SO-01 a SO-05, ver Entregable 08) o un evento anónimo enviado por el frontend (\texttt{consent}, \texttt{translation\_displayed}). \\
-\textbf{Proceso} & El backend (helpers \texttt{\_log\_audit} / \texttt{\_append\_jsonl} en \texttt{app.py}, protegidos por un \texttt{threading.Lock}) arma un registro con tipo de evento, marca temporal UTC y campos propios del tipo, y lo agrega a \texttt{logs/audit.jsonl}. En la ruta WebSocket (\texttt{/ws/predict}) la escritura se despacha con \texttt{asyncio.to\_thread} para no bloquear el bucle de eventos. \texttt{GET /metrics} agrega el archivo (conteos por tipo, consentimientos, fuente de traducción, p50/p95/máx.\ de latencia). \\
-\textbf{Salida} & Evento de auditoría anónimo persistido en \texttt{logs/audit.jsonl}. \\
+\textbf{Proceso} & El backend (función envoltura \texttt{\_log\_audit} en \texttt{app.py} que delega en \texttt{storage.log\_audit\_event}) inserta el registro estructurado en la tabla \texttt{audit\_event} de SQLite (\texttt{data/lsa\_salud.db}). En la ruta WebSocket (\texttt{/ws/predict}) la escritura se despacha con \texttt{asyncio.to\_thread} para no bloquear el bucle de eventos. \texttt{GET /metrics} ejecuta agregaciones SQL sobre la tabla (conteos por tipo, consentimientos, fuente de traducción, p50/p95/máx.\ de latencia). \\
+\textbf{Salida} & Evento de auditoría anónimo persistido en SQLite (\texttt{data/lsa\_salud.db}). \\
 \textbf{CU relacionados} & CU-11 (incluido por CU-01 y CU-04). \\
 \bottomrule
 \end{tabularx}
@@ -648,8 +649,8 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \textbf{Prioridad} & Condicional. \\
 \textbf{Descripción} & El paciente o el personal de recepción o enfermería pueden marcar un mensaje de la conversación (traducido del paciente) como traducción incorrecta o ambigua, para registrar el caso y priorizar el reentrenamiento (CU-08). \\
 \textbf{Entrada} & Click en ``Reportar traducción'' sobre un mensaje del paciente, en \texttt{ChatBubble}. \\
-\textbf{Proceso} & \texttt{ChatBubble} envía \texttt{POST /report} con el texto del mensaje, la estación (\texttt{paciente}/\texttt{recepcion}, derivada de la ruta con \texttt{usePathname}) y, si están disponibles, las palabras crudas reconocidas. El backend valida el payload (\texttt{validate\_report\_payload}: texto no vacío, longitud máxima, estación válida) y lo persiste en \texttt{logs/reports.jsonl} (texto, estación, palabras, marca temporal UTC), además de registrar un evento de auditoría \texttt{report} en \texttt{logs/audit.jsonl}. \\
-\textbf{Salida} & Reporte persistido y botón actualizado a estado ``Reportado'' (o mensaje de error si la petición falla). \\
+\textbf{Proceso} & \texttt{ChatBubble} envía \texttt{POST /report} con el texto del mensaje, la estación (\texttt{paciente}/\texttt{recepcion}, derivada de la ruta con \texttt{usePathname}) y, si están disponibles, las palabras crudas reconocidas y el ID del mensaje. El backend valida el payload (\texttt{validate\_report\_payload}) y delega en \texttt{storage.save\_report} la inserción en las tablas \texttt{reported\_message}, \texttt{recognized\_word} y \texttt{translation\_report} de SQLite (\texttt{data/lsa\_salud.db}), además de registrar un evento de auditoría \texttt{report}. El frontend emite el evento \texttt{REPORTED} vía \texttt{BroadcastChannel} para actualizar y tachar el mensaje en ambas caras de la estación. \\
+\textbf{Salida} & Reporte y mensaje persistidos en SQLite, notificación sincronizada a la otra cara y burbuja en estado permanente ``Traducción reportada'' con aviso operativo. \\
 \textbf{CU relacionados} & CU-10 (extiende a CU-01 y CU-04). \\
 \bottomrule
 \end{tabularx}
@@ -663,7 +664,7 @@ sistema mide cada etapa de
 forma continua: cada predicción y cada oración procesada registra su
 latencia por etapa (\texttt{lstm\_ms}, \texttt{translation\_ms},
 \texttt{tts\_ms}, \texttt{total\_ms}) como evento de auditoría en
-\texttt{logs/audit.jsonl}, y \texttt{GET /metrics} agrega esos campos en
+SQLite (\texttt{data/lsa\_salud.db}), y \texttt{GET /metrics} agrega esos campos en
 p50/p95/máx.\ bajo demanda; el frontend también reporta \texttt{e2e\_ms}
 (latencia percibida, desde el cierre de la oración hasta que se muestra
 en pantalla) vía \texttt{POST /audit} (\texttt{translation\_displayed}).
@@ -709,7 +710,7 @@ independiente del conjunto de entrenamiento.
     \item \textbf{Backend de un solo archivo:} \texttt{app.py} concentra los endpoints REST y WebSocket, pensado para simplicidad de despliegue en un entorno de consultorio.
     \item \textbf{Modelos pre-entrenados como dependencia:} los pesos del LSTM, el modelo de voz Piper y el modelo de lenguaje de Ollama deben estar descargados de antemano; el sistema no los descarga en tiempo de ejecución.
     \item \textbf{Protocolos por tipo de operación:} WebSocket para predicción de baja latencia, REST para operaciones puntuales (traducción, captura, consulta de clases), BroadcastChannel para sincronización entre estaciones.
-    \item \textbf{Sin base de datos:} las muestras de entrenamiento se guardan como archivos \texttt{.npy} en el sistema de archivos; la conversación es volátil y no se persiste.
+    \item \textbf{Persistencia híbrida local:} SQLite embebido (\texttt{data/lsa\_salud.db}) para reportes y auditoría; muestras de entrenamiento como archivos \texttt{.npy} en el sistema de archivos; la conversación médica ordinaria es volátil y no se persiste.
 \end{itemize}
 
 \subsection{Atributos del sistema}
@@ -725,7 +726,7 @@ RNF-T-06) son requisitos técnicos definidos por el equipo, sin RNF base.
     \item \textbf{Privacidad de datos de salud:} todo el procesamiento y almacenamiento ocurre en la máquina local; no hay persistencia de conversaciones (estado en memoria más BroadcastChannel); al finalizar cada atención (CU-12), el sistema borra explícitamente la conversación en las dos caras de la estación.
     \item \textbf{Configuración de CORS:} el backend admite conexiones únicamente desde los orígenes configurados para la red local del sanatorio (ver RNF-T-06, Sección~3.4).
     \item \textbf{Acceso a cámara y micrófono:} requiere autorización explícita del navegador, otorgada por el usuario, y consentimiento explícito previo del paciente (CU-09, RF-03.1).
-    \item \textbf{Eventos de auditoría (RF-04.1) y reportes de traducción (RF-06.1):} se registran sin datos identificatorios ni imágenes, video o texto de la conversación (salvo el propio texto reportado en \texttt{logs/reports.jsonl}, necesario para priorizar el reentrenamiento), consistentes con esta restricción.
+    \item \textbf{Eventos de auditoría (RF-04.1) y reportes de traducción (RF-06.1):} se registran en SQLite sin datos identificatorios ni imágenes o video; el texto del mensaje se guarda únicamente para los mensajes explícitamente reportados, como insumo técnico para priorizar el reentrenamiento del modelo.
 \end{itemize}
 
 \subsubsection{Compatibilidad de hardware y estación fija (RNF-04.1 / RNF-07.1, sub-requisitos de RNF-04 y RNF-07)}

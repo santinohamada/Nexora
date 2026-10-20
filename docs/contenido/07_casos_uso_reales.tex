@@ -436,8 +436,11 @@ Existe al menos una burbuja del paciente en el panel de conversación de
 P-02 (7) o de P-03 (3); el botón de reporte solo aparece sobre mensajes
 del paciente. \\
 \textbf{Garantías de éxito} &
-El reporte queda registrado en el sistema, asociado al texto y a las
-palabras del mensaje señalado. \\
+El reporte queda registrado en la base de datos relacional local
+(\texttt{data/lsa\_salud.db}), asociado al texto y a las palabras del
+mensaje señalado. El mensaje se marca como tachado en ambas caras de la
+estación (P-02 y P-03) con un aviso operativo, y se solicita al paciente
+repetir la seña. \\
 \bottomrule
 \caption{CU-10 (real) — Reportar Traducción Incorrecta o Ambigua}
 \end{longtable}
@@ -454,13 +457,21 @@ palabras del mensaje señalado. \\
 \endhead
 1. El actor hace clic en el botón ``Reportar traducción'' de una burbuja
 del paciente (callout (10) en P-02 o (8) en P-03). &
-2. El botón pasa a estado ``Enviando...'' y el sistema envía el reporte
-(texto del mensaje, estación y palabras reconocidas) al servidor. \\
+2. El botón pasa a estado ``Enviando...'' y el sistema registra el
+reporte con el texto del mensaje, la estación y las palabras reconocidas. \\
 &
-3. El sistema valida y persiste el reporte. \\
-&
-4. El botón pasa a estado ``Reportado'' (con un ícono de check), como
-confirmación visual. \\
+3. En ambas pantallas (P-02 y P-03), la burbuja del mensaje se actualiza
+inmediatamente:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+    \item El texto del mensaje queda tachado (\textit{strikethrough}) y con
+    borde/fondo ámbar de advertencia.
+    \item El botón pasa a la insignia permanente ``Traducción reportada''.
+    \item En la pantalla del paciente (P-02) se muestra: \textit{``Traducción
+    reportada. Repetí la seña para enviar el mensaje de nuevo.''}.
+    \item En la pantalla de recepción (P-03) se muestra: \textit{``Traducción
+    reportada como incorrecta. No la tomes como válida: el paciente va a
+    repetir la seña.''}.
+\end{itemize} \\
 \bottomrule
 \caption{Curso normal de los eventos --- CU-10 (real)}
 \end{longtable}
@@ -470,12 +481,12 @@ confirmación visual. \\
 \toprule
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
-    \item[2a.] La solicitud falla, por un problema de conexión o porque
-    el reporte no supera la validación: el botón vuelve a estar
-    disponible y se muestra ``No se pudo enviar el reporte. Probá de
-    nuevo.'' debajo de la burbuja; el actor puede reintentar.
+    \item[2a.] La solicitud falla por problema de red o error de validación:
+    el botón vuelve a estar disponible con el mensaje \textit{``No se pudo
+    enviar el reporte. Probá de nuevo.''} al pie de la burbuja; el mensaje
+    no se tacha y el actor puede reintentar.
 \end{itemize} \\
-\textbf{Requisitos especiales} & RF-06.1. \\
+\textbf{Requisitos especiales} & RF-06.1, RNF-03.1. \\
 \textbf{Frecuencia} &
 Bajo demanda, cada vez que se detecta una traducción incorrecta o
 ambigua. \\

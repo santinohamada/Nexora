@@ -66,7 +66,7 @@ export default function PacientePage() {
     }
   }, [consentState]);
 
-  const { chatHistory, sendMessage, clearHistory } = useChatChannel();
+  const { chatHistory, sendMessage, markReported, clearHistory } = useChatChannel();
 
   const recordedFrames = useRef<Frame[]>([]);
   const framesSinceLastPredictRef = useRef(0);
@@ -321,7 +321,7 @@ export default function PacientePage() {
                     </div>
                   ) : (
                     chatHistory.map((msg) => (
-                      <ChatBubble key={msg.id} msg={msg} />
+                      <ChatBubble key={msg.id} msg={msg} onReported={markReported} />
                     ))
                   )}
                 </div>

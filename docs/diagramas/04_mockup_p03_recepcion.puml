@@ -10,8 +10,8 @@
       {SI
         <b>Paciente:</b> Me duele la cabeza.    | 10:32 | [<&flag> Reportar traducción]
         <b>Recepción:</b> ¿Desde cuándo?        | 10:33 | .
-        <b>Paciente:</b> Desde ayer.            | 10:34 | [<&flag> Reportar traducción]
-        .                                       | .     | .
+        <b>Paciente:</b> <color:gray>Desde ayer.</color>| 10:34 | <&warning> Traducción reportada
+        <i>No la tomes como válida: el paciente va a repetir la seña.</i> | . | .
       }
       <i>Botón "Reportar traducción" solo en mensajes del paciente</i>  (8)
     } | {^"Responder al paciente"

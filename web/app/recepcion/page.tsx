@@ -10,7 +10,7 @@ import { useChatChannel } from "../../hooks/useChatChannel";
 export default function RecepcionPage() {
   console.log("[Render] RecepcionPage");
   
-  const { chatHistory, sendMessage } = useChatChannel();
+  const { chatHistory, sendMessage, markReported } = useChatChannel();
 
   const handleSendReception = useCallback((text: string) => {
     sendMessage({
@@ -54,7 +54,7 @@ export default function RecepcionPage() {
                 </div>
               ) : (
                 chatHistory.map((msg) => (
-                  <ChatBubble key={msg.id} msg={msg} />
+                  <ChatBubble key={msg.id} msg={msg} onReported={markReported} />
                 ))
               )}
             </div>

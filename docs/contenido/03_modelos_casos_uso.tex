@@ -553,52 +553,61 @@ instalación de cada estación. \\
 \textbf{Actor principal} & Paciente, Personal de Recepción o Enfermería \\
 \textbf{Personal involucrado e intereses} &
 Paciente y Personal: quieren señalar cuando un mensaje traducido no
-representa lo que se quiso decir, para que el equipo mejore el modelo.
-\newline
+representa lo que se quiso decir, evitando que el personal tome decisiones
+clínicas o administrativas sobre una traducción errónea, y que el equipo
+de desarrollo mejore el modelo. \newline
 Desarrollador de IA / Equipo de Proyecto: necesita casos reales
-identificados para priorizar el reentrenamiento (CU-08). \\
+identificados para priorizar el reentrenamiento del modelo (CU-08). \\
 \textbf{Precondiciones} &
 Existe al menos un mensaje en la conversación (generado por CU-01 o
 CU-04). \\
 \textbf{Garantías de éxito} &
-El reporte queda registrado, asociado al mensaje señalado y con su motivo,
-sin exponer datos identificatorios del paciente. \\
+El reporte queda registrado asociado al mensaje señalado, el mensaje queda
+marcado como traducción reportada en ambas caras de la estación, y se
+instruye al paciente a repetir la seña; todo ello sin almacenar datos
+identificatorios del paciente. \\
 \textbf{Escenario principal de éxito} &
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
     \item El actor revisa un mensaje del paciente en la conversación
     (punto de extensión ``revisión de mensaje'' de CU-01 o CU-04).
-    \item El actor indica que desea reportar el mensaje.
-    \item El sistema envía el reporte con el texto del mensaje, la
-    estación de origen y, si están disponibles, las palabras crudas
-    reconocidas.
-    \item El sistema valida la información y la registra, asociada al
-    mensaje señalado (texto, estación, palabras, marca temporal).
-    \item El sistema confirma al actor que el reporte fue registrado.
+    \item El actor indica que desea reportar la traducción del mensaje.
+    \item El sistema envía el reporte con el identificador del mensaje, su
+    texto, la estación de origen y, si están disponibles, las palabras
+    crudas reconocidas.
+    \item El sistema valida la información y registra el reporte asociado
+    al mensaje señalado.
+    \item El sistema notifica el reporte a ambas caras de la estación.
+    \item El sistema actualiza el mensaje en las dos caras: lo marca como
+    traducción reportada y exhibe un aviso operativo (al paciente
+    se le solicita repetir la seña y al personal se le advierte no actuar
+    sobre esa traducción).
     \item El flujo vuelve al punto de extensión de origen (CU-01 o
     CU-04).
 \end{enumerate} \\
 \textbf{Extensiones} &
 \begin{itemize}[leftmargin=*, itemsep=2pt]
     \item[3a.] El envío del reporte falla (red o validación): el sistema
-    informa que no pudo enviarse y permite reintentar.
+    informa que no pudo enviarse y permite reintentar sin alterar el estado
+    del mensaje.
 \end{itemize} \\
-\textbf{Requisitos especiales} & RF-06.1; RNF-03.1 (reporte sin datos identificatorios ni imágenes). \\
+\textbf{Requisitos especiales} & RF-06.1; RNF-03.1 (reporte anónimo, sin almacenar la conversación completa). \\
 \textbf{Variantes de tecnología y datos} &
 Botón ``Reportar traducción'' en \texttt{ChatBubble}
-(\texttt{web/components/chat/ChatBubble.tsx}), visible solo en mensajes
-del paciente, con los estados ``Enviando...''/``Reportado''; la estación
-(\texttt{paciente}/\texttt{recepcion}) se deriva de la ruta actual con
-\texttt{usePathname}. El envío usa \texttt{POST /report}; el backend
-valida el payload con \texttt{validate\_report\_payload} y lo persiste en
-\texttt{logs/reports.jsonl} (ver Entregable 04, mockups, y Entregable 09,
-Modelo de Datos). \\
+(\texttt{web/components/chat/ChatBubble.tsx}), visible en mensajes del
+paciente; al reportar invoca \texttt{POST /report} y luego sincroniza el
+evento \texttt{REPORTED} mediante \texttt{useChatChannel}
+(\texttt{BroadcastChannel("nexora-chat")}). El backend valida el payload
+(\texttt{validate\_report\_payload}) y delega la persistencia al módulo
+\texttt{storage.py} sobre la base de datos SQLite (\texttt{data/lsa\_salud.db}).
+El mensaje pasa a estilo tachado con fondo de advertencia y textos
+contextualizados por estación. \\
 \textbf{Frecuencia} &
 Bajo demanda, cada vez que el paciente o el personal detectan una
 traducción incorrecta. \\
 \textbf{Temas abiertos} &
-El reporte no pide un motivo estructurado, solo el texto y las palabras
-del mensaje señalado; el Equipo de Proyecto prioriza los reportes
-acumulados como insumo para el reentrenamiento (CU-08). \\
+Ninguno. El reporte captura el texto del mensaje, su identificador, la
+estación y las palabras reconocidas como insumo directo para priorizar el
+reentrenamiento (CU-08). \\
 \bottomrule
 \end{longtable}
 
@@ -644,10 +653,11 @@ video. \\
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-04.1; RNF-03.1 (anonimato, sin imágenes ni video). \\
 \textbf{Variantes de tecnología y datos} &
-Persistencia basada en archivos: helpers \texttt{\_log\_audit} /
-\texttt{\_append\_jsonl} en \texttt{app.py}, con un \texttt{threading.Lock}
-para escritura concurrente, sobre \texttt{logs/audit.jsonl}, consistente
-con el resto del sistema (ver Entregable 09, Modelo de Datos). Las
+Persistencia relacional embebida: la función \texttt{\_log\_audit} de
+\texttt{app.py} delega en \texttt{storage.log\_audit\_event} la inserción en
+la tabla \texttt{audit\_event} de la base de datos SQLite
+(\texttt{data/lsa\_salud.db}), consistente con el resto del sistema (ver
+Entregable 09, Modelo de Datos). Las
 operaciones que disparan el registro corresponden a los endpoints
 \texttt{/predict}, \texttt{/ws/predict}, \texttt{/process\_sentence},
 \texttt{/report} y \texttt{POST /audit} (consentimiento y traducción

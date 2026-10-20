@@ -59,10 +59,10 @@ completa hacia la matriz de requisitos (`RF-01..06`,
 `RNF-01..07`, reservados para su texto literal) y la realización de los
 requisitos **RF-03 (consentimiento), RF-04 (auditoría) y RF-06
 (reporte de traducción)** (CU-09, CU-10, CU-11; Diálogo de Consentimiento
-P-05 dentro de `PacientePage`; DC-06, DC-07, DC-08; funciones
-`_log_audit`/`_append_jsonl` dentro de `app.py` en Arquitectura; eventos de
-auditoría y reportes en `logs/audit.jsonl` y `logs/reports.jsonl` en el
-Modelo de Datos).
+P-05 dentro de `PacientePage`; DC-06, DC-07, DC-08; módulo
+`storage.py` dentro de `app.py` en Arquitectura; eventos de
+auditoría y reportes persistidos en la base de datos SQLite `data/lsa_salud.db`
+en el Modelo de Datos).
 
 ## Regenerar los diagramas
 

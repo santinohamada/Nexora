@@ -27,7 +27,7 @@ Se presentan dos vistas:
 \end{itemize}
 
 Este documento no repite contenido de otros entregables: el detalle de la
-persistencia basada en archivos se documenta en el Entregable 09; los IDs de
+persistencia local híbrida (SQLite y archivos) se documenta en el Entregable 09; los IDs de
 actores, casos de uso, RF y RNF se reutilizan tal como están definidos en
 \texttt{IDS.md} y en la ERS (Entregable 05).
 
@@ -54,8 +54,8 @@ no es un componente ni una ruta aparte: vive dentro de
 \texttt{paciente/page} (\texttt{PacientePage}), que gatea el montaje de los
 \texttt{hooks} de captura con la prop \texttt{enabled}. El registro de
 auditoría (RF-04.1) tampoco es un módulo propio: son funciones
-(\texttt{\_log\_audit}, \texttt{\_append\_jsonl}) dentro de \texttt{app.py}
-mismo, invocadas por cada \textit{handler} que completa una operación de
+(\texttt{\_log\_audit}, que delega en \texttt{storage.log\_audit\_event}) dentro de
+\texttt{app.py} mismo, invocadas por cada \textit{handler} que completa una operación de
 sistema, y por el endpoint \texttt{POST /audit} para los eventos que origina
 el frontend (\texttt{consent}, \texttt{translation\_displayed}). El reporte
 de traducción (RF-06.1) se inicia desde \texttt{ChatBubble} y viaja por la
@@ -88,7 +88,7 @@ Puntos relevantes del diagrama:
     módulos propios (RNF-T-03).
     \item El gateo de consentimiento (frontend, dentro de
     \texttt{paciente/page}) y las funciones de auditoría
-    (\texttt{\_log\_audit} / \texttt{\_append\_jsonl}, backend, invocadas
+    (\texttt{\_log\_audit} / \texttt{storage.log\_audit\_event}, backend, invocadas
     desde cada \textit{handler} de \texttt{app.py} que realiza una
     operación de sistema) siguen el mismo patrón de desacoplamiento que
     \texttt{capture\_validation}: ninguno de los \textit{handlers}
@@ -141,12 +141,15 @@ Puntos relevantes:
     sincronización intra-navegador, sin cruzar ningún límite de nodo ni de
     proceso y sin tráfico de red.
     \item El sistema de archivos local de cada estación (\texttt{dataset/},
-    \texttt{models/}, \texttt{voices/}) es leído y escrito únicamente por el
-    proceso del backend de esa estación; no hay motor de base de datos ni
-    almacenamiento compartido entre estaciones. La carpeta \texttt{logs/}
-    (eventos de auditoría y consentimiento en \texttt{audit.jsonl}, reportes
-    de traducción en \texttt{reports.jsonl}) también es escrita únicamente
-    por ese proceso (RF-03, RF-04, RF-06).
+    \texttt{models/}, \texttt{voices/}) y la base de datos relacional embebida
+    (\texttt{data/lsa\_salud.db}) son leídos y escritos únicamente por el
+    proceso del backend de esa estación; no hay servidor de base de datos
+    externo ni almacenamiento compartido en red entre estaciones. La base de
+    datos SQLite almacena los eventos de auditoría y consentimiento
+    (\texttt{audit\_event}), los reportes de traducción
+    (\texttt{translation\_report}) y el texto de los mensajes reportados
+    (\texttt{reported\_message}) con sus palabras reconocidas
+    (\texttt{recognized\_word}) (RF-03, RF-04, RF-06).
     \item Dentro de cada estación, la cara Paciente usa WebSocket
     (\texttt{/ws/predict}) y HTTP REST contra su backend; la cara Recepción
     solo HTTP REST. El backend invoca a su propio Ollama local por HTTP
@@ -180,17 +183,16 @@ vistas anteriores.
     en la máquina (ver ERS 2.7, Suposiciones); no hay escalado horizontal
     posible sin rediseño. \\
 
-    Auditoría basada en archivos (\texttt{logs/audit.jsonl}) mediante
-    funciones simples dentro de \texttt{app.py}
-    (\texttt{\_log\_audit}/\texttt{\_append\_jsonl}), sin un módulo
-    separado &
-    RF-04.1 exige registrar logs de uso y métricas operativas
-    anónimas para auditoría, sin agregar un servicio ni una base de datos
-    nueva (coherente con la decisión de persistencia basada en archivos). &
-    Cada \textit{handler} existente agrega una línea de invocación a
-    \texttt{\_log\_audit}; el formato de línea (JSON Lines) permite anexar
-    sin reescribir el archivo completo; la escritura comparte un
-    \texttt{threading.Lock} con \texttt{/report}. \\
+    Persistencia relacional embebida en SQLite (\texttt{data/lsa\_salud.db})
+    mediante módulo de repositorio (\texttt{storage.py}) para auditoría y
+    reportes &
+    RF-04.1 y RF-06.1 exigen registrar métricas y reportes estructurados
+    con integridad referencial, claves foráneas y consultas analíticas
+    agregadas eficientes (percentiles, conteos), sin agregar un servidor
+    de base de datos externo ni violar la autonomía local. &
+    Garantía de transacciones ACID y modo WAL; endpoints como \texttt{/metrics}
+    y \texttt{/reports/summary} ejecutan consultas SQL instantáneas indexadas;
+    el esquema garantiza consistencia de claves foráneas con eliminación en cascada. \\
 
     Gateo de consentimiento dentro del propio \texttt{paciente/page}
     (\texttt{consentState} pasado como \texttt{enabled} al hook de
@@ -230,15 +232,14 @@ vistas anteriores.
     nuevo dispositivo a una estación requiere sumar su origen a la
     configuración local de esa estación. \\
 
-    Persistencia basada en archivos (\texttt{.npy}, \texttt{.pth},
-    \texttt{.onnx}) en lugar de una base de datos &
-    El dominio no requiere consultas relacionales ni concurrencia de
-    escritura alta: las muestras de entrenamiento y los modelos son
-    artefactos versionables por archivo; simplifica el despliegue
-    \textit{standalone} (ver Entregable 09). &
-    Sin transacciones ni consultas indexadas; la consistencia de
-    \texttt{dataset\_stats} depende de recorrer el árbol de carpetas en
-    cada consulta. \\
+    Artefactos de modelo y dataset (muestras \texttt{.npy}, modelos
+    \texttt{.pth} y \texttt{.onnx}, voces) persistidos como archivos
+    versionables &
+    Las muestras de entrenamiento y los modelos son artefactos binarios
+    que se copian, versionan y reemplazan por archivo; simplifica el
+    despliegue \textit{standalone} (ver Entregable 09). &
+    La consistencia de \texttt{dataset\_stats} depende de recorrer el árbol
+    de carpetas en cada consulta. \\
 
     Backend de un solo archivo (\texttt{app.py}) para todos los endpoints &
     Simplicidad de despliegue en un entorno de consultorio, sin
@@ -285,7 +286,7 @@ Sección~4 --- con la vista o el mecanismo arquitectónico que lo atiende.
     RNF-03.1 & Seguridad / privacidad &
     Vista Física y decisión arquitectónica de procesamiento local
     (sección~\ref{sec:decisiones}): ningún dato de la conversación sale de
-    la máquina; persistencia basada en archivos sin base de datos externa;
+    la máquina; persistencia local embebida (SQLite y archivos) sin servidor de base de datos externo;
     diseño de auditoría y reporte (RF-04.1, RF-06.1) sin imágenes ni video. \\
 
     RNF-T-03 & Mantenibilidad &

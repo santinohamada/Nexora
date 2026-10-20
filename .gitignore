@@ -30,8 +30,23 @@ web/public/mediapipe/
 
 # Runtime logs
 logs/
+
+# Local SQLite database (reports and audit events)
+data/*.db
+data/*.db-wal
+data/*.db-shm
 docs/tools/*.jar
 docs/build/
 docs/_legacy/
+docs/*.aux
+docs/*.log
+docs/*.out
+docs/*.toc
+docs/*.lof
+docs/*.lot
 docs/referencias/*Firmado*.pdf
 docs/referencias/*Registro de Interesados*.xlsx
+
+# Local reference material (third-party and personal files)
+docs/referencias/*
+!docs/referencias/RESUMEN_REFERENCIAS.md

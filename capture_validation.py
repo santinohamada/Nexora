@@ -7,6 +7,7 @@ BLENDSHAPE_COUNT = 52
 LABEL_PATTERN = re.compile(r"[a-z0-9_]{1,32}")
 
 REPORT_TEXT_MAX_LEN = 500
+REPORT_MESSAGE_ID_MAX = 2**53 - 1  # JS Number.MAX_SAFE_INTEGER; Date.now() ids are far below
 REPORT_STATIONS = {"paciente", "recepcion"}
 REPORT_WORDS_MAX_COUNT = 20
 REPORT_WORD_MAX_LEN = 32
@@ -37,7 +38,14 @@ def validate_capture_blendshapes(mode: str, frame_count: int, blendshapes):
     return arr
 
 
-def validate_report_payload(text: str, station: str, words: list[str] | None) -> None:
+def validate_report_payload(
+    text: str, station: str, words: list[str] | None, message_id: int | None = None
+) -> None:
+    if message_id is not None:
+        if not isinstance(message_id, int) or isinstance(message_id, bool):
+            raise ValueError("Invalid message_id")
+        if not 0 <= message_id <= REPORT_MESSAGE_ID_MAX:
+            raise ValueError("Invalid message_id")
     if not text or not text.strip():
         raise ValueError("Empty text")
     if len(text) > REPORT_TEXT_MAX_LEN:

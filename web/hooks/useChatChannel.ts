@@ -3,7 +3,11 @@ import { ChatMessage } from "../types";
 
 type ChatEvent =
   | { type: "MESSAGE"; payload: ChatMessage }
+  | { type: "REPORTED"; id: number }
   | { type: "CLEAR" };
+
+const flagReported = (history: ChatMessage[], id: number) =>
+  history.map((m) => (m.id === id && !m.reported ? { ...m, reported: true } : m));
 
 export function useChatChannel() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -21,6 +25,8 @@ export function useChatChannel() {
           if (prev.some((m) => m.id === data.payload.id)) return prev;
           return [...prev, data.payload];
         });
+      } else if (data.type === "REPORTED") {
+        setChatHistory((prev) => flagReported(prev, data.id));
       } else if (data.type === "CLEAR") {
         setChatHistory([]);
       }
@@ -41,6 +47,17 @@ export function useChatChannel() {
     [channel]
   );
 
+  // Marks a message as reported in this tab and notifies the other station face (CU-10).
+  const markReported = useCallback(
+    (id: number) => {
+      setChatHistory((prev) => flagReported(prev, id));
+      if (channel) {
+        channel.postMessage({ type: "REPORTED", id });
+      }
+    },
+    [channel]
+  );
+
   const clearHistory = useCallback(() => {
     setChatHistory([]);
     if (channel) {
@@ -48,5 +65,5 @@ export function useChatChannel() {
     }
   }, [channel]);
 
-  return { chatHistory, sendMessage, clearHistory };
+  return { chatHistory, sendMessage, markReported, clearHistory };
 }

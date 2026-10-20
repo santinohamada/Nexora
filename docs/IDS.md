@@ -157,8 +157,8 @@ Cubren RF-03, RF-04 y RF-06.
 | ID | Texto (una línea) | CU relacionados | Traza a RF |
 |----|--------------------|------------------|---------------------|
 | RF-03.1 | Antes de activar la cámara, el sistema despliega un diálogo de consentimiento explícito (`PacientePage`) y bloquea el acceso a la cámara (`enabled` en el hook de landmarks) hasta que el paciente lo otorgue. | CU-09 | RF-03 |
-| RF-04.1 | El sistema registra, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción/síntesis, reporte, consentimiento, traducción mostrada, fin de atención), sin datos identificatorios ni imágenes/video, en `logs/audit.jsonl`. | CU-11 | RF-04 |
-| RF-06.1 | El paciente o el personal de recepción/enfermería pueden marcar un mensaje del paciente como traducción incorrecta o ambigua (botón "Reportar traducción" en `ChatBubble`); el reporte se persiste en `logs/reports.jsonl`. | CU-10 | RF-06 |
+| RF-04.1 | El sistema registra, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción/síntesis, reporte, consentimiento, traducción mostrada, fin de atención), sin datos identificatorios ni imágenes/video, en la base de datos SQLite (`data/lsa_salud.db`). | CU-11 | RF-04 |
+| RF-06.1 | El paciente o el personal de recepción/enfermería pueden marcar un mensaje del paciente como traducción incorrecta o ambigua (botón "Reportar traducción" en `ChatBubble`); el reporte y el mensaje se persisten en la base de datos SQLite (`data/lsa_salud.db`) y se notifica a ambas caras de la estación. | CU-10 | RF-06 |
 
 CU-12 no agrega un sub-requisito RF propio: realiza directamente RNF-03 (ver
 RNF-03.1 en la sección 4.2, actualizada con la acción de fin de atención) y

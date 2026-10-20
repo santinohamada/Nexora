@@ -8,7 +8,7 @@
 #    se generan como .drawio editables con gen_drawio.py y se exportan a PDF
 #    con draw.io desktop. Requiere el venv de Python y draw.io instalado.
 # 3. Diagrama de casos de uso (diagramas/casos_uso/gen_casos_uso.py): mismo
-#    flujo draw.io, con el formato de docs/referencias/formato Diag caso de uso.jpeg.
+#    flujo draw.io (límite único del sistema, actores a ambos lados).
 # 4. Modelo de Dominio (diagramas/dominio/gen_modelo_dominio.py) y Vistas
 #    Lógica y Física (diagramas/arquitectura/gen_vista_*.py): mismo flujo
 #    draw.io; se generaron a mano (en vez de PlantUML/smetana) porque esos

@@ -4,7 +4,6 @@ import json
 import math
 import atexit
 import asyncio
-import threading
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -21,6 +20,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from src.model.lstm import SignLanguageLSTM
+import storage
 from capture_validation import (
     validate_audit_payload,
     validate_capture_blendshapes,
@@ -306,6 +306,7 @@ class ReportPayload(BaseModel):
     text: str
     station: str
     words: list[str] | None = None
+    message_id: int | None = None
 
 
 def _prepare_input(data: np.ndarray) -> np.ndarray:
@@ -323,22 +324,16 @@ def _prepare_input(data: np.ndarray) -> np.ndarray:
 # Endpoints
 # ---------------------------------------------------------------------------
 os.makedirs("dataset/custom", exist_ok=True)
-os.makedirs("logs", exist_ok=True)
-REPORTS_LOG_PATH = os.path.join("logs", "reports.jsonl")
-AUDIT_LOG_PATH = os.path.join("logs", "audit.jsonl")
-JSONL_LOCK = threading.Lock()
-AUDIT_LATENCY_FIELDS = ("lstm_ms", "translation_ms", "tts_ms", "total_ms", "e2e_ms")
-
-
-def _append_jsonl(path: str, record: dict) -> None:
-    with JSONL_LOCK, open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record) + "\n")
+DB_PATH = storage.DEFAULT_DB_PATH
+storage.init_db(DB_PATH)
 
 
 def _log_audit(event_type: str, **fields) -> None:
-    record = {"type": event_type, "timestamp": datetime.now(timezone.utc).isoformat()}
-    record.update(fields)
-    _append_jsonl(AUDIT_LOG_PATH, record)
+    """Best-effort audit write: an audit failure must never break the primary operation."""
+    try:
+        storage.log_audit_event(DB_PATH, event_type, **fields)
+    except Exception as e:
+        print(f"[Nexora] Audit write failed ({event_type}): {e}")
 
 
 def _percentile(sorted_values: list[float], pct: float) -> float:
@@ -419,20 +414,25 @@ def capture(payload: CapturePayload):
 @app.post("/report")
 def report_translation(payload: ReportPayload):
     try:
-        validate_report_payload(payload.text, payload.station, payload.words)
+        validate_report_payload(payload.text, payload.station, payload.words, payload.message_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    record = {
-        "text": payload.text,
-        "station": payload.station,
-        "words": payload.words,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-    _append_jsonl(REPORTS_LOG_PATH, record)
+    saved = storage.save_report(
+        DB_PATH,
+        text=payload.text,
+        station=payload.station,
+        words=payload.words,
+        client_message_id=payload.message_id,
+    )
     _log_audit("report", station=payload.station)
 
-    return {"status": "ok"}
+    return {"status": "ok", "report_id": saved["report_id"], "message_id": saved["message_id"]}
+
+
+@app.get("/reports/summary")
+def reports_summary(limit: int = 10):
+    return storage.report_summary(DB_PATH, limit=max(1, min(limit, 100)))
 
 
 class AuditPayload(BaseModel):
@@ -454,7 +454,8 @@ def audit_event(payload: AuditPayload):
         fields["consent"] = payload.consent
     else:
         fields["e2e_ms"] = round(payload.e2e_ms, 2)
-    _log_audit(payload.type, **fields)
+    # Strict: recording the event is this endpoint's whole purpose, so failures reach the caller.
+    storage.log_audit_event(DB_PATH, payload.type, **fields)
 
     return {"status": "ok"}
 
@@ -470,57 +471,20 @@ def metrics(since: str | None = None):
         if since_dt.tzinfo is None:
             since_dt = since_dt.replace(tzinfo=timezone.utc)
 
-    counts: dict[str, int] = {}
-    consent_counts = {"accepted": 0, "declined": 0}
-    source_counts: dict[str, int] = {}
-    latency_samples: dict[str, list[float]] = {k: [] for k in AUDIT_LATENCY_FIELDS}
-
-    if os.path.exists(AUDIT_LOG_PATH):
-        with open(AUDIT_LOG_PATH, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-
-                if since_dt is not None:
-                    record_ts = record.get("timestamp")
-                    try:
-                        record_dt = datetime.fromisoformat(record_ts) if record_ts else None
-                    except ValueError:
-                        record_dt = None
-                    if record_dt is None or record_dt < since_dt:
-                        continue
-
-                event_type = record.get("type")
-                if not event_type:
-                    continue
-                counts[event_type] = counts.get(event_type, 0) + 1
-
-                if event_type == "consent" and record.get("consent") in consent_counts:
-                    consent_counts[record["consent"]] += 1
-                if event_type == "sentence" and record.get("source"):
-                    source = record["source"]
-                    source_counts[source] = source_counts.get(source, 0) + 1
-                for field in AUDIT_LATENCY_FIELDS:
-                    value = record.get(field)
-                    if isinstance(value, (int, float)) and not isinstance(value, bool):
-                        latency_samples[field].append(value)
+    aggregated = storage.audit_metrics(DB_PATH, since_dt)
+    counts = aggregated["counts"]
 
     latency_stats = {
         field: _latency_summary(values)
-        for field, values in latency_samples.items()
+        for field, values in aggregated["latency_samples"].items()
         if values
     }
 
     return {
         "counts": counts,
-        "consent": consent_counts,
+        "consent": aggregated["consent"],
         "reports": counts.get("report", 0),
-        "translation_source": source_counts,
+        "translation_source": aggregated["sources"],
         "latency_ms": latency_stats,
     }
 
