@@ -50,3 +50,16 @@ docs/referencias/*Registro de Interesados*.xlsx
 # Local reference material (third-party and personal files)
 docs/referencias/*
 !docs/referencias/RESUMEN_REFERENCIAS.md
+
+# Local tooling, planning and analysis files
+.atl/
+.claude/
+openspec/
+nexora_analisis_completo.md
+
+# Local dataset captures
+dataset/custom_blendshapes/
+dataset/custom_tasks/
+
+# Migrated legacy logs
+logs/*.migrated
