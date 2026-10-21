@@ -250,7 +250,8 @@ por el esquema SQL y por los validadores de backend (\texttt{storage.py} y
 
     blendshapes & \texttt{float32} & \texttt{(45, 52)} &
     52 coeficientes faciales de marcadores no manuales de LSA extraídos en la
-    misma pasada de MediaPipe; valores finitos. \\
+    misma pasada de MediaPipe; valores finitos. Se guardan junto con cada
+    muestra, pero el modelo de reconocimiento no los utiliza como entrada. \\
     \bottomrule
     \caption{Diccionario de datos — MuestraDeEntrenamiento (filesystem)}
     \label{tab:dat-dic-muestra}
@@ -285,6 +286,11 @@ por el esquema SQL y por los validadores de backend (\texttt{storage.py} y
 
     frames\-Por\-Muestra & \texttt{int} & escalar &
     45 (ventana fija de reconocimiento, ver RF-01.3). \\
+
+    caracterís\-ticas\-Por\-Frame & \texttt{int} & escalar &
+    384: 75 landmarks $\times$ 4 valores más 84 características locales de
+    mano, calculadas a partir de los landmarks por el módulo compartido de
+    entrenamiento e inferencia (ver RF-01.3). \\
     \bottomrule
     \caption{Diccionario de datos — ModeloDeReconocimiento (filesystem)}
     \label{tab:dat-dic-modelo}
@@ -362,7 +368,7 @@ en disco o memoria.
     NumPy binario \texttt{float32 (45, 75, 4)} \\
 
     MuestraDe\allowbreak Entrenamiento (blendshapes) &
-    \texttt{dataset/\allowbreak custom/\allowbreak <etiqueta>/\allowbreak <timestamp\_ms>.blendshapes.npy} &
+    \texttt{dataset/\allowbreak custom\_\allowbreak blendshapes/\allowbreak <etiqueta>/\allowbreak <timestamp\_ms>.npy} &
     NumPy binario \texttt{float32 (45, 52)} \\
 
     VocabularioDelModelo &

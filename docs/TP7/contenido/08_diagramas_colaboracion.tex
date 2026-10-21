@@ -67,7 +67,7 @@ del diagrama a su archivo fuente real.
 \textbf{Referencias cruzadas} & Realiza CU-01 (pasos de captura, reconocimiento
 y armado de la secuencia); RF-01.1, RF-01.2, RF-01.3, RF-01.4. \\
 \textbf{Precondiciones} & La cámara está autorizada y el \textit{hook} de
-MediaPipe está emitiendo \textit{frames}; el backend tiene el modelo
+MediaPipe Tasks está emitiendo \textit{frames} (a 20 fps); el backend tiene el modelo
 \texttt{SignLanguageLSTM} cargado; existe una conexión WebSocket activa hacia
 \texttt{/ws/predict}. \\
 \textbf{Postcondiciones} & El \textit{frame} quedó agregado al búfer
@@ -75,7 +75,9 @@ deslizante de la Estación del Paciente. Si el búfer alcanzó el múltiplo de
 \texttt{PREDICT\_STRIDE\_FRAMES} configurado, se envió una predicción al
 backend y, si la seña reconocida superó el umbral de confianza y no fue
 ``idle'', la palabra reconocida quedó agregada a la secuencia en curso
-(\texttt{transcript}) de \texttt{useSentenceBuilder}. \\
+(\texttt{transcript}) de \texttt{useSentenceBuilder}; si en cambio fue
+``idle'' con confianza $\geq$70\%, se invocó el cierre de la oración en
+curso (SO-02). \\
 \bottomrule
 \end{tabularx}
 \caption{Contrato de la operación SO-01 --- reconocerSeña(frame)}
@@ -117,7 +119,7 @@ backend y, si la seña reconocida superó el umbral de confianza y no fue
 \toprule
 \textbf{Objeto} & \textbf{Ubicación real} \\
 \midrule
-\texttt{useMediaPipe} & Hook $\rightarrow$ \texttt{web/hooks/useMediaPipe.ts}; extrae landmarks de manos, pose y rostro (\textit{blendshapes}) en cada \textit{frame} y expone el contrato \texttt{onFrame} \\
+\texttt{useMediaPipeTasks} & Hook $\rightarrow$ \texttt{web/hooks/useMediaPipeTasks.ts}; extrae landmarks de manos, pose y rostro (\textit{blendshapes}) en el navegador, a 20 fps fijos, y expone el contrato \texttt{onFrame} \\
 \texttt{handleFrame : PacientePage} & Componente $\rightarrow$ \texttt{web/app/paciente/page.tsx} \\
 \texttt{recordedFrames} & Ref (búfer) $\rightarrow$ \texttt{web/app/paciente/page.tsx} \\
 \texttt{useSignWebSocket} & Hook $\rightarrow$ \texttt{web/hooks/useSignWebSocket.ts} \\
@@ -143,9 +145,9 @@ backend y, si la seña reconocida superó el umbral de confianza y no fue
 \textbf{Referencias cruzadas} & Realiza CU-01 (cierre de secuencia) y CU-02
 completo; RF-01.4, RF-01.5. \\
 \textbf{Precondiciones} & La secuencia de palabras reconocidas
-(\texttt{transcript}) no está vacía; transcurrieron al menos 800~ms de
-inactividad y la magnitud de movimiento promedio está por debajo del umbral
-de quietud. \\
+(\texttt{transcript}) no está vacía; el modelo predijo la clase de reposo
+(\texttt{idle}) con una confianza $\geq$70\% y no hay otra oración en
+procesamiento. \\
 \textbf{Postcondiciones} & La secuencia en curso quedó cerrada y vaciada
 (\texttt{transcriptRef} vuelve a estar vacío). Se obtuvo una oración natural
 en español --- por plantilla médica, por caché de traducciones o por el
@@ -166,9 +168,10 @@ del paciente quedó agregado a la conversación compartida a través de
 
 \begin{itemize}[leftmargin=*, itemsep=2pt]
     \item \textbf{Experto en información:} \texttt{useSentenceBuilder} decide
-    cuándo cerrar la oración porque es quien tiene el estado de quietud
-    (ventana de magnitudes de movimiento) y el \textit{transcript} en curso;
-    ningún otro objeto podría tomar esa decisión sin duplicar ese estado.
+    cuándo cerrar la oración porque es quien tiene el \textit{transcript}
+    en curso y el indicador de oración en procesamiento, y quien recibe la
+    predicción de reposo que dispara el cierre; ningún otro objeto podría
+    tomar esa decisión sin duplicar ese estado.
     \item \textbf{Controlador:} \texttt{process\_sentence} en \texttt{app.py}
     coordina la resolución de la traducción (plantilla, caché, modelo de
     lenguaje) como punto único de entrada del backend para esta operación.
@@ -352,9 +355,10 @@ seleccionó o creó una etiqueta de seña; la cuenta regresiva de la repetición
 ya finalizó. \\
 \textbf{Postcondiciones} & Si los datos son válidos (etiqueta bien formada,
 cantidad de \textit{frames} y de \textit{blendshapes} consistente), la
-muestra quedó persistida como archivo \texttt{.npy} en el árbol de datos,
-con los landmarks y los \textit{blendshapes} en el mismo archivo, asociada a
-la etiqueta, y el conteo de muestras por etiqueta quedó actualizado. Si los
+muestra quedó persistida siempre como dos archivos \texttt{.npy}, con los
+landmarks en \texttt{dataset/custom/} y los \textit{blendshapes} en
+\texttt{dataset/custom\_blendshapes/}, ambos asociados a la etiqueta y con la
+misma marca de tiempo, y el conteo de muestras por etiqueta quedó actualizado. Si los
 datos no son válidos, no se guardó ningún archivo y el error quedó
 informado al Modo Captura. \\
 \bottomrule
@@ -399,7 +403,8 @@ informado al Modo Captura. \\
 \texttt{captureHandlerRef} & Ref (manejador de \textit{frames} en modo captura) $\rightarrow$ \texttt{web/components/capture/CaptureMode.tsx} \\
 \texttt{capture} & Handler FastAPI $\rightarrow$ \texttt{app.py} \\
 \texttt{capture\_validation} & Módulo de funciones de validación $\rightarrow$ \texttt{capture\_validation.py} \\
-\texttt{dataset/custom/<etiqueta>/*.npy} & Archivo persistido en disco $\rightarrow$ \texttt{dataset/custom/} \\
+\texttt{dataset/custom/<etiqueta>/*.npy} & Archivo de landmarks persistido en disco $\rightarrow$ \texttt{dataset/custom/} \\
+\texttt{dataset/custom\_blendshapes/<etiqueta>/*.npy} & Archivo de \textit{blendshapes} persistido en disco $\rightarrow$ \texttt{dataset/custom\_blendshapes/} \\
 \bottomrule
 \end{tabularx}
 \caption{Trazabilidad de objetos --- DC-05}
@@ -424,7 +429,7 @@ consentimiento (P-05); la cámara todavía no fue activada
 de auditoría anónimo (\texttt{type: "consent"}) en la tabla
 \texttt{audit\_event} de la base de datos SQLite
 (\texttt{data/lsa\_salud.db}), y --- si fue aceptado --- \texttt{PacientePage}
-pasó \texttt{enabled: true} al hook de landmarks (\texttt{useMediaPipe}),
+pasó \texttt{enabled: true} al hook de landmarks (\texttt{useMediaPipeTasks}),
 habilitando la cámara y la Pantalla P-02. \\
 \bottomrule
 \end{tabularx}
@@ -468,7 +473,7 @@ habilitando la cámara y la Pantalla P-02. \\
 \texttt{PacientePage (diálogo de consentimiento)} & Componente $\rightarrow$ \texttt{web/app/paciente/page.tsx} \\
 \texttt{sendAudit()} & Función $\rightarrow$ \texttt{web/lib/audit.ts} \\
 \texttt{audit\_event} & Handler FastAPI (\texttt{POST /audit}) $\rightarrow$ \texttt{app.py} \\
-\texttt{:useMediaPipe} & Hook $\rightarrow$ \texttt{web/hooks/useMediaPipe.ts} \\
+\texttt{:useMediaPipeTasks} & Hook $\rightarrow$ \texttt{web/hooks/useMediaPipeTasks.ts} \\
 \texttt{storage.log\_audit\_event()} & Función de persistencia relacional $\rightarrow$ \texttt{storage.py} \\
 \texttt{data/lsa\_salud.db} & Base de datos SQLite persistida en disco $\rightarrow$ \texttt{data/} \\
 \bottomrule

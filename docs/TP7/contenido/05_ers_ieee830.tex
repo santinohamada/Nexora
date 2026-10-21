@@ -97,11 +97,11 @@ académico.
     LSTM & Long Short-Term Memory --- red neuronal recurrente para secuencias temporales, usada para clasificar señas. \\
     LLM & Large Language Model --- modelo de lenguaje grande (Qwen2 1.5B, servido localmente por Ollama). \\
     TTS & Text-to-Speech --- síntesis de texto a voz (motor Piper, modelo ONNX). \\
-    MediaPipe & Framework de Google para extracción de landmarks de manos, pose y rostro en tiempo real; pipeline de captura único de LSA Salud. \\
+    MediaPipe & Framework de Google para extracción de landmarks de manos, pose y rostro en tiempo real; LSA Salud utiliza MediaPipe Tasks (\texttt{PoseLandmarker}, \texttt{HandLandmarker} para dos manos y \texttt{FaceLandmarker} con 52 blendshapes), ejecutado en el navegador, como pipeline de captura único: con delegado de GPU cuando el equipo dispone de un renderizador WebGL por hardware y sobre CPU en caso contrario. \\
     Landmark & Punto anatómico detectado con coordenadas (x, y, z, visibilidad). \\
     Frame & Conjunto de 75 landmarks corporales (33 de pose, 21 por mano) más 52 blendshapes faciales, capturados en un instante. \\
-    Blendshape & Coeficiente de expresión facial (0 a 1) provisto por MediaPipe; LSA Salud captura 52 por frame y los usa, junto con los landmarks de manos y pose, como características de reconocimiento: los blendshapes aportan los marcadores no manuales gramaticales de la LSA (preguntas, negación, intensidad) que los landmarks corporales por sí solos no capturan. \\
-    Idle & Estado de reposo del paciente (manos abajo, sin movimiento significativo) que participa en el cierre de una oración. \\
+    Blendshape & Coeficiente de expresión facial (0 a 1) provisto por MediaPipe; LSA Salud captura 52 por frame y los registra con cada muestra de entrenamiento, para conservar los marcadores no manuales gramaticales de la LSA (preguntas, negación, intensidad); el modelo de reconocimiento no los utiliza como entrada. \\
+    Idle & Clase de reposo del modelo: el paciente tiene las manos abajo o no está frente a la cámara. Su predicción con confianza $\geq$70\% cierra la oración en curso. \\
     Plantilla médica & Frase médica predefinida asociada a una combinación conocida de clases de seña. \\
     Modo Captura & Modo de la Estación del Paciente para grabar nuevas muestras de entrenamiento. \\
     ERS / SRS & Especificación de Requisitos de Software / Software Requirements Specification. \\
@@ -236,7 +236,7 @@ se muestra en la Vista Física (Entregable 06, Arquitectura).
     \item \textbf{Vocabulario clínico:} el modelo reconoce el vocabulario LSA clínico del dataset del proyecto (dataset ampliado desde LSA64, adaptado a síntomas, triaje, dolor y admisión/recepción/guardia, validado por intérpretes de LSA --- RNF-05/RNF-06), con señas como \texttt{cabeza}, \texttt{dolor}, \texttt{respirar} o \texttt{yo} como ejemplos; el vocabulario se amplía de forma continua mediante el Modo Captura y el reentrenamiento (CU-06, CU-07, CU-08).
     \item \textbf{Sin persistencia de conversaciones:} todo el historial de chat es volátil (memoria del navegador + BroadcastChannel).
     \item \textbf{Lenguajes:} Python 3.9+ en el backend; TypeScript/React en el frontend.
-    \item \textbf{Hardware mínimo:} PC con cámara web; GPU opcional para acelerar la inferencia del LSTM (funciona sobre CPU).
+    \item \textbf{Hardware mínimo:} PC con cámara web; GPU opcional para acelerar la extracción de landmarks en el navegador y la inferencia del LSTM (ambas funcionan sobre CPU).
 \end{itemize}
 
 \subsection{Suposiciones y dependencias}
@@ -358,8 +358,8 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \textbf{ID} & RF-01.1 \\
 \textbf{Prioridad} & Esencial \\
 \textbf{Descripción} & El sistema debe extraer, en tiempo real, los landmarks corporales del paciente desde la cámara web. \\
-\textbf{Entrada} & Flujo de video de la cámara ($\sim$30 fps). \\
-\textbf{Proceso} & MediaPipe procesa cada frame elegible y extrae landmarks de pose (33) y de ambas manos (21 cada una), normalizados respecto de la nariz, junto con 52 blendshapes faciales que capturan los marcadores no manuales gramaticales de la LSA. \\
+\textbf{Entrada} & Flujo de video de la cámara, muestreado a una frecuencia fija de 20 fps (captura e inferencia). \\
+\textbf{Proceso} & MediaPipe Tasks procesa en el navegador cada frame muestreado y extrae landmarks de pose (33) y de ambas manos (21 cada una), normalizados respecto de la nariz, junto con 52 blendshapes faciales que capturan los marcadores no manuales gramaticales de la LSA. \\
 \textbf{Salida} & Un \textit{frame} de 75 landmarks corporales (300 valores) más 52 blendshapes faciales, por cada muestreo. \\
 \textbf{CU relacionados} & CU-01. \\
 \bottomrule
@@ -390,8 +390,8 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \textbf{ID} & RF-01.3 \\
 \textbf{Prioridad} & Esencial \\
 \textbf{Descripción} & El backend debe clasificar la ventana de frames recibida en una de las clases de seña conocidas, con un nivel de confianza. El umbral de confianza (ver ``Umbral'' más abajo) es, a la vez, el mecanismo que realiza el requisito RF-05 (``detectar cuando una seña no pueda interpretarse con confianza y evitar mostrar una traducción incorrecta''). \\
-\textbf{Entrada} & Tensor de dimensiones $(1, 45, 300)$, recortado o relleno con ceros según haga falta. \\
-\textbf{Proceso} & Red LSTM (2 capas, 128 unidades ocultas) seguida de una capa totalmente conectada y \textit{softmax}; se calcula la clase de mayor probabilidad y el top-3. \\
+\textbf{Entrada} & Tensor de dimensiones $(1, 45, 384)$: 384 características por frame, sobre una ventana de 45 frames. Las ventanas más cortas se completan repitiendo el frame más antiguo al comienzo. \\
+\textbf{Proceso} & Las 384 características por frame son los 75 landmarks $\times$ 4 valores (300, con pose y manos normalizadas respecto de la nariz) más 84 características locales de mano: las coordenadas x e y de cada mano relativas a su muñeca, escaladas por la distancia entre la muñeca y la base del dedo medio (ceros si la mano está ausente). Un único módulo de características (\texttt{src/features.py}) las calcula tanto en el entrenamiento como en la inferencia. Si la persona no es detectada (pose ausente en la mayoría de los frames de la ventana), la ventana se clasifica como reposo (\texttt{idle}) sin ejecutar el modelo. En los demás casos, una red LSTM (2 capas, 128 unidades ocultas) seguida de una capa totalmente conectada y \textit{softmax} calcula la clase de mayor probabilidad y el top-3. \\
 \textbf{Salida} & Seña predicha, confianza (\%) y top-3 de predicciones. \\
 \textbf{Umbral} & $\geq$70\% de confianza para que la palabra se registre en la secuencia (ver RF-01.4). \\
 \textbf{CU relacionados} & CU-01, CU-02. \\
@@ -407,8 +407,8 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \textbf{ID} & RF-01.4 \\
 \textbf{Prioridad} & Esencial \\
 \textbf{Descripción} & El sistema debe acumular las palabras reconocidas en una secuencia y detectar cuándo el paciente terminó de expresar su idea, descartando las señas de baja confianza o de reposo (mecanismo que también realiza RF-05). \\
-\textbf{Entrada} & Predicciones sucesivas del LSTM y magnitud de movimiento entre frames consecutivos. \\
-\textbf{Proceso} & Se agrega una palabra a la secuencia cuando su confianza es $\geq$70\% y no es la clase de reposo (\texttt{idle}) ni domina el top-3 con más de 50\%. La secuencia se cierra cuando la magnitud media de movimiento de los últimos 6 frames es menor a 0.05 y pasaron al menos 800 ms desde la última predicción distinta de reposo. \\
+\textbf{Entrada} & Predicciones sucesivas del LSTM. \\
+\textbf{Proceso} & Se agrega una palabra a la secuencia cuando su confianza es $\geq$70\% y no es la clase de reposo (\texttt{idle}) ni domina el top-3 con más de 50\%. La secuencia se cierra cuando el modelo predice la clase de reposo (\texttt{idle}) con una confianza $\geq$70\%, es decir, cuando el paciente baja las manos o sale del encuadre de la cámara. Se procesa una única oración a la vez. \\
 \textbf{Salida} & Secuencia de palabras cerrada, lista para traducirse (dispara CU-02). \\
 \textbf{CU relacionados} & CU-01. \\
 \bottomrule
@@ -567,9 +567,9 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \toprule
 \textbf{ID} & RF-T-04 \\
 \textbf{Prioridad} & Condicional \\
-\textbf{Descripción} & Cada muestra grabada debe guardarse en disco, con los landmarks de manos y pose junto con los blendshapes faciales en un único árbol de captura. \\
+\textbf{Descripción} & Cada muestra grabada debe guardarse en disco, con los landmarks de manos y pose y, en un árbol paralelo con la misma etiqueta y marca de tiempo, los blendshapes faciales. \\
 \textbf{Entrada} & Frames grabados, con sus landmarks y blendshapes faciales. \\
-\textbf{Proceso} & Se valida que los frames sean numéricamente finitos y que haya exactamente 52 blendshapes por frame; se guarda como archivo \texttt{.npy} bajo \texttt{dataset/custom/<etiqueta>/}. \\
+\textbf{Proceso} & Se valida que los frames sean numéricamente finitos y que haya exactamente 52 blendshapes por frame; siempre se guardan ambos: los landmarks como archivo \texttt{.npy} bajo \texttt{dataset/custom/<etiqueta>/} y los blendshapes bajo \texttt{dataset/custom\_blendshapes/<etiqueta>/}. \\
 \textbf{Salida} & Archivo \texttt{.npy} persistido con nombre de marca de tiempo. \\
 \textbf{CU relacionados} & CU-06. \\
 \bottomrule
@@ -617,7 +617,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \textbf{Prioridad} & Esencial (bloqueante: sin consentimiento, no hay CU-01). \\
 \textbf{Descripción} & Antes de activar la cámara, el sistema despliega un diálogo modal de consentimiento explícito (P-05) sobre \texttt{PacientePage} y mantiene el resto de la página inerte (\texttt{inert}) hasta que el paciente decide. El estado de consentimiento (\texttt{pending} / \texttt{accepted} / \texttt{declined}) vive en memoria del componente, sin persistencia entre sesiones. \\
 \textbf{Entrada} & Decisión del paciente (acepta / no acepta), capturada por el diálogo. \\
-\textbf{Proceso} & \texttt{PacientePage} renderiza el diálogo y solo pasa \texttt{enabled: true} al hook de captura de landmarks (\texttt{useMediaPipe} / \texttt{useMediaPipeTasks}) cuando \texttt{consentState === "accepted"}; ese \texttt{enabled} gatea el efecto que invoca \texttt{getUserMedia()}, por lo que la cámara nunca se activa sin consentimiento previo. Cada decisión se registra como un evento de auditoría anónimo (\texttt{type: "consent"}, campo \texttt{consent}: \texttt{accepted}/\texttt{declined}) vía \texttt{POST /audit}. Si el paciente no acepta, puede reconsiderar más tarde desde el mismo diálogo. \\
+\textbf{Proceso} & \texttt{PacientePage} renderiza el diálogo y solo pasa \texttt{enabled: true} al hook de captura de landmarks (\texttt{useMediaPipeTasks}) cuando \texttt{consentState === "accepted"}; ese \texttt{enabled} gatea el efecto que invoca \texttt{getUserMedia()}, por lo que la cámara nunca se activa sin consentimiento previo. Cada decisión se registra como un evento de auditoría anónimo (\texttt{type: "consent"}, campo \texttt{consent}: \texttt{accepted}/\texttt{declined}) vía \texttt{POST /audit}. Si el paciente no acepta, puede reconsiderar más tarde desde el mismo diálogo. \\
 \textbf{Salida} & Consentimiento registrado en la base de datos SQLite (\texttt{data/lsa\_salud.db}) y cámara activada, o cámara inactiva con opción de reconsiderar. \\
 \textbf{CU relacionados} & CU-09 (precondición de CU-01). \\
 \bottomrule
@@ -683,7 +683,7 @@ medición continua de p50/p95 sobre las métricas operativas del sistema.
         Latencia extremo a extremo (captura $\rightarrow$ audio listo), ruta con plantilla & p50 $\leq$ 600 ms & Medición continua vía \texttt{GET /metrics} \\
         Latencia extremo a extremo, caso general & p95 $\leq$ 1 s & Medición continua vía \texttt{GET /metrics} \\
         Inferencia LSTM por ventana (\texttt{lstm\_ms}) & sin regresión de p95 mayor al 10\% entre versiones del modelo & Medición continua vía \texttt{GET /metrics}, comparada entre versiones \\
-        Captura de frames & $\sim$30 fps (según cámara) & Verificada por hardware de cámara estándar (RNF-04) \\
+        Captura e inferencia de frames & 20 fps (frecuencia de muestreo fija) & Verificada por hardware de cámara estándar (RNF-04) \\
         Usuarios simultáneos & 1 par paciente--personal por instancia de estación & Verificada por el diseño de estación independiente (ver Sección~2.1) \\
         \bottomrule
     \end{tabularx}

@@ -58,10 +58,10 @@ corresponde, se reprodujo en voz. \\
     \item El sistema captura de forma continua los movimientos del paciente.
     \item El sistema reconoce cada seña realizada y la agrega a la
     secuencia en curso cuando la reconoce con suficiente certeza.
-    \item El paciente hace una pausa (baja las manos) al terminar de
+    \item El paciente baja las manos (o sale del encuadre) al terminar de
     expresar su idea.
-    \item El sistema detecta la pausa y da por cerrada la secuencia de
-    señas.
+    \item El sistema reconoce el estado de reposo (``idle'') con suficiente
+    certeza y da por cerrada la secuencia de señas.
     \item El sistema traduce la secuencia a una oración en español natural
     (CU-02: Traducir Secuencia de Señas a Oración Natural).
     \item El sistema sintetiza la oración en voz (CU-03: Sintetizar
@@ -88,9 +88,11 @@ corresponde, se reprodujo en voz. \\
 \textbf{Requisitos especiales} & RNF-T-01, RNF-T-05, RNF-01.1 (ver ERS, sección 3.5). \\
 \textbf{Variantes de tecnología y datos} &
 Captura de landmarks de manos, pose y rostro (blendshapes) mediante
-MediaPipe en cada frame; los blendshapes faciales aportan los marcadores no
-manuales gramaticales de la LSA (preguntas, negación, intensidad) como
-parte de las características de reconocimiento; transporte de los frames
+MediaPipe Tasks, ejecutado en el navegador sobre frames muestreados a una
+frecuencia fija de 20 fps; las características de reconocimiento son los
+landmarks de pose y manos más características locales de mano (los
+blendshapes faciales se registran, pero no son entrada del modelo);
+transporte de los frames
 al backend vía WebSocket, con reconexión automática cada 2 segundos ante
 una pérdida de conexión. \\
 \textbf{Frecuencia} &
@@ -364,10 +366,11 @@ correspondiente. \\
 \end{itemize} \\
 \textbf{Requisitos especiales} & RF-T-03, RF-T-04. \\
 \textbf{Variantes de tecnología y datos} &
-Captura mediante MediaPipe: se guardan los landmarks de manos y pose junto
-con los 52 coeficientes de expresión facial (blendshapes) de cada frame;
-persistencia como archivos \texttt{.npy} en un único árbol de carpetas
-(\texttt{dataset/custom/\textless etiqueta\textgreater}). \\
+Captura mediante MediaPipe: se guardan siempre los landmarks de manos y pose
+junto con los 52 coeficientes de expresión facial (blendshapes) de cada frame;
+persistencia como archivos \texttt{.npy}, los landmarks en
+\texttt{dataset/custom/\textless etiqueta\textgreater} y los blendshapes en
+\texttt{dataset/custom\_blendshapes/\textless etiqueta\textgreater}. \\
 \textbf{Frecuencia} &
 Bajo demanda, cuando se necesita ampliar o reforzar el vocabulario. \\
 \textbf{Temas abiertos} &
@@ -526,7 +529,7 @@ Diálogo modal de consentimiento (Pantalla P-05) dentro de
 sobre el resto de la página al entrar a \texttt{/paciente}, con los
 botones ``Acepto y continúo'' / ``No acepto''; el estado
 \texttt{consentState} (\texttt{pending}/\texttt{accepted}/\texttt{declined})
-se pasa como \texttt{enabled} al hook de captura (\texttt{useMediaPipe}),
+se pasa como \texttt{enabled} al hook de captura (\texttt{useMediaPipeTasks}),
 que solo invoca \texttt{navigator.mediaDevices.getUserMedia()} cuando
 \texttt{enabled === true}; el evento de auditoría registra
 \texttt{type: "consent"} con \texttt{consent: "accepted"} o

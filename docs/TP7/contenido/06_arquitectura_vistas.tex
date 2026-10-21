@@ -68,13 +68,15 @@ Puntos relevantes del diagrama:
     \item Las páginas \texttt{paciente/page} (P-02) y \texttt{recepcion/page}
     (P-03) son los únicos consumidores directos de los \texttt{hooks} y de
     los \texttt{components}; \texttt{page} (P-01) solo navega hacia ellas.
-    \item \texttt{useMediaPipe} extrae, en cada frame, los landmarks de
-    manos, pose y rostro (\textit{blendshapes}) mediante MediaPipe, apoyado
+    \item \texttt{useMediaPipeTasks} extrae, en el navegador y a una
+    frecuencia fija de 20 fps, los landmarks de manos, pose y rostro
+    (\textit{blendshapes}) mediante MediaPipe Tasks (delegado de GPU cuando
+    hay un renderizador WebGL por hardware y CPU en caso contrario), apoyado
     en las funciones puras de \texttt{lib/mediapipe.ts}. Los
-    \textit{blendshapes} faciales aportan los marcadores no manuales de la
-    LSA (preguntas, negación, intensidad) que forman parte de las
-    características de reconocimiento (ver decisión arquitectónica en la
-    sección~\ref{sec:decisiones}).
+    \textit{blendshapes} faciales conservan los marcadores no manuales de la
+    LSA (preguntas, negación, intensidad) y se registran con cada muestra de
+    entrenamiento; el modelo de reconocimiento no los utiliza como entrada
+    (ver decisión arquitectónica en la sección~\ref{sec:decisiones}).
     \item Solo tres \texttt{hooks} cruzan la frontera hacia el backend:
     \texttt{useSignWebSocket} (WebSocket de predicción),
     \texttt{useSentenceBuilder} (traducción de oraciones) y
@@ -201,7 +203,7 @@ vistas anteriores.
     explícito; controlar el flag \texttt{enabled} del hook de captura desde
     la propia página evita introducir un componente y un árbol de render
     adicionales para un estado que ya vive en \texttt{PacientePage}. &
-    \texttt{useMediaPipe} solo invoca \texttt{getUserMedia()} cuando
+    \texttt{useMediaPipeTasks} solo invoca \texttt{getUserMedia()} cuando
     \texttt{enabled === true}; ningún otro \texttt{hook} necesita conocer el
     estado de consentimiento. \\
 
@@ -213,14 +215,16 @@ vistas anteriores.
     sesión; el backend reconecta y descarta envíos obsoletos según
     RNF-T-01. \\
 
-    MediaPipe como único backend de captura, extrayendo landmarks de manos,
-    pose y rostro (\textit{blendshapes}) en un mismo paso por frame &
-    Los \textit{blendshapes} faciales son necesarios para capturar los
-    marcadores no manuales gramaticales de la LSA (preguntas, negación,
-    intensidad), imprescindibles para la fidelidad clínica del vocabulario
-    (RNF-05). &
-    Un único \texttt{hook} de captura (\texttt{useMediaPipe}) y un único
-    árbol de datos de entrenamiento (\texttt{dataset/custom}), sin
+    MediaPipe Tasks como único backend de captura, ejecutado en el
+    navegador y extrayendo landmarks de manos, pose y rostro
+    (\textit{blendshapes}) en un mismo paso por frame, a 20 fps fijos &
+    Un muestreo fijo hace que una ventana de 45 frames abarque el mismo
+    lapso en cualquier equipo; los \textit{blendshapes} faciales conservan
+    los marcadores no manuales gramaticales de la LSA (preguntas, negación,
+    intensidad) para la fidelidad clínica del vocabulario (RNF-05) y se
+    registran con cada muestra de entrenamiento. &
+    Un único \texttt{hook} de captura (\texttt{useMediaPipeTasks}) y un
+    único árbol de datos de entrenamiento (\texttt{dataset/custom}), sin
     variantes que mantener en paralelo. \\
 
     Restricción de CORS al origen de la red local del sanatorio en el

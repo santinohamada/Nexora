@@ -436,7 +436,7 @@ def render(diagram: Diagram) -> str:
 # ---------------------------------------------------------------------------
 def dc01() -> Diagram:
     objects = [
-        Obj("mp", ":useMediaPipe", 290, 60, 170, 56),
+        Obj("mp", ":useMediaPipeTasks", 290, 60, 170, 56),
         Obj("buf", "recordedFrames :\nPacientePage (buffer)", 0, 240, 160, 70),
         Obj("page", "handleFrame :\nPacientePage", 290, 200, 170, 150),
         Obj("builder", "useSentenceBuilder", 660, 239, 160, 56),
@@ -451,7 +451,7 @@ def dc01() -> Diagram:
         Link(
             "page",
             "builder",
-            [Msg("1.2", "onFrameTick(frame)", "ab"), Msg("2.2.2", "addWord(sign)", "ab")],
+            [Msg("2.2.2", "addWord(sign)", "ab"), Msg("2.2.3", "processSentence() si idle", "ab")],
             a_exit=("right", 0.45),
             b_entry=("left", 0.5),
         ),
@@ -470,7 +470,7 @@ def dc01() -> Diagram:
             "mp",
             520,
             56,
-            "Extrae landmarks de manos, pose<br>y rostro (blendshapes) en cada<br>frame mediante MediaPipe.",
+            "Extrae landmarks de manos, pose<br>y rostro (blendshapes) a 20 fps<br>fijos con MediaPipe Tasks.",
             230,
             64,
         )
@@ -620,7 +620,7 @@ def dc05() -> Diagram:
         Obj("handler", "captureHandlerRef (frame handler)", 380, 80, 250, 46),
         Obj("backend", "capture : app.py", 60, 380, 190, 46),
         Obj("validation", "capture_validation", 380, 380, 230, 46),
-        Obj("fs", "dataset/custom/<etiqueta>/*.npy", 20, 650, 280, 46),
+        Obj("fs", "dataset/custom/<etiqueta>/*.npy\ndataset/custom_blendshapes/<etiqueta>/*.npy", -35, 650, 380, 64),
     ]
     links = [
         Link("capture", "handler", [Msg("1", "recordOneSample()", "ab")]),
@@ -634,7 +634,7 @@ def dc05() -> Diagram:
                 Msg("2.2", "blendshapes := validate_capture_blendshapes(T, blendshapes)", "ab"),
             ],
         ),
-        Link("backend", "fs", [Msg("2.3", "np.save(frames)", "ab")]),
+        Link("backend", "fs", [Msg("2.3", "np.save(frames)", "ab"), Msg("2.4", "np.save(blendshapes)", "ab")]),
     ]
     return Diagram(
         "08_colaboracion_dc05",
@@ -648,7 +648,7 @@ def dc05() -> Diagram:
 # ---------------------------------------------------------------------------
 # DC-06 — otorgarConsentimiento(paciente) — realiza CU-09 (RF-03)
 # 2-row layout: pacientePage -> sendAudit -> backend straight H on row 1;
-# backend -> fileAudit and pacientePage -> useMediaPipe each drop straight
+# backend -> fileAudit and pacientePage -> useMediaPipeTasks each drop straight
 # down on row 2 (object x-centers match, so both links stay vertical with
 # no waypoints needed).
 # ---------------------------------------------------------------------------
@@ -657,7 +657,7 @@ def dc06() -> Diagram:
         Obj("pacientePage", "PacientePage (diálogo de consentimiento)", 0, 200, 230, 56),
         Obj("sendAudit", "sendAudit() : audit.ts", 300, 200, 180, 56),
         Obj("backend", "audit_event : app.py", 550, 200, 170, 56),
-        Obj("useMediaPipe", ":useMediaPipe", 30, 420, 170, 56),
+        Obj("useMediaPipeTasks", ":useMediaPipeTasks", 30, 420, 170, 56),
         Obj("storage", "log_audit_event() : storage.py", 520, 380, 230, 56),
         Obj("db", "data/lsa_salud.db\n(audit_event)", 555, 560, 160, 64),
     ]
@@ -673,10 +673,10 @@ def dc06() -> Diagram:
         ),
         Link("backend", "storage", [Msg("1.3", "log_audit_event(DB_PATH, 'consent', ...)", "ab")]),
         Link("storage", "db", [Msg("1.4", "INSERT INTO audit_event", "ab")]),
-        Link("pacientePage", "useMediaPipe", [Msg("2", "enabled=true", "ab")]),
+        Link("pacientePage", "useMediaPipeTasks", [Msg("2", "enabled=true", "ab")]),
         Link(
-            "useMediaPipe",
-            "useMediaPipe",
+            "useMediaPipeTasks",
+            "useMediaPipeTasks",
             [Msg("2.1", "getUserMedia()", "ab")],
             self_loop=True,
             self_side="bottom",
