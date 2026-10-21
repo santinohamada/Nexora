@@ -212,7 +212,7 @@ por el esquema SQL y por los validadores de backend (\texttt{storage.py} y
     \midrule
     \endhead
     id & \texttt{INTEGER} & autonumérico & Clave primaria. \\
-    type & \texttt{TEXT} & enumerado & \texttt{CHECK (type IN ('prediction', 'sentence', 'report', 'consent', 'translation\_displayed', 'fin\_atencion'))}. \\
+    type & \texttt{TEXT} & enumerado & \texttt{CHECK (type IN ('prediction', 'sentence', 'report', 'consent', 'translation\_displayed', 'reply\_sent', 'fin\_atencion'))}. \\
     occurred\_at & \texttt{TEXT} & ISO 8601 UTC & Marca temporal de ocurrencia; indexado junto con \texttt{type}. \\
     station & \texttt{TEXT} & enumerado & \texttt{NULL} o \texttt{'paciente'} / \texttt{'recepcion'}. \\
     consent & \texttt{TEXT} & enumerado & \texttt{NULL} o \texttt{'accepted'} / \texttt{'declined'} (cubre RF-03.1). \\

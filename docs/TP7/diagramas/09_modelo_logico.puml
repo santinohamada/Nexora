@@ -30,7 +30,7 @@ package "SQLite - data/lsa_salud.db" {
     entity "audit_event\n(EventoDeAuditoría)" as EDA {
         * id : INTEGER <<PK, autoincrement>>
         --
-        * type : TEXT CHECK IN (prediction, sentence, report,\nconsent, translation_displayed, fin_atencion)
+        * type : TEXT CHECK IN (prediction, sentence, report,\nconsent, translation_displayed, reply_sent,\nfin_atencion)
         * occurred_at : TEXT (ISO 8601 UTC)
         station : TEXT {nullable}
         consent : TEXT {accepted | declined} {nullable}
