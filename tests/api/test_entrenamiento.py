@@ -1,5 +1,5 @@
 """CU-08 y RNF-02: train_lstm.py y eval_model.py por linea de comandos, sobre una copia temporal del arbol
-(el entrenamiento sobrescribe models/custom_classes.json y crea models/lstm_v1_45frames.pth)."""
+(el entrenamiento sobrescribe models/lstm.pth y models/custom_classes.json)."""
 import os
 import re
 import shutil
@@ -15,19 +15,12 @@ def entrenar(base):
     rc, out = run_cli(base, "train_lstm.py")
     el = time.time() - t0
     c.eq(rc, 0, "codigo de salida de train_lstm.py")
-    c.ok("Clases encontradas: ['cabeza', 'dolor', 'idle', 'respirar', 'yo']" in out, "linea de clases encontradas", short(out[:200]))
-    c.ok("Total samples: 100" in out, '"Total samples: 100"', re.findall(r"Total samples: \d+", out))
-    epochs = re.findall(r"^Epoch (\d+)/50 \|.*Val Loss: [\d.]+ Acc: [\d.]+%", out, re.M)
-    c.eq(len(epochs), 50, 'lineas "Epoch n/50" con exactitud de validacion')
-    m = re.search(r"Training complete\. Best val acc: (\d+\.\d+)%\. Model saved to (models[\\/]lstm_v1_45frames\.pth)", out)
-    c.ok(bool(m), 'cierre "Training complete. Best val acc: XX.XX%. Model saved to models/lstm_v1_45frames.pth"', short(out[-200:]))
-    acc = float(m.group(1)) if m else -1
-    c.ok(acc >= 90, "exactitud de validacion >= 90 %", f"{acc} %")
-    c.note(f"entrenamiento {el:.0f} s, rc={rc}; epocas={len(epochs)}; mejor exactitud de validacion={acc} %; "
-           f"ruta impresa={m.group(2) if m else None} (en Windows con barra invertida)")
-    pth, cls = base.tree / "models" / "lstm_v1_45frames.pth", base.tree / "models" / "custom_classes.json"
+    m = re.search(r"Trained on (\d+) samples\. Model saved to (models[\\/]lstm\.pth)", out)
+    c.ok(bool(m) and m.group(1) == "150", 'cierre "Trained on 150 samples. Model saved to models/lstm.pth"', short(out[-200:]))
+    c.note(f"entrenamiento {el:.0f} s, rc={rc}; ruta impresa={m.group(2) if m else None} (en Windows con barra invertida)")
+    pth, cls = base.tree / "models" / "lstm.pth", base.tree / "models" / "custom_classes.json"
     c.ok(pth.exists() and pth.stat().st_mtime >= t0 and cls.stat().st_mtime >= t0,
-         "models/lstm_v1_45frames.pth y custom_classes.json existen con fecha actualizada",
+         "models/lstm.pth y custom_classes.json existen con fecha actualizada",
          f"pth existe={pth.exists()}, classes mtime>=inicio={cls.stat().st_mtime >= t0}")
     with server(base.tree, base.db) as b:
         log = b.log.read_text(encoding="utf-8", errors="replace")
@@ -73,7 +66,7 @@ def evaluar(base):
     warn = ("ADVERTENCIA: evaluando sobre dataset/custom, el mismo dataset usado para entrenar. "
             "La accuracy resultante no mide generalización real.")
     c.ok(warn in out, "advertencia de evaluacion sobre el conjunto de entrenamiento", short(out[:300]))
-    c.ok("Muestras evaluadas: 100 (MAX_FRAMES=45)" in out, '"Muestras evaluadas: 100 (MAX_FRAMES=45)"',
+    c.ok("Muestras evaluadas: 150 (MAX_FRAMES=45)" in out, '"Muestras evaluadas: 150 (MAX_FRAMES=45)"',
          re.findall(r"Muestras evaluadas:.*", out))
     m = re.search(r"Accuracy global: (\d+\.\d+)%", out)
     c.ok(bool(m) and float(m.group(1)) >= 90, "Accuracy global >= 90 %", m.group(0) if m else "no impresa")

@@ -38,11 +38,9 @@ def validate_frames(frames) -> np.ndarray:
     return arr
 
 
-def validate_capture_blendshapes(mode: str, frame_count: int, blendshapes):
-    if mode != "tasks":
-        return None
+def validate_capture_blendshapes(frame_count: int, blendshapes):
     if blendshapes is None:
-        raise ValueError("Missing blendshapes for tasks mode")
+        raise ValueError("Missing blendshapes")
     if len(blendshapes) != frame_count:
         raise ValueError("Blendshapes frame count mismatch")
     if any(len(row) != BLENDSHAPE_COUNT for row in blendshapes):

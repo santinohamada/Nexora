@@ -75,15 +75,13 @@ def make_tree(dest):
         except OSError:
             shutil.copy2(src, dst)
 
-    # dataset/ is copied from git-tracked files only: other tools (UI tests) may leave zz_* labels in the live repo.
-    tracked = subprocess.run(["git", "ls-files", "-z", "dataset/custom", "dataset/custom_tasks", "dataset/custom_blendshapes"],
+    # dataset/ is copied from git-tracked files only: new captures or zz_* labels left by other tools must not leak into the runtime.
+    tracked = subprocess.run(["git", "ls-files", "-z", "dataset/custom", "dataset/custom_blendshapes"],
                              cwd=ROOT, capture_output=True, text=True, encoding="utf-8").stdout
-    for rel in filter(None, tracked.split(chr(0))):
-        (dest / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / rel, dest / rel)
-    for extra in ("custom_tasks", "custom_blendshapes"):  # untracked, small, read by /dataset_stats?mode=tasks
-        if (ROOT / "dataset" / extra).is_dir():
-            shutil.copytree(ROOT / "dataset" / extra, dest / "dataset" / extra, ignore=ign)
+    for rel in sorted(set(filter(None, tracked.split(chr(0))))):
+        if (ROOT / rel).is_file():
+            (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / rel, dest / rel)
     for name in RUNTIME:
         src = ROOT / name
         if name == "dataset" and tracked:

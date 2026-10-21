@@ -12,9 +12,9 @@ La interfaz se divide en un menú principal (`/`) que actúa como panel de inici
 
 ### 1. Estación del Paciente (`/paciente`)
 Pensada para la pantalla que mira hacia el paciente.
-- **Captura de Señas (MediaPipe Holistic):** Extrae 33 puntos corporales y 21 de cada mano en tiempo real desde la cámara.
-- **Predicción (PyTorch LSTM):** El modelo predice la seña actual a partir de una ventana de 45 frames. Si la confianza supera el 70%, registra la seña.
-- **Generación de Oraciones (Ollama):** Cuando el paciente baja las manos (posición "idle") por 2 segundos, la secuencia de señas sueltas (ej: "yo dolor cabeza") se envía a un LLM local (`qwen2:1.5b`) que la transforma en una oración natural ("Tengo mucho dolor de cabeza").
+- **Captura de Señas (MediaPipe Tasks):** Extrae 33 puntos corporales, 21 de cada mano y las 52 expresiones faciales (blendshapes) en tiempo real desde la cámara, a 20 fps fijos (GPU, con CPU como respaldo).
+- **Predicción (PyTorch LSTM):** El modelo predice la seña actual a partir de una ventana de 45 frames, sumando la forma de cada mano relativa a su muñeca (`src/features.py`). Si la confianza supera el 70%, registra la seña.
+- **Generación de Oraciones (Ollama):** Cuando el paciente baja las manos (el modelo reconoce "idle"), la secuencia de señas sueltas (ej: "yo dolor cabeza") se envía a un LLM local (`qwen2:1.5b`) que la transforma en una oración natural ("Tengo mucho dolor de cabeza").
 - **Síntesis de Voz (Piper TTS):** La oración natural se reproduce en los parlantes usando un modelo Text-To-Speech (voz argentina).
 - **Modo Captura de Datos:** Permite al usuario grabar nuevas muestras (de 45 frames) con una cuenta regresiva para nutrir el modelo personalizado de PyTorch, actualizando dinámicamente las etiquetas disponibles desde el backend.
 

@@ -65,16 +65,16 @@ def plantillas(base):
 @tc("TC-LSA-014-02")
 def inferencia_ws(base):
     c = base.c
-    wins = [sample(l, i) for l in ("cabeza", "dolor", "idle", "respirar", "yo") for i in range(20)]
-    labels = [l for l in ("cabeza", "dolor", "idle", "respirar", "yo") for _ in range(20)]
+    wins = [sample(l, i) for l in ("cabeza", "dolor", "idle", "respirar", "yo") for i in range(30)]
+    labels = [l for l in ("cabeza", "dolor", "idle", "respirar", "yo") for _ in range(30)]
     rtt, errors, wrong = [], 0, 0
     with ws_open(base, "?v=1") as ws:
         for i in range(200):
             t0 = time.perf_counter()
-            r = ws_window(ws, wins[i % 100])
+            r = ws_window(ws, wins[i % 150])
             rtt.append((time.perf_counter() - t0) * 1000)
             errors += "error" in r
-            wrong += r.get("sign") != labels[i % 100]
+            wrong += r.get("sign") != labels[i % 150]
     c.eq(errors, 0, "errores en 200 ventanas")
     c.ok(pct(rtt, 95) < 1000, "p95 de ida y vuelta < 1000 ms", f"{pct(rtt, 95):.1f} ms")
     wait_for(lambda: http(base, "GET", "/metrics")[1]["latency_ms"].get("lstm_ms", {}).get("count") == 200, 10)

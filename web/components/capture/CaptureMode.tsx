@@ -11,7 +11,6 @@ const LABEL_FORMAT_MESSAGE =
   "Formato de seña inválido: solo minúsculas, números y guion bajo, hasta 32 caracteres.";
 
 type DatasetStats = Record<string, number>;
-type MediaPipeBackend = "legacy" | "tasks";
 
 export const CaptureMode = memo(function CaptureMode({
   videoRef,
@@ -20,7 +19,6 @@ export const CaptureMode = memo(function CaptureMode({
   setStatus,
   setMode,
   captureHandlerRef,
-  backend,
 }: {
   videoRef: (node: HTMLVideoElement | null) => void;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -28,7 +26,6 @@ export const CaptureMode = memo(function CaptureMode({
   setStatus: React.Dispatch<React.SetStateAction<Status>>;
   setMode: (mode: "predict" | "capture") => void;
   captureHandlerRef: React.MutableRefObject<((f: Frame, blendshapes?: number[]) => void) | null>;
-  backend: MediaPipeBackend;
 }) {
 
   const [captureLabel, setCaptureLabel] = useState("");
@@ -59,7 +56,7 @@ export const CaptureMode = memo(function CaptureMode({
       .catch((err) => console.error("Error fetching classes:", err));
 
     // Fetch dataset stats (includes labels not yet in model)
-    fetch(`${API_URL}/dataset_stats?mode=${backend}`)
+    fetch(`${API_URL}/dataset_stats`)
       .then((res) => res.json())
       .then((stats: DatasetStats) => {
         setDatasetStats(stats);
@@ -88,7 +85,7 @@ export const CaptureMode = memo(function CaptureMode({
     captureHandlerRef.current = (frame: Frame, blendshapes?: number[]) => {
       if (isRecordingRef.current) {
         recordedFramesRef.current.push(frame);
-        if (backend === "tasks" && blendshapes) {
+        if (blendshapes) {
           recordedBlendshapesRef.current.push(blendshapes);
         }
         if (recordedFramesRef.current.length >= RECORDING_SAMPLE_LENGTH) {
@@ -103,7 +100,7 @@ export const CaptureMode = memo(function CaptureMode({
     return () => {
       captureHandlerRef.current = null;
     };
-  }, [captureHandlerRef, backend]);
+  }, [captureHandlerRef]);
 
   const isIdle = status === "idle" || status === "done" || status === "error";
 
@@ -135,9 +132,8 @@ export const CaptureMode = memo(function CaptureMode({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           label: captureLabel,
-          mode: backend,
           frames: recordedFramesRef.current,
-          ...(backend === "tasks" ? { blendshapes: recordedBlendshapesRef.current } : {}),
+          blendshapes: recordedBlendshapesRef.current,
         }),
       });
       if (!res.ok) {

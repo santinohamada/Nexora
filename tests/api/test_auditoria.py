@@ -44,7 +44,7 @@ def validacion_audit(base):
         st, r = http(base, "POST", "/audit", body)
         c.ok(st == 400 and r == {"detail": want}, f"{name} -> 400 {want}", f"{st} {short(r, 80)}")
         c.note(f"{name} -> {st} {short(r, 60)}")
-    for t in ("prediction", "fin_atencion", "x"):
+    for t in ("prediction", "x"):
         inv({"type": t, "station": "paciente"}, "Invalid audit type", f"type {t!r}")
     inv({"type": "consent", "station": "x", "consent": "accepted"}, "Invalid station", "station 'x'")
     st, r = http(base, "POST", "/audit", {"type": "consent", "consent": "accepted"})

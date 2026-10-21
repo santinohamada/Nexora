@@ -241,9 +241,11 @@ export function listAudits(page: Page) {
 }
 
 export function cleanupCaptureLabels() {
-  const dir = path.join(RUNTIME, "dataset", "custom");
-  for (const d of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
-    if (d.startsWith("zz_ui_")) fs.rmSync(path.join(dir, d), { recursive: true, force: true });
+  for (const root of ["custom", "custom_blendshapes"]) {
+    const dir = path.join(RUNTIME, "dataset", root);
+    for (const d of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
+      if (d.startsWith("zz_ui_")) fs.rmSync(path.join(dir, d), { recursive: true, force: true });
+    }
   }
 }
 

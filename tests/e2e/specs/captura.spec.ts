@@ -42,6 +42,7 @@ async function addLabel(page: Page, name: string, how: "click" | "enter" = "clic
 }
 const start = (page: Page) => page.getByRole("button", { name: "Empezar" }).click();
 const validFrames = () => Array.from({ length: 45 }, () => Array.from({ length: 75 }, () => [0, 0, 0, 0]));
+const validBlendshapes = () => Array.from({ length: 45 }, () => Array.from({ length: 52 }, () => 0));
 const saved = (page: Page) => page.getByText("¡Guardado!");
 
 function npyInfo(file: string) {
@@ -56,7 +57,7 @@ test("TC-LSA-006-01 grabar una muestra con cuenta regresiva, 45 frames y guardad
   await expect(page.getByText("Seña a grabar:")).toBeVisible();
   await expect(page.getByRole("button", { name: "Volver a Inferencia" })).toBeVisible();
   const classes: string[] = await (await request.get(`${API}/classes`)).json();
-  const stats: Record<string, number> = await (await request.get(`${API}/dataset_stats?mode=legacy`)).json();
+  const stats: Record<string, number> = await (await request.get(`${API}/dataset_stats`)).json();
   const expected = [...new Set([...classes, ...Object.keys(stats)])].filter((l) => l !== "idle").sort();
   const list = await chipList(page);
   expect(list.map((c) => c.label)).toEqual(expected);
@@ -85,7 +86,8 @@ test("TC-LSA-006-01 grabar una muestra con cuenta regresiva, 45 frames y guardad
   expect(reqs).toHaveLength(1);
   const body = reqs[0];
   expect(body.label).toBe(L);
-  expect(body.mode).toBe("legacy");
+  expect(body.blendshapes).toHaveLength(45);
+  expect(body.blendshapes.every((r) => r.length === 52)).toBe(true);
   expect(body.frames).toHaveLength(45);
   expect(body.frames.every((f) => f.length === 75 && f.every((lm) => lm.length === 4))).toBe(true);
   await expect.poll(() => resps.length).toBe(1);
@@ -97,7 +99,7 @@ test("TC-LSA-006-01 grabar una muestra con cuenta regresiva, 45 frames y guardad
   await page.getByRole("button", { name: "Volver a Inferencia" }).click();
   await page.getByText("Ajustes (Modo Captura)").click();
   await expect(chip(page, L)).toContainText("(1)");
-  obs(`Pantalla 'Modo de Captura' con 'Seña a grabar:', 'Volver a Inferencia' y ${list.length} chips ordenados [${list.map((c) => `${c.label}${c.count === null ? "" : ` (${c.count})`}`).join(", ")}] sin 'idle'; 'Grabando para: dolor (${stats.dolor} muestras)'. Se grabó con la etiqueta de prueba ${L}: cuenta regresiva 3, 2, 1 (intervalos ${steps.join(" y ")} ms), 'GRABANDO', 'Procesando...', '¡Guardado!'; POST /capture label=${body.label} mode=${body.mode} frames=${body.frames.length}x75x4 -> ${resps[0].status} samples_for_label=${resps[0].body.samples_for_label}; archivo .npy ${info.descr} ${info.shape}; chip '${L} (1)' tras volver.`);
+  obs(`Pantalla 'Modo de Captura' con 'Seña a grabar:', 'Volver a Inferencia' y ${list.length} chips ordenados [${list.map((c) => `${c.label}${c.count === null ? "" : ` (${c.count})`}`).join(", ")}] sin 'idle'; 'Grabando para: dolor (${stats.dolor} muestras)'. Se grabó con la etiqueta de prueba ${L}: cuenta regresiva 3, 2, 1 (intervalos ${steps.join(" y ")} ms), 'GRABANDO', 'Procesando...', '¡Guardado!'; POST /capture label=${body.label} frames=${body.frames.length}x75x4 blendshapes=${body.blendshapes.length}x52 -> ${resps[0].status} samples_for_label=${resps[0].body.samples_for_label}; archivo .npy ${info.descr} ${info.shape}; chip '${L} (1)' tras volver.`);
 });
 
 test("TC-LSA-006-02 varias repeticiones consecutivas y validación del campo Repeticiones", async ({ context }) => {
@@ -143,7 +145,7 @@ test("TC-LSA-006-03 etiqueta nueva: la carpeta se crea al guardar la primera mue
   await start(page);
   await expect(saved(page)).toBeVisible({ timeout: 90_000 });
   expect(npyCount(L)).toBe(1);
-  const stats = await (await request.get(`${API}/dataset_stats?mode=legacy`)).json();
+  const stats = await (await request.get(`${API}/dataset_stats`)).json();
   expect(stats[L]).toBe(1);
   await expect(chip(page, L)).toHaveText(`${L}(1)`);
   obs(`Chip '${L}' seleccionado, texto 'Grabando para: ${L}' con '(nueva — la carpeta se crea al grabar)', carpeta inexistente antes; tras grabar: carpeta con ${npyCount(L)} .npy, /dataset_stats ${L}=${stats[L]}, chip '${L} (1)', respuesta ${resps[0]?.status}.`);
@@ -188,12 +190,12 @@ test("TC-LSA-006-04 Detener cancela la repetición en curso sin guardarla", asyn
 
 test("TC-LSA-007-02 lista combinada de etiquetas, filtro de búsqueda y alta de etiqueta válida", async ({ context, request }) => {
   for (const l of ["zz_ui_007a", "zz_ui_007b", "zz_ui_007c"]) {
-    const r = await request.post(`${API}/capture`, { data: { label: l, mode: "legacy", frames: validFrames() } }); // test data setup
+    const r = await request.post(`${API}/capture`, { data: { label: l, frames: validFrames(), blendshapes: validBlendshapes() } }); // test data setup
     expect(r.status()).toBe(200);
   }
   const { page } = await openCapture(context);
   const classes: string[] = await (await request.get(`${API}/classes`)).json();
-  const stats: Record<string, number> = await (await request.get(`${API}/dataset_stats?mode=legacy`)).json();
+  const stats: Record<string, number> = await (await request.get(`${API}/dataset_stats`)).json();
   const expected = [...new Set([...classes, ...Object.keys(stats)])].filter((l) => l !== "idle").sort();
   const list = await chipList(page);
   expect(list.map((c) => c.label)).toEqual(expected);
