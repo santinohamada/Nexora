@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import type { NormalizedLandmark } from "@mediapipe/tasks-vision";
 import { Status, Frame } from "../types";
 import {
   toFrame,
@@ -7,6 +8,7 @@ import {
   isFaceEligibleTick,
   createLandmarkers,
   MediaPipeLandmarkerSet,
+  TasksVisionModule,
 } from "../lib/mediapipe";
 
 declare global {
@@ -31,11 +33,20 @@ const FPS_WINDOW = 60;
 const CAPTURE_WIDTH = 640;
 const CAPTURE_HEIGHT = 360;
 
-export function useMediaPipeTasks({ onFrame, enabled = true }: UseMediaPipeTasksOptions = {}) {
+export function useMediaPipeTasks({
+  onFrame,
+  drawLandmarksOnCanvas = true,
+  enabled = true,
+}: UseMediaPipeTasksOptions = {}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const onFrameRef = useRef(onFrame);
   const landmarkersRef = useRef<MediaPipeLandmarkerSet | null>(null);
+  const visionRef = useRef<TasksVisionModule | null>(null);
+  const drawLandmarksRef = useRef(drawLandmarksOnCanvas);
+  // Detectors get a downscaled canvas copy of the frame: passing the live <video> element directly
+  // made every detector return empty results (see parity page, which also feeds a canvas).
+  const inputCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isSendingRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const frameIndexRef = useRef(0);
@@ -63,9 +74,16 @@ export function useMediaPipeTasks({ onFrame, enabled = true }: UseMediaPipeTasks
   }, [onFrame]);
 
   useEffect(() => {
+    drawLandmarksRef.current = drawLandmarksOnCanvas;
+  }, [drawLandmarksOnCanvas]);
+
+  useEffect(() => {
     let isMounted = true;
     import("@mediapipe/tasks-vision")
-      .then((visionModule) => createLandmarkers(visionModule))
+      .then((visionModule) => {
+        visionRef.current = visionModule;
+        return createLandmarkers(visionModule);
+      })
       .then((landmarkers) => {
         if (!isMounted) return;
         landmarkersRef.current = landmarkers;
@@ -145,6 +163,33 @@ export function useMediaPipeTasks({ onFrame, enabled = true }: UseMediaPipeTasks
     };
   }, [enabled]);
 
+  const drawSkeleton = (
+    pose: NormalizedLandmark[] | undefined,
+    hands: NormalizedLandmark[][],
+    width: number,
+    height: number
+  ) => {
+    const canvas = canvasRef.current;
+    const vision = visionRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !vision || !ctx) return;
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    ctx.clearRect(0, 0, width, height);
+    if (!drawLandmarksRef.current) return;
+    const utils = new vision.DrawingUtils(ctx);
+    if (pose) {
+      utils.drawConnectors(pose, vision.PoseLandmarker.POSE_CONNECTIONS, { color: "#4f46e5", lineWidth: 2 });
+      utils.drawLandmarks(pose, { color: "#818cf8", lineWidth: 1, radius: 2 });
+    }
+    for (const hand of hands) {
+      utils.drawConnectors(hand, vision.HandLandmarker.HAND_CONNECTIONS, { color: "#10b981", lineWidth: 2 });
+      utils.drawLandmarks(hand, { color: "#6ee7b7", lineWidth: 1, radius: 2 });
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     const loop = () => {
@@ -158,8 +203,16 @@ export function useMediaPipeTasks({ onFrame, enabled = true }: UseMediaPipeTasks
           eligibleTickRef.current++;
           const ts = performance.now();
           try {
-            const poseResult = landmarkers.pose.detectForVideo(video, ts);
-            const handResult = landmarkers.hand.detectForVideo(video, ts);
+            const input = (inputCanvasRef.current ??= document.createElement("canvas"));
+            const w = CAPTURE_WIDTH;
+            const h = Math.round((CAPTURE_WIDTH * video.videoHeight) / video.videoWidth);
+            if (input.width !== w || input.height !== h) {
+              input.width = w;
+              input.height = h;
+            }
+            input.getContext("2d")!.drawImage(video, 0, 0, w, h);
+            const poseResult = landmarkers.pose.detectForVideo(input, ts);
+            const handResult = landmarkers.hand.detectForVideo(input, ts);
             const { left, right } = resolveHandSlots(
               poseResult.landmarks[0],
               handResult.landmarks,
@@ -167,7 +220,7 @@ export function useMediaPipeTasks({ onFrame, enabled = true }: UseMediaPipeTasks
             );
 
             if (isFaceEligibleTick(eligibleTickRef.current)) {
-              const faceResult = landmarkers.face.detectForVideo(video, ts);
+              const faceResult = landmarkers.face.detectForVideo(input, ts);
               latestBlendshapesRef.current = extractBlendshapes(
                 faceResult.faceBlendshapes?.[0]?.categories
               );
@@ -203,6 +256,9 @@ export function useMediaPipeTasks({ onFrame, enabled = true }: UseMediaPipeTasks
 
             const frame = toFrame(poseResult.landmarks[0], left, right);
             onFrameRef.current?.(frame, latestBlendshapesRef.current);
+
+            // After onFrame: a drawing failure must not drop the recorded frame
+            drawSkeleton(poseResult.landmarks[0], handResult.landmarks, input.width, input.height);
           } catch (e) {
             droppedFramesRef.current++;
           } finally {
