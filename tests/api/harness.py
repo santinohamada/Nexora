@@ -75,8 +75,8 @@ def make_tree(dest):
         except OSError:
             shutil.copy2(src, dst)
 
-    # dataset/ is copied from git-tracked files only (-c) plus new unignored ones (-o): other tools (UI tests) may leave zz_* labels in the live repo.
-    tracked = subprocess.run(["git", "ls-files", "-z", "-co", "--exclude-standard", "dataset/custom", "dataset/custom_blendshapes"],
+    # dataset/ is copied from git-tracked files only: new captures or zz_* labels left by other tools must not leak into the runtime.
+    tracked = subprocess.run(["git", "ls-files", "-z", "dataset/custom", "dataset/custom_blendshapes"],
                              cwd=ROOT, capture_output=True, text=True, encoding="utf-8").stdout
     for rel in sorted(set(filter(None, tracked.split(chr(0))))):
         if (ROOT / rel).is_file():

@@ -154,6 +154,7 @@ test("TC-LSA-001-07 respuesta NO_CLARO: sin burbuja y sin evento translation_dis
   await mockProcessSentence(page, "NO_CLARO", "", 800); // SIMULATED translation response
   await ws.ready();
   ws.send(pred("dolor", 90));
+  ws.send(pred("idle", 95)); // sentences close on a confident idle
   await expect(page.getByText("Generando respuesta de IA...")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Generando respuesta de IA...")).toBeHidden();
   await expect(page.getByText("La conversación aparecerá aquí")).toBeVisible();
@@ -197,6 +198,7 @@ test("TC-LSA-003-04 texto antes que audio (ventana de 1000 ms) y sin audio no se
       ws.send(pred(s, 90));
       await sleep(100);
     }
+    ws.send(pred("idle", 95)); // sentences close on a confident idle
   };
   await speak();
   await expect.poll(async () => (await page.evaluate(() => (window as any).__audio.plays)).length, { timeout: 20_000 }).toBe(1);
@@ -325,6 +327,7 @@ test("TC-LSA-014-04 latencia percibida e2e_ms y sincronización entre caras (pre
       ws.send(pred(s, 90));
       await sleep(100);
     }
+    ws.send(pred("idle", 95)); // sentences close on a confident idle
     await expect.poll(async () => (await bubbleTexts(p2)).length, { timeout: 30_000 }).toBe(i + 1);
     await expect.poll(async () => (await bubbleTexts(p3)).length, { timeout: 5_000 }).toBe(i + 1);
     await expect.poll(() => e2e.length, { timeout: 5_000 }).toBe(i + 1);
