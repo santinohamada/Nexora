@@ -2,6 +2,8 @@ import os
 import time
 import json
 import math
+import re
+import unicodedata
 import atexit
 import asyncio
 import numpy as np
@@ -17,7 +19,7 @@ from piper.voice import PiperVoice
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, StrictBool, StrictFloat, StrictInt
 
 from src.model.lstm import SignLanguageLSTM
 import storage
@@ -25,6 +27,7 @@ from capture_validation import (
     validate_audit_payload,
     validate_capture_blendshapes,
     validate_capture_label,
+    validate_frames,
     validate_report_payload,
 )
 
@@ -33,9 +36,18 @@ from capture_validation import (
 # ---------------------------------------------------------------------------
 app = FastAPI(title="Nexora LSA-64 API")
 
+# RNF-T-06: only the configured local-network origins (comma-separated env var).
+ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get(
+        "NEXORA_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+    ).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -261,6 +273,44 @@ def _match_template(words: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
+# Clinical fidelity check (RF-01.8) — deterministic guard on the LLM sentence
+# ---------------------------------------------------------------------------
+NO_CLARO = "NO_CLARO"  # the only non-sentence value the frontend discards
+
+# Whitelist: every word of the LLM sentence must come from the input, from a synonym group
+# the input touches, or from this closed set of grammar words. Negations, pronouns, numbers
+# and intensifiers are deliberately absent: they are allowed only when they were signed.
+# A false rejection costs only the raw-words fallback, which is faithful by construction.
+SYNONYM_GROUPS = (
+    ("dolor", "duel"), ("respir",), ("estomag", "panza"), ("fiebre", "febr"),
+    ("medicament", "pastilla"), ("doctor", "medico"), ("ayud",),
+)
+GRAMMAR_WORDS = frozenset(
+    "me te le se lo la los las el un una de del en a al y o e mi mis su sus que con por para "
+    "tengo tiene tenes siento siente estoy esta cuesta cuestan puedo puede hay es".split()
+)
+PROMPT_LEAK_RE = re.compile(r"[()\[\]\n]|NO[ _]agregues|NO_CLARO|Traducci[oó]n|Palabras a traducir|REGLA", re.I)
+
+
+def _strip_accents(text: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", text.lower()) if not unicodedata.combining(c))
+
+
+def _is_faithful(sentence: str, words: str) -> bool:
+    """True if the sentence is a single clean sentence built only from the input words (see GRAMMAR_WORDS)."""
+    if PROMPT_LEAK_RE.search(sentence) or len(re.findall(r"[.!?]\s*\S", sentence)) > 0:
+        return False
+    in_tokens = [t for t in re.findall(r"\w+", _strip_accents(words)) if t != "idle"]
+    stems = [t[:4] if len(t) >= 4 else t for t in in_tokens]
+    stems += [s for group in SYNONYM_GROUPS if any(t.startswith(group) for t in in_tokens) for s in group]
+
+    def allowed(t: str) -> bool:
+        return t in GRAMMAR_WORDS or t in in_tokens or any(len(s) >= 4 and t.startswith(s) for s in stems)
+
+    return all(allowed(t) for t in re.findall(r"\w+", _strip_accents(sentence)))
+
+
+# ---------------------------------------------------------------------------
 # LRU caches — translation & TTS audio
 # ---------------------------------------------------------------------------
 MAX_TRANSLATION_CACHE = 200
@@ -306,7 +356,7 @@ class ReportPayload(BaseModel):
     text: str
     station: str
     words: list[str] | None = None
-    message_id: int | None = None
+    message_id: StrictInt | StrictBool | None = None  # strict: bool/str must not be coerced; bool reaches validate_report_payload
 
 
 def _prepare_input(data: np.ndarray) -> np.ndarray:
@@ -385,11 +435,8 @@ def capture(payload: CapturePayload):
     mode = payload.mode if payload.mode in ("legacy", "tasks") else "legacy"
     T = len(payload.frames)
 
-    data = np.array(payload.frames, dtype=np.float32)
-    if not np.isfinite(data).all():
-        raise HTTPException(status_code=400, detail="Non-finite frame value")
-
     try:
+        data = validate_frames(payload.frames)
         blendshapes_arr = validate_capture_blendshapes(mode, T, payload.blendshapes)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -439,7 +486,7 @@ class AuditPayload(BaseModel):
     type: str
     station: str
     consent: str | None = None
-    e2e_ms: float | None = None
+    e2e_ms: StrictInt | StrictFloat | None = None
 
 
 @app.post("/audit")
@@ -465,7 +512,8 @@ def metrics(since: str | None = None):
     since_dt = None
     if since:
         try:
-            since_dt = datetime.fromisoformat(since)
+            # Python 3.10 fromisoformat rejects the 'Z' suffix (Date.toISOString format)
+            since_dt = datetime.fromisoformat(since[:-1] + "+00:00" if since.endswith("Z") else since)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid since timestamp")
         if since_dt.tzinfo is None:
@@ -494,10 +542,13 @@ def predict(payload: SkeletonPayload):
     if len(payload.frames) < 5:
         raise HTTPException(status_code=400, detail="Too few frames (min 5)")
 
-    data = np.array(payload.frames, dtype=np.float32)  # (T, 75, 4)
-
     if model is None:
         raise HTTPException(status_code=500, detail="Modelo no entrenado. Por favor entrena el LSTM primero.")
+
+    try:
+        data = validate_frames(payload.frames)  # (T, 75, 4)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     # LSTM Preprocessing
     data = _prepare_input(data)
@@ -539,18 +590,17 @@ def predict(payload: SkeletonPayload):
 
 @app.websocket("/ws/predict")
 async def websocket_predict(websocket: WebSocket):
+    # Browsers always send Origin; a missing one means a non-browser client (no CSWSH risk).
+    origin = websocket.headers.get("origin")
+    if origin is not None and origin not in ALLOWED_ORIGINS:
+        await websocket.close(code=1008)  # rejected before accept -> HTTP 403
+        return
     await websocket.accept()
     if model is None:
         await websocket.close(code=1011, reason="Modelo no entrenado")
         return
 
-    proto_version = "1"
-    try:
-        query = getattr(websocket, "scope", {}).get("query", {})
-        if isinstance(query, dict):
-            proto_version = str(query.get("v", "1") or "1").lower()
-    except Exception:
-        proto_version = "1"
+    proto_version = websocket.query_params.get("v", "1").lower()
 
     try:
         while True:
@@ -599,12 +649,9 @@ async def websocket_predict(websocket: WebSocket):
                     if len(frames) < 5:
                         await websocket.send_json({"error": "Too few frames (min 5)"})
                         continue
-                    data_np = np.array(frames, dtype=np.float32)
+                    data_np = frames  # validate_frames converts and reports ragged input
 
-                if data_np is None:
-                    continue
-
-                data_np = _prepare_input(data_np)
+                data_np = _prepare_input(validate_frames(data_np))
                 input_tensor = torch.tensor(data_np, dtype=torch.float32).unsqueeze(0).to(device)
 
                 lstm_t0 = time.perf_counter()
@@ -663,6 +710,11 @@ def process_sentence(payload: SentencePayload):
     # --- Step 1: Try template match (instant) ---
     natural_sentence = _match_template(words)
 
+    # Idle-only input carries no signed content: discard (CU-02 3a2b), no LLM/TTS
+    if not cache_key:
+        natural_sentence = NO_CLARO
+        source = "no_claro"
+
     # --- Step 2: Try translation cache (instant) ---
     if natural_sentence is None:
         cached = _cache_get(_translation_cache, cache_key)
@@ -691,7 +743,7 @@ Palabras a traducir: "ella dolor pecho"
 Traducción: Ella tiene dolor en el pecho.
 
 Palabras a traducir: "yo dolor brazo"
-Traducción: Me duele el brazo. (NO agregues fiebre, ni cansancio, ni nada extra).
+Traducción: Me duele el brazo.
 
 Palabras a traducir: "idle idle"
 Traducción: NO_CLARO
@@ -706,9 +758,11 @@ Traducción:"""
                 json={
                     "model": "qwen2:1.5b",
                     "prompt": prompt,
-                    "stream": True
+                    "stream": True,
+                    "keep_alive": "30m",
+                    "options": {"temperature": 0, "num_predict": 60},
                 },
-                timeout=8,
+                timeout=5,
                 stream=True,
             )
             if ollama_res.status_code == 200:
@@ -723,9 +777,13 @@ Traducción:"""
                     if chunk.get("done"):
                         break
                 result = "".join(tokens).strip()
-                if result and result != "NO_CLARO":
+                if NO_CLARO in result:
+                    natural_sentence = NO_CLARO
+                elif result and _is_faithful(result, words):
                     natural_sentence = result
                     _cache_put(_translation_cache, cache_key, natural_sentence, MAX_TRANSLATION_CACHE)
+                else:
+                    print(f"[Nexora] LLM sentence rejected by fidelity check: '{result}'")
         except Exception as e:
             print(f"[Nexora] Ollama error: {e}")
 
@@ -734,7 +792,7 @@ Traducción:"""
     # --- Step 4: TTS with audio cache ---
     tts_t0 = time.perf_counter()
     audio_base64 = ""
-    if piper_voice and natural_sentence:
+    if piper_voice and natural_sentence and natural_sentence != NO_CLARO:
         cached_audio = _cache_get(_audio_cache, natural_sentence)
         if cached_audio is not None:
             audio_base64 = cached_audio

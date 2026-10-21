@@ -1731,7 +1731,7 @@
         "1.- 20 y [] -> 200; 21 -> 400 {\"detail\": \"Too many words\"}.",
         "2.- 32 -> 200; 33 y \"\" -> 400 {\"detail\": \"Invalid word\"}.",
         "3.- 0 y 9007199254740991 -> 200; -1 y 9007199254740992 -> 400 {\"detail\": \"Invalid message_id\"}; 1.5 y \"abc\" -> 422.",
-        "4.- Un booleano no es un identificador válido y debe rechazarse (400 \"Invalid message_id\")."
+        "4.- true -> 400 {\"detail\": \"Invalid message_id\"} (un booleano no es un identificador válido); \"12\" -> 422 (tipo inválido, igual que \"abc\")."
       ],
       "ejecucion": "api",
       "datos_prueba": "Hallazgo D-17 (previo): true y \"12\" se aceptan (200) porque Pydantic los convierte a entero antes de la validación propia."
