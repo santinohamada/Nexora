@@ -135,6 +135,7 @@ export const CaptureMode = memo(function CaptureMode({
 
     const { first, last } = recordingTimesRef.current;
     const fps = ((RECORDING_SAMPLE_LENGTH - 1) * 1000) / Math.max(last - first, 1);
+    console.info("[Nexora capture]", JSON.stringify({ fps: Math.round(fps * 10) / 10, ...window.__mediapipeBench }));
     if (fps < MIN_SAMPLE_FPS) {
       return `Muestra descartada: la cámara procesó ${fps.toFixed(1)} fps (mínimo ${MIN_SAMPLE_FPS}). Cerrá otros programas que usen la GPU y volvé a intentar.`;
     }
@@ -363,14 +364,15 @@ export const CaptureMode = memo(function CaptureMode({
               </span>
             </div>
           )}
+          {/* Static badges: animations or backdrop blur over the playing video repaint on the GPU every frame, competing with MediaPipe */}
           {status === "recording" && (
-            <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-red-600/90 text-white px-3 py-1.5 rounded-full border border-red-500 animate-pulse shadow-lg">
-              <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+            <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-red-600/90 text-white px-3 py-1.5 rounded-full border border-red-500 shadow-lg">
+              <span className="w-2.5 h-2.5 rounded-full bg-white" />
               <span className="text-xs font-bold tracking-wide">GRABANDO</span>
             </div>
           )}
           {currentRepeat > 0 && repeatCount > 1 && (
-            <div className="absolute top-4 right-4 z-30 bg-indigo-600/90 text-white px-3 py-1.5 rounded-full shadow-lg text-xs font-bold tracking-wide backdrop-blur-sm">
+            <div className="absolute top-4 right-4 z-30 bg-indigo-600/90 text-white px-3 py-1.5 rounded-full shadow-lg text-xs font-bold tracking-wide">
               MUESTRA {currentRepeat} / {repeatCount}
             </div>
           )}
