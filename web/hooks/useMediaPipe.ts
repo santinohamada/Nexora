@@ -12,8 +12,10 @@ declare global {
   }
 }
 
-const HOLISTIC_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js";
-const DRAWING_UTILS_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js";
+// Served from public/mediapipe/holistic (copied from node_modules by scripts/fetch-mediapipe-assets.mjs)
+const HOLISTIC_BASE_PATH = "/mediapipe/holistic";
+const HOLISTIC_SCRIPT_URL = `${HOLISTIC_BASE_PATH}/holistic.js`;
+const DRAWING_UTILS_SCRIPT_URL = `${HOLISTIC_BASE_PATH}/drawing_utils.js`;
 
 type UseMediaPipeOptions = {
   onFrame?: (frame: Frame) => void;
@@ -81,8 +83,7 @@ export function useMediaPipe({ onFrame, drawLandmarksOnCanvas = true, enabled = 
 
       try {
         const holistic = new window.Holistic({
-          locateFile: (file: string) =>
-            `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`,
+          locateFile: (file: string) => `${HOLISTIC_BASE_PATH}/${file}`,
         });
 
         holistic.setOptions({

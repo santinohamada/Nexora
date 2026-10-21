@@ -16,7 +16,7 @@ const REPLAY_FPS = 15;
 const WARMUP_FRAMES = 20;
 const PREDICT_STRIDE_FRAMES = 8;
 const RECORDING_MAX_FRAMES = 45;
-const HOLISTIC_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js";
+const HOLISTIC_SCRIPT_URL = "/mediapipe/holistic/holistic.js";
 const OVERALL_AGREEMENT_THRESHOLD = 0.9;
 const PER_CLASS_AGREEMENT_THRESHOLD = 0.8;
 const MEAN_PROB_DIFF_THRESHOLD = 0.1;
@@ -243,7 +243,7 @@ export default function ParityPage() {
       attempts++;
     }
     const holistic = new window.Holistic({
-      locateFile: (f: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${f}`,
+      locateFile: (f: string) => `/mediapipe/holistic/${f}`,
     });
     holistic.setOptions({
       modelComplexity: 0,

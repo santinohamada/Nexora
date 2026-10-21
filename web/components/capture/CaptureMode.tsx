@@ -5,6 +5,10 @@ import { Plus, Tag, Search } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const RECORDING_SAMPLE_LENGTH = 45;
+// Same rule as capture_validation.LABEL_PATTERN (backend)
+const LABEL_PATTERN = /^[a-z0-9_]{1,32}$/;
+const LABEL_FORMAT_MESSAGE =
+  "Formato de seña inválido: solo minúsculas, números y guion bajo, hasta 32 caracteres.";
 
 type DatasetStats = Record<string, number>;
 type MediaPipeBackend = "legacy" | "tasks";
@@ -36,6 +40,10 @@ export const CaptureMode = memo(function CaptureMode({
   const [showNewInput, setShowNewInput] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
   const [currentRepeat, setCurrentRepeat] = useState(0);
+  const [labelError, setLabelError] = useState<string | null>(null);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  // Identifies the running sequence; Detener (or a new start) bumps it so stale loops abort silently.
+  const runIdRef = useRef(0);
 
   const fetchLabelsAndStats = () => {
     // Fetch known classes from model
@@ -101,10 +109,12 @@ export const CaptureMode = memo(function CaptureMode({
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-  const recordOneSample = async () => {
+  // Resolves "ok", "cancelled" (Detener) or an error message for the user.
+  const recordOneSample = async (run: number): Promise<string> => {
     for (let i = 3; i > 0; i--) {
       setCountdown(i);
       await sleep(1000);
+      if (runIdRef.current !== run) return "cancelled";
     }
     setCountdown(null);
     setStatus("recording");
@@ -116,10 +126,11 @@ export const CaptureMode = memo(function CaptureMode({
     await new Promise<void>((resolve) => {
       resolveRecordingRef.current = resolve;
     });
+    if (runIdRef.current !== run) return "cancelled"; // discard the in-progress sample
 
     setStatus("loading");
     try {
-      await fetch(`${API_URL}/capture`, {
+      const res = await fetch(`${API_URL}/capture`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -129,31 +140,54 @@ export const CaptureMode = memo(function CaptureMode({
           ...(backend === "tasks" ? { blendshapes: recordedBlendshapesRef.current } : {}),
         }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const detail = typeof body?.detail === "string" ? body.detail : `HTTP ${res.status}`;
+        return `No se pudo guardar la muestra: ${detail}`;
+      }
     } catch (err) {
       console.error(err);
+      return "No se pudo guardar la muestra: no hay conexión con el servidor.";
     }
+    return "ok";
   };
 
   const handleStartSequence = async () => {
-    if (!captureLabel.trim()) return;
+    if (!LABEL_PATTERN.test(captureLabel)) {
+      setCaptureError(LABEL_FORMAT_MESSAGE);
+      return;
+    }
+    const run = ++runIdRef.current;
+    setCaptureError(null);
     setCurrentRepeat(1);
     for (let i = 0; i < repeatCount; i++) {
       setCurrentRepeat(i + 1);
-      await recordOneSample();
+      const result = await recordOneSample(run);
+      if (result === "cancelled" || runIdRef.current !== run) return;
+      if (result !== "ok") {
+        setCaptureError(result);
+        setStatus("idle");
+        setCurrentRepeat(0);
+        fetchLabelsAndStats();
+        return;
+      }
       if (i < repeatCount - 1) {
         setStatus("idle");
         await sleep(1000);
+        if (runIdRef.current !== run) return;
       }
     }
     setStatus("done");
     fetchLabelsAndStats(); // Refresh counts
     setTimeout(() => {
+      if (runIdRef.current !== run) return;
       setStatus("idle");
       setCurrentRepeat(0);
     }, 2000);
   };
 
   const handleStop = () => {
+    runIdRef.current++;
     setStatus("idle");
     setCountdown(null);
     setCurrentRepeat(0);
@@ -167,6 +201,13 @@ export const CaptureMode = memo(function CaptureMode({
   const handleAddNewLabel = () => {
     const label = newLabel.trim().toLowerCase();
     if (!label) return;
+    if (!LABEL_PATTERN.test(label)) {
+      setLabelError(LABEL_FORMAT_MESSAGE);
+      setNewLabel("");
+      setShowNewInput(false);
+      return;
+    }
+    setLabelError(null);
     if (knownLabels.includes(label)) {
       setCaptureLabel(label);
       setNewLabel("");
@@ -228,9 +269,13 @@ export const CaptureMode = memo(function CaptureMode({
               <input
                 type="text"
                 value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
+                onChange={(e) => {
+                  setNewLabel(e.target.value);
+                  setLabelError(null);
+                }}
                 onKeyDown={(e) => e.key === "Enter" && handleAddNewLabel()}
                 placeholder="Nombre de la nueva seña..."
+                aria-label="Nombre de la nueva seña"
                 className="flex-1 bg-slate-100 border border-slate-200 text-sm rounded-lg p-2.5 outline-none focus:border-indigo-400 transition-colors"
                 disabled={!isIdle}
                 autoFocus
@@ -245,6 +290,12 @@ export const CaptureMode = memo(function CaptureMode({
             </div>
           )}
 
+          {labelError && (
+            <p role="alert" className="text-sm text-red-700 mb-3">
+              {labelError}
+            </p>
+          )}
+
           {/* Search filter */}
           {knownLabels.length > 6 && (
             <div className="relative mb-2">
@@ -254,6 +305,7 @@ export const CaptureMode = memo(function CaptureMode({
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
                 placeholder="Buscar seña..."
+                aria-label="Buscar seña"
                 className="w-full bg-slate-100 border border-slate-200 text-sm rounded-lg pl-8 pr-3 py-2 outline-none focus:border-indigo-400 transition-colors"
               />
             </div>
@@ -277,7 +329,7 @@ export const CaptureMode = memo(function CaptureMode({
                 {label}
                 {datasetStats[label] !== undefined && (
                   <span className={`ml-1.5 text-xs ${
-                    captureLabel === label ? "text-indigo-200" : "text-slate-400"
+                    captureLabel === label ? "text-indigo-100" : "text-slate-600"
                   }`}>
                     ({datasetStats[label]})
                   </span>
@@ -285,7 +337,7 @@ export const CaptureMode = memo(function CaptureMode({
               </button>
             ))}
             {knownLabels.length === 0 && (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-600">
                 No hay señas registradas. Creá una nueva con el botón de arriba.
               </p>
             )}
@@ -343,11 +395,12 @@ export const CaptureMode = memo(function CaptureMode({
         {/* Controls */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-500">Repeticiones:</label>
+            <label htmlFor="repeat-count" className="text-sm text-slate-500">Repeticiones:</label>
             <input
+              id="repeat-count"
               type="number"
               value={repeatCount}
-              onChange={(e) => setRepeatCount(parseInt(e.target.value) || 1)}
+              onChange={(e) => setRepeatCount(Math.max(1, parseInt(e.target.value) || 1))}
               className="bg-slate-100 rounded-lg p-2 w-20 text-center outline-none"
               min="1"
               disabled={!isIdle}
@@ -370,6 +423,12 @@ export const CaptureMode = memo(function CaptureMode({
             </button>
           )}
         </div>
+
+        {captureError && (
+          <p role="alert" className="text-sm text-red-700">
+            {captureError}
+          </p>
+        )}
 
         {/* Selected label indicator */}
         {captureLabel && (

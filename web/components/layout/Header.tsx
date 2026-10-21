@@ -31,7 +31,7 @@ export const Header = memo(function Header() {
           className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all ${
             isPaciente
               ? "bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/50"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+              : "text-slate-600 hover:text-slate-800 hover:bg-slate-200/50"
           }`}
         >
           <User size={16} />
@@ -42,7 +42,7 @@ export const Header = memo(function Header() {
           className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all ${
             isRecepcion
               ? "bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/50"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+              : "text-slate-600 hover:text-slate-800 hover:bg-slate-200/50"
           }`}
         >
           <Activity size={16} />

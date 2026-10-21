@@ -355,12 +355,15 @@ test("TC-LSA-015-06 el flujo crítico de P-02 opera sin Internet", async ({ page
   });
   await page.goto("/paciente");
   await accept(page);
-  await sleep(15_000);
+  // First frame needs the local MediaPipe warm-up (software rendering is slow): wait for it instead of a fixed 15 s.
+  await expect.poll(() => framesSent, { timeout: 60_000 }).toBeGreaterThan(0).catch(() => {});
+  await sleep(2_000);
   const hosts = [...new Set(attempted.map((u) => new URL(u).host))];
   const loading = await page.getByText("Activando cámara...").isVisible();
   obs(`Sin Internet (peticiones externas abortadas): intentos a hosts externos: ${attempted.length} (${hosts.join(", ") || "ninguno"}); '${"Activando cámara..."}' sigue visible: ${loading}; conexión /ws/predict abierta: ${wsOpened}; mensajes de frames enviados: ${framesSent}.`);
   expect(attempted, "no debe haber peticiones a hosts externos").toEqual([]);
   expect(loading).toBe(false);
+  expect(framesSent, "la cámara debe enviar frames sin Internet").toBeGreaterThan(0);
   expect(framesSent).toBeGreaterThan(0);
 });
 

@@ -146,7 +146,7 @@ export default function PacientePage() {
     [sendFrames, onFrameTick]
   );
 
-  const { videoRef, canvasRef, status, setStatus, stream } = useLandmarks({
+  const { videoRef, canvasRef, status, setStatus, error: cameraError } = useLandmarks({
     onFrame: handleFrame,
     drawLandmarksOnCanvas: true,
     enabled: consentState === "accepted",
@@ -254,12 +254,14 @@ export default function PacientePage() {
               </div>
 
               <div className="flex-1 bg-slate-900 rounded-3xl overflow-hidden relative border-4 border-slate-800 shadow-inner flex flex-col items-center justify-center min-h-[400px]">
-                <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-slate-900/90 border border-slate-700 px-3 py-1.5 rounded-full">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs text-slate-100 font-semibold tracking-wide">
-                    EN VIVO · Visión por computadora
-                  </span>
-                </div>
+                {status !== "error" && (
+                  <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-slate-900/90 border border-slate-700 px-3 py-1.5 rounded-full">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs text-slate-100 font-semibold tracking-wide">
+                      EN VIVO · Visión por computadora
+                    </span>
+                  </div>
+                )}
 
                 <video
                   ref={videoRef}
@@ -271,6 +273,15 @@ export default function PacientePage() {
                   ref={canvasRef}
                   className="absolute inset-0 w-full h-full object-cover z-10"
                 />
+
+                {status === "error" && (
+                  <div role="alert" className="z-20 flex flex-col items-center gap-4 px-6 text-center">
+                    <Camera size={48} className="text-slate-500" />
+                    <span className="text-red-300 font-medium">
+                      {cameraError ?? "No se pudo acceder a la cámara."}
+                    </span>
+                  </div>
+                )}
 
                 {status === "loading" && (
                   <div className="z-20 flex flex-col items-center gap-4">
@@ -316,7 +327,7 @@ export default function PacientePage() {
 
                 <div className="flex-1 bg-slate-100/50 border border-slate-200 rounded-3xl p-6 overflow-y-auto flex flex-col gap-6">
                   {chatHistory.length === 0 ? (
-                    <div className="m-auto text-slate-400 flex flex-col items-center">
+                    <div className="m-auto text-slate-600 flex flex-col items-center">
                       <p>La conversación aparecerá aquí</p>
                     </div>
                   ) : (
@@ -335,7 +346,7 @@ export default function PacientePage() {
                   </button>
                   <button
                     onClick={() => setMode("capture")}
-                    className="ml-auto flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-slate-600 text-sm"
+                    className="ml-auto flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-800 text-sm"
                   >
                     <Settings size={16} /> Ajustes (Modo Captura)
                   </button>
