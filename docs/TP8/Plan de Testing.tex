@@ -4,6 +4,7 @@
 % ============================================================================
 \documentclass[12pt, a4paper]{article}
 \usepackage{lsasalud}
+\renewcommand{\versionLSA}{1.1}
 
 \hypersetup{pdftitle={Plan de Testing --- LSA Salud}}
 
@@ -14,7 +15,8 @@
 \portada{Plan de Testing}{LSASALUD-G9-PT}
 
 \historialRevisiones{
-    1.0 & \today & Equipo LSA Salud & Versión inicial del Plan de Testing. \\
+    1.0 & 20 de octubre de 2026 & Equipo LSA Salud & Versión inicial del Plan de Testing. \\
+    1.1 & \today & Equipo LSA Salud & Cronograma actualizado con la ejecución del ciclo 2 (regresión). \\
 }
 
 \tableofcontents
@@ -27,9 +29,9 @@
     \Large\textbf{\idPlan}
 \end{center}
 
-Plan de testing del sistema LSA Salud, versión \texttt{f29917a} del
-repositorio. Corresponde a una prueba de sistema con dos ciclos: ciclo 1
-(ejecución inicial) y ciclo 2 (regresión).
+Plan de testing del sistema LSA Salud. Corresponde a una prueba de sistema con
+dos ciclos: ciclo 1 (ejecución inicial, versión \texttt{f29917a} del
+repositorio) y ciclo 2 (regresión, versión \texttt{0638d22}).
 
 % ============================================================================
 \section{Introducción}
@@ -100,8 +102,8 @@ CU-12) y uno por cada grupo de requerimientos no funcionales (privacidad y
 seguridad, rendimiento, y calidad y restricciones). Cada caso agrupa los
 escenarios principal y alternativos de su grupo, e incluye en sus pasos las
 comprobaciones que requieren una persona realizando señas frente a la cámara,
-hablando al micrófono o inspeccionando la estación; estas se ejecutan en el
-ciclo 2. Los datos de prueba provienen de muestras del dataset y de
+hablando al micrófono o inspeccionando la estación; estas las ejecuta el equipo
+de forma manual y, hasta entonces, el caso queda como No probado. Los datos de prueba provienen de muestras del dataset y de
 combinaciones de palabras del vocabulario clínico.
 
 Los defectos encontrados se registran en la planilla de defectos de la cátedra
@@ -185,8 +187,10 @@ axe-core.
 % ============================================================================
 \section{Cronograma}
 
-El ciclo 1 se ejecutó el 20/10/2026 sobre la versión \texttt{f29917a}; el ciclo
-2 está planificado una vez corregidos los defectos.
+El ciclo 1 se ejecutó el 20/10/2026 sobre la versión \texttt{f29917a}. El ciclo
+2 (regresión) se ejecutó el 21/10/2026 sobre la versión \texttt{0638d22}, una
+vez corregidos los defectos; las comprobaciones manuales con una persona real
+quedan pendientes y las ejecuta el equipo.
 
 \begin{table}[H]
     \centering
@@ -198,8 +202,9 @@ El ciclo 1 se ejecutó el 20/10/2026 sobre la versión \texttt{f29917a}; el cicl
         \midrule
         Preparación del ambiente y diseño de los casos & Hasta el 19/10/2026 & Realizada \\
         Ciclo 1: ejecución inicial & 20/10/2026 & Ejecutado \\
-        Corrección de defectos por desarrollo & 21/10 al 27/10/2026 & Planificada \\
-        Ciclo 2: regresión & 28/10 al 30/10/2026 & Planificado \\
+        Corrección de defectos por desarrollo & 21/10/2026 & Realizada \\
+        Ciclo 2: regresión & 21/10/2026 & Ejecutado \\
+        Ciclo 2: comprobaciones manuales con persona real & A definir por el equipo & Pendiente \\
         \bottomrule
     \end{tabularx}
 \end{table}

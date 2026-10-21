@@ -3,7 +3,18 @@
     "sistema": "LSA Salud",
     "ciclo": 1,
     "fecha": "2026-10-20",
-    "escala": "1 Crítico, 2 Alto, 3 Medio, 4 Bajo"
+    "escala": "1 Crítico, 2 Alto, 3 Medio, 4 Bajo",
+    "ciclo_2": {
+      "ciclo": 2,
+      "fecha": "2026-10-21",
+      "nota": "DM-LSA-001 a DM-LSA-019 se detectaron en el ciclo 1 (campo 'estado' = estado al detectarse); su estado en el ciclo 2 figura en 'ciclo_2'. DM-LSA-020 a DM-LSA-028 se detectaron y cerraron durante el ciclo 2.",
+      "resumen": {
+        "total": 28,
+        "cerrados": 28,
+        "abiertos": 0,
+        "nuevos_en_ciclo_2": 9
+      }
+    }
   },
   "defectos": [
     {
@@ -33,7 +44,17 @@
         "Revisar el campo natural_sentence de la respuesta."
       ],
       "resultado_esperado": "Una única oración fiel a las señas, sin términos clínicos ausentes de la secuencia ni fragmentos de instrucciones internas (por ejemplo 'Me duele el brazo.').",
-      "resultado_obtenido": "natural_sentence = 'Me duele el brazo. (NO agregues fiebre, ni cansancio, ni nada extra.)' (source=ollama): dos fragmentos, con instrucciones internas del prompt y términos clínicos ('fiebre', 'cansancio') ajenos a la secuencia. Con 'yo dolor pecho' se devolvió en una ocasión un fragmento de instrucción interna ('(NO agregues…)')."
+      "resultado_obtenido": "natural_sentence = 'Me duele el brazo. (NO agregues fiebre, ni cansancio, ni nada extra.)' (source=ollama): dos fragmentos, con instrucciones internas del prompt y términos clínicos ('fiebre', 'cansancio') ajenos a la secuencia. Con 'yo dolor pecho' se devolvió en una ocasión un fragmento de instrucción interna ('(NO agregues…)').",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-002-01",
+        "arreglado_por": "146f792",
+        "evidencia": "API 002-05: \"yo brazo dolor\" devuelve \"Me duele el brazo.\" y \"yo dolor pecho\" \"Tengo dolor en el pecho.\", sin fragmentos de instrucciones ni términos ajenos; unitarias de fidelidad (4/4)."
+      }
     },
     {
       "id": "DM-LSA-002",
@@ -63,7 +84,17 @@
         "Revisar natural_sentence y el comportamiento esperado en el frontend (useSentenceBuilder)."
       ],
       "resultado_esperado": "natural_sentence = 'NO_CLARO' o vacío, de modo que el frontend descarte la oración y no muestre ninguna burbuja.",
-      "resultado_obtenido": "200 con natural_sentence = 'idle idle' (y 'idle' para la segunda entrada), source=ollama. El frontend mostraría una burbuja con ese texto."
+      "resultado_obtenido": "200 con natural_sentence = 'idle idle' (y 'idle' para la segunda entrada), source=ollama. El frontend mostraría una burbuja con ese texto.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-002-01",
+        "arreglado_por": "146f792",
+        "evidencia": "API 002-06: \"idle idle\" e \"idle\" devuelven NO_CLARO sin audio."
+      }
     },
     {
       "id": "DM-LSA-003",
@@ -93,7 +124,17 @@
         "Abrir /ws/predict con el origen ajeno y enviar una ventana de landmarks."
       ],
       "resultado_esperado": "Access-Control-Allow-Origin devuelve solo el origen local permitido (por ejemplo http://localhost:3000); el origen ajeno no recibe la cabecera, el preflight no lo concede y el WebSocket se rechaza.",
-      "resultado_obtenido": "Access-Control-Allow-Origin = '*' para cualquier origen (incluido el ajeno); el preflight responde 200 con allow-methods 'DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT'; el WebSocket con origen ajeno se acepta y responde la predicción 'dolor' (99.4)."
+      "resultado_obtenido": "Access-Control-Allow-Origin = '*' para cualquier origen (incluido el ajeno); el preflight responde 200 con allow-methods 'DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT'; el WebSocket con origen ajeno se acepta y responde la predicción 'dolor' (99.4).",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-013-01",
+        "arreglado_por": "146f792",
+        "evidencia": "API 013-04: con un origen ajeno no hay Access-Control-Allow-Origin, el preflight devuelve 400 y el WebSocket se rechaza."
+      }
     },
     {
       "id": "DM-LSA-004",
@@ -123,7 +164,17 @@
         "Enviar por /ws/predict una ventana con un valor NaN."
       ],
       "resultado_esperado": "Respuesta 400 para formas inválidas, sin archivo creado y sin errores 500; las ventanas con NaN se rechazan.",
-      "resultado_obtenido": "(5, 2, 2) -> 200 y archivo dataset/custom/zz_tc_006/*.npy creado; listas irregulares -> 500; /predict (6, 3, 4) -> 500; WebSocket con NaN -> confidence NaN."
+      "resultado_obtenido": "(5, 2, 2) -> 200 y archivo dataset/custom/zz_tc_006/*.npy creado; listas irregulares -> 500; /predict (6, 3, 4) -> 500; WebSocket con NaN -> confidence NaN.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-006-01",
+        "arreglado_por": "146f792",
+        "evidencia": "API 006-07: formas inválidas devuelven 400 en /capture, /predict y /ws/predict sin crear archivos; unitarias de validación de captura (10/10)."
+      }
     },
     {
       "id": "DM-LSA-005",
@@ -152,7 +203,17 @@
         "Revisar las peticiones POST /audit y los totales de GET /metrics."
       ],
       "resultado_esperado": "Se emite al menos un POST /audit con el evento correspondiente y el total de eventos de /metrics aumenta.",
-      "resultado_obtenido": "Peticiones POST /audit emitidas por el frontend: 0; variación del total de eventos en /metrics: 0."
+      "resultado_obtenido": "Peticiones POST /audit emitidas por el frontend: 0; variación del total de eventos en /metrics: 0.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-011-01",
+        "arreglado_por": "31014ea",
+        "evidencia": "UI 011-04: al enviar la respuesta del personal se emite 1 POST /audit."
+      }
     },
     {
       "id": "DM-LSA-006",
@@ -181,7 +242,17 @@
         "Revisar counts.fin_atencion en GET /metrics."
       ],
       "resultado_esperado": "P-03 muestra el botón 'Finalizar atención'; al pulsarlo se borra la conversación en ambas pantallas y se registra fin_atencion.",
-      "resultado_obtenido": "Botones visibles en P-03: 'Reportar traducción' y 'Enviar'; 'Finalizar atención' no existe (0 coincidencias); 'Limpiar Historial' solo está en P-02; counts.fin_atencion ausente en /metrics."
+      "resultado_obtenido": "Botones visibles en P-03: 'Reportar traducción' y 'Enviar'; 'Finalizar atención' no existe (0 coincidencias); 'Limpiar Historial' solo está en P-02; counts.fin_atencion ausente en /metrics.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-012-01",
+        "arreglado_por": "31014ea",
+        "evidencia": "UI 012-01 (botón presente) y ejecución complementaria: Finalizar atención vacía ambas caras y registra un único evento fin_atencion."
+      }
     },
     {
       "id": "DM-LSA-007",
@@ -210,7 +281,17 @@
         "Observar los mensajes visibles."
       ],
       "resultado_esperado": "Se muestra un mensaje de error de cámara comprensible para el paciente.",
-      "resultado_obtenido": "No se muestra ningún mensaje de error; desaparece 'Activando cámara...', el video queda sin stream, no se envían frames y el indicador 'EN VIVO · Visión por computadora' sigue visible."
+      "resultado_obtenido": "No se muestra ningún mensaje de error; desaparece 'Activando cámara...', el video queda sin stream, no se envían frames y el indicador 'EN VIVO · Visión por computadora' sigue visible.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-009-01",
+        "arreglado_por": "31014ea y 3a4d2f7",
+        "evidencia": "UI 009-03: con la cámara denegada se muestra \"No se pudo acceder a la cámara.\" y el indicador \"EN VIVO\" no se muestra."
+      }
     },
     {
       "id": "DM-LSA-008",
@@ -241,7 +322,17 @@
         "Escribir Repeticiones = -2 y pulsar Empezar."
       ],
       "resultado_esperado": "Las etiquetas inválidas se rechazan con un mensaje de formato; no se muestra '¡Guardado!' si no se guardó ninguna muestra.",
-      "resultado_obtenido": "Las tres etiquetas se agregan sin mensaje de formato; POST /capture responde HTTP 400 y aun así se muestra '¡Guardado!'. Con Repeticiones = -2 se muestra '¡Guardado!' sin ninguna petición a /capture."
+      "resultado_obtenido": "Las tres etiquetas se agregan sin mensaje de formato; POST /capture responde HTTP 400 y aun así se muestra '¡Guardado!'. Con Repeticiones = -2 se muestra '¡Guardado!' sin ninguna petición a /capture.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-006-01 y TC-LSA-007-01",
+        "arreglado_por": "31014ea",
+        "evidencia": "UI 006-02: los valores 0, vacío y -2 se normalizan y no se muestra \"¡Guardado!\" sin guardar; UI 007-03: las etiquetas inválidas se rechazan con mensaje."
+      }
     },
     {
       "id": "DM-LSA-009",
@@ -270,7 +361,17 @@
         "Registrar las peticiones externas, el estado 'Activando cámara...' y los frames enviados."
       ],
       "resultado_esperado": "No hay peticiones a hosts externos; la cámara se activa y los frames se envían al backend.",
-      "resultado_obtenido": "2 intentos a cdn.jsdelivr.net; 'Activando cámara...' permanece visible; la conexión /ws/predict está abierta pero se envían 0 frames."
+      "resultado_obtenido": "2 intentos a cdn.jsdelivr.net; 'Activando cámara...' permanece visible; la conexión /ws/predict está abierta pero se envían 0 frames.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-015-01",
+        "arreglado_por": "31014ea",
+        "evidencia": "UI 015-06: sin Internet no hay peticiones a hosts externos y la cámara se activa con frames enviados."
+      }
     },
     {
       "id": "DM-LSA-010",
@@ -299,7 +400,17 @@
         "Calcular p50 y p95 de latency_ms."
       ],
       "resultado_esperado": "p95 de latency_ms <= 1000 ms (meta del caso general de RNF-01.1).",
-      "resultado_obtenido": "Agrupado (n=30): p50 = 2824 ms, p95 = 4297 ms, máximo = 6927 ms; las 30 respuestas usaron source=ollama."
+      "resultado_obtenido": "Agrupado (n=30): p50 = 2824 ms, p95 = 4297 ms, máximo = 6927 ms; las 30 respuestas usaron source=ollama.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-014-01",
+        "arreglado_por": "146f792",
+        "evidencia": "API 014-03: con el modelo de lenguaje, p50 = 472 ms y p95 = 573 ms (n = 30), dentro de la meta de p95 <= 1 s."
+      }
     },
     {
       "id": "DM-LSA-011",
@@ -328,7 +439,17 @@
         "Contar las violaciones de impacto serious o critical."
       ],
       "resultado_esperado": "0 violaciones graves o críticas.",
-      "resultado_obtenido": "/: color-contrast x1; /paciente tras aceptar: color-contrast x4; /recepcion: button-name (critical) x1 y color-contrast x2; Modo Captura: color-contrast x4 y label (critical) x1."
+      "resultado_obtenido": "/: color-contrast x1; /paciente tras aceptar: color-contrast x4; /recepcion: button-name (critical) x1 y color-contrast x2; Modo Captura: color-contrast x4 y label (critical) x1.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-015-01",
+        "arreglado_por": "31014ea",
+        "evidencia": "UI 015-08: 0 violaciones graves o críticas (axe-core) en las pantallas evaluadas."
+      }
     },
     {
       "id": "DM-LSA-012",
@@ -358,7 +479,17 @@
         "Revisar las peticiones POST /capture y los archivos creados."
       ],
       "resultado_esperado": "No se envía ninguna muestra tras Detener y la secuencia se cancela.",
-      "resultado_obtenido": "Detener en la cuenta regresiva: la secuencia continúa y termina con 1 POST /capture (1 archivo). Detener grabando: se envía una muestra parcial de 5 frames y se guarda."
+      "resultado_obtenido": "Detener en la cuenta regresiva: la secuencia continúa y termina con 1 POST /capture (1 archivo). Detener grabando: se envía una muestra parcial de 5 frames y se guarda.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-006-01",
+        "arreglado_por": "31014ea",
+        "evidencia": "UI 006-04: Detener cancela la cuenta regresiva y la grabación sin guardar muestras."
+      }
     },
     {
       "id": "DM-LSA-013",
@@ -388,7 +519,17 @@
         "Pulsar de nuevo el micrófono."
       ],
       "resultado_esperado": "El área muestra 'Buenos días pase' y luego 'Buenos días pase por favor' (el dictado se acumula); al detener, la instancia iniciada se detiene.",
-      "resultado_obtenido": "El área muestra 'pase' y luego 'pase por favor' (se pierde 'Buenos días'); tras pulsar el micrófono de nuevo la instancia iniciada sigue activa (sin stop)."
+      "resultado_obtenido": "El área muestra 'pase' y luego 'pase por favor' (se pierde 'Buenos días'); tras pulsar el micrófono de nuevo la instancia iniciada sigue activa (sin stop).",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-005-01",
+        "arreglado_por": "31014ea",
+        "evidencia": "UI 005-01: el dictado conserva el texto escrito (\"Buenos días pase por favor\") y la instancia se detiene."
+      }
     },
     {
       "id": "DM-LSA-014",
@@ -417,7 +558,17 @@
         "Leer el contenido del área de texto."
       ],
       "resultado_esperado": "El área contiene 'necesito su documento y su credencial'.",
-      "resultado_obtenido": "El área contiene solo 'y su credencial'."
+      "resultado_obtenido": "El área contiene solo 'y su credencial'.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-005-01",
+        "arreglado_por": "31014ea",
+        "evidencia": "UI 005-02: dos segmentos finales se acumulan (\"necesito su documento y su credencial\")."
+      }
     },
     {
       "id": "DM-LSA-015",
@@ -445,7 +596,17 @@
         "Enviar GET /metrics?since=2099-01-01T00:00:00Z."
       ],
       "resultado_esperado": "200 con el filtro aplicado.",
-      "resultado_obtenido": "400 {\"detail\": \"Invalid since timestamp\"}."
+      "resultado_obtenido": "400 {\"detail\": \"Invalid since timestamp\"}.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-011-01",
+        "arreglado_por": "146f792",
+        "evidencia": "API 011-05: since con sufijo Z responde 200 y filtra por fecha."
+      }
     },
     {
       "id": "DM-LSA-016",
@@ -476,7 +637,17 @@
         "En la interfaz, medir e2e_ms con 10 combinaciones con plantilla y el tiempo previo al audio."
       ],
       "resultado_esperado": "p95 de latency_ms <= 1000 ms; e2e_ms p50 <= 600 ms; al menos 900 ms entre mostrar el texto y reproducir el audio; diferencia entre caras <= 500 ms.",
-      "resultado_obtenido": "Con plantilla: p50 = 576 ms, p95 = 1356 ms. Extremo a extremo: e2e_ms p50 = 1526 ms, p95 = 2618 ms. Tiempo previo al audio entre 838 y 919 ms. Diferencia entre caras de hasta 511 ms."
+      "resultado_obtenido": "Con plantilla: p50 = 576 ms, p95 = 1356 ms. Extremo a extremo: e2e_ms p50 = 1526 ms, p95 = 2618 ms. Tiempo previo al audio entre 838 y 919 ms. Diferencia entre caras de hasta 511 ms.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-014-01",
+        "arreglado_por": "sin cambio de código específico",
+        "evidencia": "Uso real del 21/10/2026: e2e_ms p50 = 166 ms; plantilla p95 de latency_ms = 632 ms; reproducción 1048 ms después del texto (UI 003-04); diferencia entre caras de 64 ms (UI 001-05)."
+      }
     },
     {
       "id": "DM-LSA-017",
@@ -505,7 +676,17 @@
         "Enviar POST /report con message_id = '12'."
       ],
       "resultado_esperado": "400 {\"detail\": \"Invalid message_id\"} en ambos casos.",
-      "resultado_obtenido": "200 {\"status\": \"ok\", ...} para message_id = true y para '12' (se crean los reportes)."
+      "resultado_obtenido": "200 {\"status\": \"ok\", ...} para message_id = true y para '12' (se crean los reportes).",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-010-01",
+        "arreglado_por": "146f792",
+        "evidencia": "API 010-06: message_id = true y \"12\" se rechazan (400 y 422); unitarias de validación de reportes (8/8)."
+      }
     },
     {
       "id": "DM-LSA-018",
@@ -533,7 +714,17 @@
         "Enviar un marco binario válido (45x75x4 float32), uno de 2 bytes, uno con cabecera 0x03, uno con 4 y otro con 65 frames."
       ],
       "resultado_esperado": "Marco válido -> predicción con sign dolor y confidence >= 70; los inválidos devuelven errores descriptivos (binary header too short, unsupported binary version, frame count out of range, binary payload misaligned).",
-      "resultado_obtenido": "Todas las variantes devuelven {\"error\": \"'text'\"}."
+      "resultado_obtenido": "Todas las variantes devuelven {\"error\": \"'text'\"}.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-001-01",
+        "arreglado_por": "146f792",
+        "evidencia": "API 001-10: la trama binaria v2 válida devuelve la seña dolor y las inválidas errores descriptivos."
+      }
     },
     {
       "id": "DM-LSA-019",
@@ -561,7 +752,359 @@
         "Observar los avisos de la sección de dictado."
       ],
       "resultado_esperado": "Se muestra un único aviso de falta de soporte.",
-      "resultado_obtenido": "Se muestran dos avisos con textos distintos."
+      "resultado_obtenido": "Se muestran dos avisos con textos distintos.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-005-01",
+        "arreglado_por": "31014ea",
+        "evidencia": "UI 005-03: sin soporte de voz se muestra un único aviso."
+      }
+    },
+    {
+      "id": "DM-LSA-020",
+      "titulo": "En Modo Captura las muestras se guardaban vacías (sin pose, manos ni rostro)",
+      "descripcion": "En Modo Captura con MediaPipe Tasks las muestras se guardaban vacías (sin pose, manos ni rostro) porque el detector recibía el elemento de video.",
+      "casos": [
+        "TC-LSA-006-01"
+      ],
+      "cu": "CU-06",
+      "tipo_defecto": {
+        "codigo": 6,
+        "nombre": "Funcionalidad"
+      },
+      "severidad": 2,
+      "prioridad": 2,
+      "estado": {
+        "codigo": 5,
+        "nombre": "Cerrado"
+      },
+      "detectado_por": "Equipo de testing",
+      "como_detectado": "Control de calidad del dataset",
+      "fecha": "2026-10-21",
+      "pasos_para_reproducir": [
+        "Abrir el Modo Captura con MediaPipe Tasks y grabar una seña frente a la cámara.",
+        "Revisar el contenido de la muestra guardada (control de calidad del dataset)."
+      ],
+      "resultado_esperado": "La muestra contiene la pose, las manos y el rostro detectados.",
+      "resultado_obtenido": "La muestra se guardaba vacía: sin pose, manos ni rostro.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-006-01",
+        "arreglado_por": "b4c5162",
+        "evidencia": "Corregido (el detector recibe una copia en canvas del video) y verificado por el equipo; TC-LSA-006-01 confirma muestras de 45 frames con blendshapes de 45 x 52."
+      }
+    },
+    {
+      "id": "DM-LSA-021",
+      "titulo": "Sin ninguna persona frente a la cámara se reconocía \"dolor\" con 80 % de confianza",
+      "descripcion": "Sin ninguna persona frente a la cámara el sistema reconocía \"dolor\" con 80 % de confianza, con lo que agregaba un síntoma no señado.",
+      "casos": [
+        "TC-LSA-001-01"
+      ],
+      "cu": "CU-01",
+      "tipo_defecto": {
+        "codigo": 6,
+        "nombre": "Funcionalidad"
+      },
+      "severidad": 1,
+      "prioridad": 1,
+      "estado": {
+        "codigo": 5,
+        "nombre": "Cerrado"
+      },
+      "detectado_por": "Equipo de testing",
+      "como_detectado": "Prueba",
+      "fecha": "2026-10-21",
+      "pasos_para_reproducir": [
+        "Abrir /paciente, aceptar el consentimiento y dejar la cámara sin ninguna persona.",
+        "Observar las señas reconocidas y la oración armada."
+      ],
+      "resultado_esperado": "Sin persona se reconoce reposo (idle) y no se agrega ninguna palabra.",
+      "resultado_obtenido": "Se reconocía \"dolor\" con 80 % de confianza.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-001-01",
+        "arreglado_por": "331dec1",
+        "evidencia": "Corregido (una ventana sin persona es idle) y verificado: la prueba unitaria de escena vacía (test_infer) pasa el 21/10/2026."
+      }
+    },
+    {
+      "id": "DM-LSA-022",
+      "titulo": "Al iniciar la cámara el reposo se reconocía como \"dolor\" (96 %)",
+      "descripcion": "Al iniciar la cámara, con la ventana de frames incompleta, el reposo se reconocía como \"dolor\" con 96 % de confianza.",
+      "casos": [
+        "TC-LSA-001-01"
+      ],
+      "cu": "CU-01",
+      "tipo_defecto": {
+        "codigo": 6,
+        "nombre": "Funcionalidad"
+      },
+      "severidad": 1,
+      "prioridad": 1,
+      "estado": {
+        "codigo": 5,
+        "nombre": "Cerrado"
+      },
+      "detectado_por": "Equipo de testing",
+      "como_detectado": "Prueba",
+      "fecha": "2026-10-21",
+      "pasos_para_reproducir": [
+        "Abrir /paciente, aceptar el consentimiento y mantener las manos abajo.",
+        "Observar la predicción durante los primeros segundos, con la ventana de frames incompleta."
+      ],
+      "resultado_esperado": "El reposo se reconoce como idle.",
+      "resultado_obtenido": "Se reconocía \"dolor\" con 96 % de confianza.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-001-01",
+        "arreglado_por": "331dec1",
+        "evidencia": "Corregido (las ventanas cortas se completan con el frame más antiguo) y verificado: la prueba unitaria de ventana corta (test_infer) pasa el 21/10/2026."
+      }
+    },
+    {
+      "id": "DM-LSA-023",
+      "titulo": "La oración se cerraba durante la pausa entre dos señas",
+      "descripcion": "La oración se cerraba durante la pausa entre dos señas, antes de completar la secuencia.",
+      "casos": [
+        "TC-LSA-001-01"
+      ],
+      "cu": "CU-01",
+      "tipo_defecto": {
+        "codigo": 6,
+        "nombre": "Funcionalidad"
+      },
+      "severidad": 2,
+      "prioridad": 2,
+      "estado": {
+        "codigo": 5,
+        "nombre": "Cerrado"
+      },
+      "detectado_por": "Equipo de testing",
+      "como_detectado": "Prueba",
+      "fecha": "2026-10-21",
+      "pasos_para_reproducir": [
+        "Realizar una seña, hacer una pausa breve y realizar la siguiente.",
+        "Observar si la oración se cierra antes de completar la secuencia."
+      ],
+      "resultado_esperado": "La oración se cierra solo cuando se reconoce el reposo.",
+      "resultado_obtenido": "La oración se cerraba en la pausa entre señas.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-001-01",
+        "arreglado_por": "331dec1",
+        "evidencia": "Corregido (el cierre ocurre al reconocerse el reposo) y verificado: UI 001-05 cierra la oración con idle y muestra la burbuja en ambas caras."
+      }
+    },
+    {
+      "id": "DM-LSA-024",
+      "titulo": "El reconocimiento confundía \"dolor\" con \"yo\"",
+      "descripcion": "El reconocimiento confundía \"dolor\" con \"yo\" (18 de 30 muestras en validación cruzada).",
+      "casos": [
+        "TC-LSA-001-01"
+      ],
+      "cu": "CU-01",
+      "tipo_defecto": {
+        "codigo": 6,
+        "nombre": "Funcionalidad"
+      },
+      "severidad": 2,
+      "prioridad": 2,
+      "estado": {
+        "codigo": 5,
+        "nombre": "Cerrado"
+      },
+      "detectado_por": "Equipo de testing",
+      "como_detectado": "Prueba",
+      "fecha": "2026-10-21",
+      "pasos_para_reproducir": [
+        "Ejecutar la validación cruzada del modelo sobre el dataset.",
+        "Revisar la matriz de confusión de las clases dolor y yo."
+      ],
+      "resultado_esperado": "Las muestras de dolor se clasifican como dolor.",
+      "resultado_obtenido": "18 de 30 muestras de dolor se clasificaban como yo.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-001-01",
+        "arreglado_por": "331dec1",
+        "evidencia": "Corregido (características locales de la mano) y verificado: en la regresión dolor se clasifica como dolor (99,99 %) y eval_model.py obtiene 100 % sobre 150 muestras (muestras de entrenamiento)."
+      }
+    },
+    {
+      "id": "DM-LSA-025",
+      "titulo": "Con WebGL por software la detección caía a ~1,4 fps y congelaba la interfaz",
+      "descripcion": "En equipos con renderizado WebGL por software la detección caía a ~1,4 fps y congelaba la interfaz.",
+      "casos": [
+        "TC-LSA-015-01"
+      ],
+      "cu": "RNF-04",
+      "tipo_defecto": {
+        "codigo": 8,
+        "nombre": "Performance"
+      },
+      "severidad": 2,
+      "prioridad": 2,
+      "estado": {
+        "codigo": 5,
+        "nombre": "Cerrado"
+      },
+      "detectado_por": "Equipo de testing",
+      "como_detectado": "Prueba",
+      "fecha": "2026-10-21",
+      "pasos_para_reproducir": [
+        "Abrir /paciente en un equipo con renderizado WebGL por software.",
+        "Aceptar el consentimiento y observar la frecuencia de detección y la respuesta de la interfaz."
+      ],
+      "resultado_esperado": "La detección mantiene la frecuencia prevista y la interfaz responde.",
+      "resultado_obtenido": "La detección caía a ~1,4 fps y la interfaz se congelaba.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-015-01",
+        "arreglado_por": "3a4d2f7",
+        "evidencia": "Corregido (se detecta el renderizado por software y se usa la CPU) y verificado: en Chromium sin interfaz y sin GPU la detección alcanza 16,2 fps en CPU, frente a ~1,4 fps con WebGL por software antes de la corrección; la regresión de UI, que se ejecuta sin GPU, completa los casos de P-02."
+      }
+    },
+    {
+      "id": "DM-LSA-026",
+      "titulo": "Al denegar la cámara, la carga de los modelos ocultaba el aviso de error",
+      "descripcion": "Al denegar la cámara, la carga de los modelos ocultaba el aviso de error (regresión de DM-LSA-007), detectado por la regresión automatizada.",
+      "casos": [
+        "TC-LSA-009-01"
+      ],
+      "cu": "CU-09",
+      "tipo_defecto": {
+        "codigo": 11,
+        "nombre": "Usabilidad"
+      },
+      "severidad": 2,
+      "prioridad": 2,
+      "estado": {
+        "codigo": 5,
+        "nombre": "Cerrado"
+      },
+      "detectado_por": "Equipo de testing",
+      "como_detectado": "Prueba (regresión automatizada)",
+      "fecha": "2026-10-21",
+      "pasos_para_reproducir": [
+        "Abrir /paciente y aceptar el consentimiento con el permiso de cámara denegado.",
+        "Observar el aviso de error mientras se cargan los modelos."
+      ],
+      "resultado_esperado": "Se muestra \"No se pudo acceder a la cámara.\" y no el estado de carga.",
+      "resultado_obtenido": "La carga de los modelos reemplazaba el aviso de error.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-009-01",
+        "arreglado_por": "3a4d2f7",
+        "evidencia": "Corregido (la carga ya no sobrescribe el estado de cámara denegada) y verificado: UI 009-03 pasa en la regresión del 21/10/2026."
+      }
+    },
+    {
+      "id": "DM-LSA-027",
+      "titulo": "Durante la grabación la detección caía de 20 a ~8 fps por efectos visuales animados",
+      "descripcion": "Durante la grabación de muestras la detección caía de 20 a ~8 fps por efectos visuales animados sobre el video.",
+      "casos": [
+        "TC-LSA-006-01"
+      ],
+      "cu": "CU-06",
+      "tipo_defecto": {
+        "codigo": 8,
+        "nombre": "Performance"
+      },
+      "severidad": 3,
+      "prioridad": 3,
+      "estado": {
+        "codigo": 5,
+        "nombre": "Cerrado"
+      },
+      "detectado_por": "Equipo de testing",
+      "como_detectado": "Prueba",
+      "fecha": "2026-10-21",
+      "pasos_para_reproducir": [
+        "Abrir el Modo Captura y grabar una muestra.",
+        "Medir la frecuencia de detección durante la grabación."
+      ],
+      "resultado_esperado": "La detección se mantiene en 20 fps durante la grabación.",
+      "resultado_obtenido": "La detección caía de 20 a ~8 fps.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-006-01",
+        "arreglado_por": "1f5b527 y 3aa74a2",
+        "evidencia": "Corregido (indicadores estáticos y descarte de muestras por debajo de 18 fps) y verificado por el equipo: 25 muestras consecutivas grabadas en el Modo Captura registraron entre 19,4 y 20,3 fps; UI 006-01 a 006-04 pasan en la regresión."
+      }
+    },
+    {
+      "id": "DM-LSA-028",
+      "titulo": "En la pantalla del paciente el panel de la cámara se agrandaba con la conversación",
+      "descripcion": "En la pantalla del paciente el panel de la cámara se agrandaba a medida que crecía la conversación.",
+      "casos": [
+        "TC-LSA-001-01"
+      ],
+      "cu": "CU-01",
+      "tipo_defecto": {
+        "codigo": 7,
+        "nombre": "GUI"
+      },
+      "severidad": 4,
+      "prioridad": 4,
+      "estado": {
+        "codigo": 5,
+        "nombre": "Cerrado"
+      },
+      "detectado_por": "Equipo de testing",
+      "como_detectado": "Prueba",
+      "fecha": "2026-10-21",
+      "pasos_para_reproducir": [
+        "Abrir /paciente y generar varias oraciones.",
+        "Observar el tamaño del panel de la cámara a medida que crece la conversación."
+      ],
+      "resultado_esperado": "El panel de la cámara mantiene su tamaño y la conversación se desplaza.",
+      "resultado_obtenido": "El panel de la cámara se agrandaba con la conversación.",
+      "ciclo_2": {
+        "estado": {
+          "codigo": 5,
+          "nombre": "Cerrado"
+        },
+        "fecha_reprueba": "2026-10-21",
+        "caso_verificacion": "TC-LSA-001-01",
+        "arreglado_por": "331dec1",
+        "evidencia": "Corregido (fila de altura fija con desplazamiento de la conversación) y verificado por el equipo el 21/10/2026: con una conversación extensa el panel de la cámara mantiene su tamaño y la conversación se desplaza."
+      }
     }
   ]
 }
