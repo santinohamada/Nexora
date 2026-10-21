@@ -5,6 +5,10 @@ import { Plus, Tag, Search } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const RECORDING_SAMPLE_LENGTH = 45;
+// Landmarks are sampled at 20 fps (useMediaPipeTasks); a busy GPU can drop it to ~8 fps, which would
+// mix time scales in the dataset, so slower samples are discarded instead of saved.
+// Overridable for e2e, where headless Chromium runs MediaPipe on CPU (~16 fps).
+const MIN_SAMPLE_FPS = Number(process.env.NEXT_PUBLIC_MIN_SAMPLE_FPS ?? 18);
 // Same rule as capture_validation.LABEL_PATTERN (backend)
 const LABEL_PATTERN = /^[a-z0-9_]{1,32}$/;
 const LABEL_FORMAT_MESSAGE =
@@ -80,10 +84,14 @@ export const CaptureMode = memo(function CaptureMode({
   const recordedFramesRef = useRef<Frame[]>([]);
   const recordedBlendshapesRef = useRef<number[][]>([]);
   const resolveRecordingRef = useRef<(() => void) | null>(null);
+  const recordingTimesRef = useRef<{ first: number; last: number }>({ first: 0, last: 0 });
 
   useEffect(() => {
     captureHandlerRef.current = (frame: Frame, blendshapes?: number[]) => {
       if (isRecordingRef.current) {
+        const now = performance.now();
+        if (recordedFramesRef.current.length === 0) recordingTimesRef.current.first = now;
+        recordingTimesRef.current.last = now;
         recordedFramesRef.current.push(frame);
         if (blendshapes) {
           recordedBlendshapesRef.current.push(blendshapes);
@@ -124,6 +132,13 @@ export const CaptureMode = memo(function CaptureMode({
       resolveRecordingRef.current = resolve;
     });
     if (runIdRef.current !== run) return "cancelled"; // discard the in-progress sample
+
+    const { first, last } = recordingTimesRef.current;
+    const fps = ((RECORDING_SAMPLE_LENGTH - 1) * 1000) / Math.max(last - first, 1);
+    console.info("[Nexora capture]", JSON.stringify({ fps: Math.round(fps * 10) / 10, ...window.__mediapipeBench }));
+    if (fps < MIN_SAMPLE_FPS) {
+      return `Muestra descartada: la cámara procesó ${fps.toFixed(1)} fps (mínimo ${MIN_SAMPLE_FPS}). Cerrá otros programas que usen la GPU y volvé a intentar.`;
+    }
 
     setStatus("loading");
     try {
@@ -349,14 +364,15 @@ export const CaptureMode = memo(function CaptureMode({
               </span>
             </div>
           )}
+          {/* Static badges: animations or backdrop blur over the playing video repaint on the GPU every frame, competing with MediaPipe */}
           {status === "recording" && (
-            <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-red-600/90 text-white px-3 py-1.5 rounded-full border border-red-500 animate-pulse shadow-lg">
-              <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+            <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-red-600/90 text-white px-3 py-1.5 rounded-full border border-red-500 shadow-lg">
+              <span className="w-2.5 h-2.5 rounded-full bg-white" />
               <span className="text-xs font-bold tracking-wide">GRABANDO</span>
             </div>
           )}
           {currentRepeat > 0 && repeatCount > 1 && (
-            <div className="absolute top-4 right-4 z-30 bg-indigo-600/90 text-white px-3 py-1.5 rounded-full shadow-lg text-xs font-bold tracking-wide backdrop-blur-sm">
+            <div className="absolute top-4 right-4 z-30 bg-indigo-600/90 text-white px-3 py-1.5 rounded-full shadow-lg text-xs font-bold tracking-wide">
               MUESTRA {currentRepeat} / {repeatCount}
             </div>
           )}

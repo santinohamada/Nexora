@@ -16,6 +16,7 @@ declare global {
     __mediapipeBench?: {
       fps: number;
       inferenceMs: number;
+      stagesMs: { copy: number; pose: number; hand: number; face: number };
       framesProcessed: number;
       droppedFrames: number;
     };
@@ -63,6 +64,8 @@ export function useMediaPipeTasks({
   const [error, setError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const lastBenchmarkRef = useRef<{ fps: number; inferenceMs: number } | null>(null);
+  // Per-stage moving averages (ms), to tell which detector slows down when fps drops.
+  const stagesMsRef = useRef({ copy: 0, pose: 0, hand: 0, face: 0 });
 
   const setVideoNode = useCallback((node: HTMLVideoElement | null) => {
     videoRef.current = node;
@@ -126,6 +129,9 @@ export function useMediaPipeTasks({
       window.__mediapipeBench = {
         fps: lastBenchmarkRef.current?.fps ?? 0,
         inferenceMs: lastBenchmarkRef.current?.inferenceMs ?? 0,
+        stagesMs: Object.fromEntries(
+          Object.entries(stagesMsRef.current).map(([k, v]) => [k, Math.round(v * 10) / 10])
+        ) as { copy: number; pose: number; hand: number; face: number },
         framesProcessed: framesProcessedRef.current,
         droppedFrames: droppedFramesRef.current,
       };
@@ -224,9 +230,18 @@ export function useMediaPipeTasks({
               input.width = w;
               input.height = h;
             }
+            const stages = stagesMsRef.current;
+            const track = (stage: keyof typeof stages, since: number) => {
+              const now = performance.now();
+              stages[stage] = stages[stage] * 0.9 + (now - since) * 0.1;
+              return now;
+            };
             input.getContext("2d")!.drawImage(video, 0, 0, w, h);
+            let t = track("copy", ts);
             const poseResult = landmarkers.pose.detectForVideo(input, ts);
+            t = track("pose", t);
             const handResult = landmarkers.hand.detectForVideo(input, ts);
+            t = track("hand", t);
             const { left, right } = resolveHandSlots(
               poseResult.landmarks[0],
               handResult.landmarks,
@@ -235,6 +250,7 @@ export function useMediaPipeTasks({
 
             if (isFaceEligibleTick(eligibleTickRef.current)) {
               const faceResult = landmarkers.face.detectForVideo(input, ts);
+              track("face", t);
               latestBlendshapesRef.current = extractBlendshapes(
                 faceResult.faceBlendshapes?.[0]?.categories
               );

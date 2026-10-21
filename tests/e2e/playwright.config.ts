@@ -51,7 +51,7 @@ export default defineConfig({
       command: "npm run dev",
       cwd: path.join(root, "web"),
       url: "http://localhost:3000",
-      env: { NEXT_PUBLIC_API_URL: "http://localhost:8000" },
+      env: { NEXT_PUBLIC_API_URL: "http://localhost:8000", NEXT_PUBLIC_MIN_SAMPLE_FPS: "0" },
       reuseExistingServer: true,
       timeout: 180_000,
     },
