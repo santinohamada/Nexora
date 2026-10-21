@@ -94,7 +94,8 @@ Estación de Recepción.
         (3) & Indicador ``EN VIVO · Visión por computadora'' (estado activo
         de la cámara; solo alcanzable tras el consentimiento de P-05, RF-03.1). \\
         (4) & Área de video con el flujo de la cámara y los landmarks
-        de MediaPipe superpuestos en un \texttt{canvas}. \\
+        de MediaPipe superpuestos en un \texttt{canvas}; tiene una altura
+        fija, igual que el panel (7). \\
         (5) & Ventana de oración en construcción, superpuesta al video:
         muestra las palabras reconocidas mientras la secuencia sigue
         abierta, o el indicador ``Generando respuesta de IA...'' mientras
@@ -103,9 +104,11 @@ Estación de Recepción.
         (6) & Panel ``Top-3 Predicciones'' (\texttt{TopPredictions}): tres
         barras con la seña y el porcentaje de confianza de las tres clases
         más probables en cada ciclo de predicción (RF-01.3). \\
-        (7) & Panel de conversación: lista de burbujas de chat
+        (7) & Panel de conversación, de altura fija: lista de burbujas de chat
         (\texttt{ChatBubble}) del paciente y del personal de recepción o
-        enfermería, sincronizada entre estaciones (RF-01.7). \\
+        enfermería, sincronizada entre estaciones (RF-01.7). Cuando las
+        burbujas exceden la altura del panel, este se desplaza con barra de
+        scroll y se posiciona automáticamente en el mensaje más reciente. \\
         (8) & Botón ``Limpiar Historial''. \\
         (9) & Botón ``Ajustes (Modo Captura)''; cambia a la Pantalla P-04. \\
         (10) & Botón ``Reportar traducción'' (ícono de bandera), visible

@@ -29,7 +29,7 @@ CLASSES = [
     ("pLanding", "page (P-01)", 35, 130, 120),
     ("pRecepcion", "recepcion/page (P-03)", 170, 130, 175),
     ("pPaciente", "paciente/page (P-02, incluye diálogo\nde consentimiento P-05)", 420, 124, 250, 44),
-    ("uMP", "useMediaPipe", 35, 270),
+    ("uMP", "useMediaPipeTasks", 35, 270),
     ("uWS", "useSignWebSocket", 215, 270),
     ("uSB", "useSentenceBuilder", 35, 315),
     ("uChat", "useChatChannel", 215, 315),
