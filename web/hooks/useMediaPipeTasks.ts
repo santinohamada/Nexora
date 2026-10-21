@@ -28,7 +28,10 @@ type UseMediaPipeTasksOptions = {
   enabled?: boolean;
 };
 
-const MEDIAPIPE_STRIDE = 2;
+// Fixed sampling rate for capture and inference alike, so a 45-frame window spans the same time on
+// every machine. Slower machines (CPU fallback) just run below it.
+const TARGET_FPS = 20;
+const TARGET_INTERVAL_MS = 1000 / TARGET_FPS;
 const FPS_WINDOW = 60;
 const CAPTURE_WIDTH = 640;
 const CAPTURE_HEIGHT = 360;
@@ -49,7 +52,7 @@ export function useMediaPipeTasks({
   const inputCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isSendingRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
-  const frameIndexRef = useRef(0);
+  const nextTickRef = useRef(0);
   const eligibleTickRef = useRef(0);
   const latestBlendshapesRef = useRef<number[]>(new Array(52).fill(0));
   const fpsWindowRef = useRef<number[]>([]);
@@ -197,8 +200,12 @@ export function useMediaPipeTasks({
       const landmarkers = landmarkersRef.current;
       const video = videoRef.current;
       if (landmarkers && video && video.readyState >= 2 && !isSendingRef.current) {
-        frameIndexRef.current++;
-        if (frameIndexRef.current % MEDIAPIPE_STRIDE === 0) {
+        const now = performance.now();
+        // -2 ms: rAF ticks jitter around the display period (60 Hz -> every 3rd tick at 50 ms)
+        if (now >= nextTickRef.current - 2) {
+          // Advance on a fixed schedule so a late tick doesn't push every following one; resync if far behind.
+          nextTickRef.current =
+            now - nextTickRef.current > TARGET_INTERVAL_MS ? now + TARGET_INTERVAL_MS : nextTickRef.current + TARGET_INTERVAL_MS;
           isSendingRef.current = true;
           eligibleTickRef.current++;
           const ts = performance.now();
