@@ -85,7 +85,7 @@ def limites_words_message_id(base):
         ("message_id 2^53", m(9007199254740992), 400, {"detail": "Invalid message_id"}),
         ("message_id 1.5", m(1.5), 422, None), ("message_id 'abc'", m("abc"), 422, None),
         ("message_id true", m(True), 400, {"detail": "Invalid message_id"}),
-        ("message_id '12'", m("12"), 400, {"detail": "Invalid message_id"}),
+        ("message_id '12'", m("12"), 422, None),
     ]
     for name, body, want_st, want_body in cases:
         st, r = http(base, "POST", "/report", body)

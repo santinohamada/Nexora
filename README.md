@@ -87,6 +87,8 @@ Para que el flujo completo funcione localmente:
   npm run dev
   ```
 
+> El backend solo acepta pedidos desde `http://localhost:3000` y `http://127.0.0.1:3000`. Si abrís el frontend desde otra dirección (por ejemplo, la IP de la red local), agregala en la variable `NEXORA_ALLOWED_ORIGINS`, separando cada origen con comas.
+
 ---
 
 ## 🧑‍⚕️ Cómo Operar el Sistema (Paso a Paso)

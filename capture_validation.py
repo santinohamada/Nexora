@@ -4,6 +4,8 @@ import re
 import numpy as np
 
 BLENDSHAPE_COUNT = 52
+FRAME_LANDMARKS = 75
+FRAME_VALUES = 4  # x, y, z, visibility
 LABEL_PATTERN = re.compile(r"[a-z0-9_]{1,32}")
 
 REPORT_TEXT_MAX_LEN = 500
@@ -21,6 +23,19 @@ AUDIT_E2E_MS_MAX = 60000
 def validate_capture_label(label: str) -> None:
     if not LABEL_PATTERN.fullmatch(label):
         raise ValueError("Invalid label")
+
+
+def validate_frames(frames) -> np.ndarray:
+    """Return frames as a finite float32 array of shape (T, 75, 4); raise ValueError otherwise."""
+    try:
+        arr = np.array(frames, dtype=np.float32)
+    except (ValueError, TypeError):  # ragged or non-numeric
+        raise ValueError("Invalid frames shape; expected (T, 75, 4)")
+    if arr.ndim != 3 or arr.shape[1:] != (FRAME_LANDMARKS, FRAME_VALUES):
+        raise ValueError("Invalid frames shape; expected (T, 75, 4)")
+    if not np.isfinite(arr).all():
+        raise ValueError("Non-finite frame value")
+    return arr
 
 
 def validate_capture_blendshapes(mode: str, frame_count: int, blendshapes):
