@@ -720,7 +720,7 @@ Traducción:"""
         natural_sentence = words  # fallback
         try:
             ollama_res = requests.post(
-                "http://localhost:11434/api/generate",
+                "http://127.0.0.1:11434/api/generate",  # not localhost: Windows tries IPv6 ::1 first and waits ~2 s before IPv4
                 json={
                     "model": "qwen2:1.5b",
                     "prompt": prompt,
