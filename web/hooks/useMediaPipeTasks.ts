@@ -88,9 +88,16 @@ export function useMediaPipeTasks({
         return createLandmarkers(visionModule);
       })
       .then((landmarkers) => {
-        if (!isMounted) return;
+        if (!isMounted) {
+          // Unmounted while loading (StrictMode, fast navigation): free the GPU contexts now.
+          landmarkers.pose.close();
+          landmarkers.hand.close();
+          landmarkers.face.close();
+          return;
+        }
         landmarkersRef.current = landmarkers;
-        setStatus("idle");
+        // A denied camera may already have set "error"; loading the models must not hide it.
+        setStatus((s) => (s === "error" ? s : "idle"));
       })
       .catch((err) => {
         console.warn("[Nexora] MediaPipe Tasks pipeline failed to load", err);

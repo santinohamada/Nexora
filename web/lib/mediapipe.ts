@@ -1,4 +1,5 @@
 import type { Frame, Landmark } from "../types";
+import type * as TasksVision from "@mediapipe/tasks-vision";
 
 export type RawLandmark = { x: number; y: number; z: number; visibility?: number };
 export type HandednessCategory = { categoryName?: string };
@@ -115,24 +116,34 @@ export const MEDIAPIPE_DETECTION_CONFIDENCE = 0.5;
 
 export type TasksVisionModule = typeof import("@mediapipe/tasks-vision");
 
-// GPU runs ~3x faster (23 vs 8 fps measured); machines without usable WebGL fall back to CPU.
-export async function createLandmarkers(visionModule: TasksVisionModule) {
-  const vision = await visionModule.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE_PATH);
-  try {
-    return await createLandmarkersWith(visionModule, vision, "GPU");
-  } catch (e) {
-    console.warn("[Nexora] GPU delegate unavailable, falling back to CPU", e);
-    return createLandmarkersWith(visionModule, vision, "CPU");
-  }
+// GPU runs ~3x faster (23 vs 8 fps measured), but only on a hardware renderer: software WebGL
+// (SwiftShader/llvmpipe, e.g. a PC without GPU drivers or headless Chromium) creates fine and then
+// runs at ~1.4 fps, so it goes straight to CPU.
+function hasHardwareWebGL(): boolean {
+  const gl = document.createElement("canvas").getContext("webgl2");
+  if (!gl) return false;
+  const info = gl.getExtension("WEBGL_debug_renderer_info");
+  const renderer = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
+  gl.getExtension("WEBGL_lose_context")?.loseContext();
+  return !/swiftshader|llvmpipe|software|basic render/i.test(renderer);
 }
 
-async function createLandmarkersWith(
-  visionModule: TasksVisionModule,
-  vision: Awaited<ReturnType<TasksVisionModule["FilesetResolver"]["forVisionTasks"]>>,
-  delegate: "GPU" | "CPU"
-) {
+export async function createLandmarkers(visionModule: TasksVisionModule) {
+  if (hasHardwareWebGL()) {
+    try {
+      return await createLandmarkersWith(visionModule, "GPU");
+    } catch (e) {
+      console.warn("[Nexora] GPU delegate unavailable, falling back to CPU", e);
+    }
+  }
+  return createLandmarkersWith(visionModule, "CPU");
+}
+
+async function createLandmarkersWith(visionModule: TasksVisionModule, delegate: "GPU" | "CPU") {
+  // Fresh fileset per attempt: a failed GPU init can leave the shared one in a broken state.
+  const vision = await visionModule.FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE_PATH);
   const { PoseLandmarker, HandLandmarker, FaceLandmarker } = visionModule;
-  const [pose, hand, face] = await Promise.all([
+  const results = await Promise.allSettled([
     PoseLandmarker.createFromOptions(vision, {
       baseOptions: {
         modelAssetPath: `${MEDIAPIPE_MODELS_BASE_PATH}/pose_landmarker_lite.task`,
@@ -167,7 +178,18 @@ async function createLandmarkersWith(
       minTrackingConfidence: MEDIAPIPE_DETECTION_CONFIDENCE,
     }),
   ]);
-  return { pose, hand, face };
+  const failed = results.find((r) => r.status === "rejected");
+  if (failed) {
+    // Close the ones that did load, so a CPU retry doesn't leak their WebGL contexts and wasm memory.
+    for (const r of results) if (r.status === "fulfilled") r.value.close();
+    throw failed.reason;
+  }
+  const [pose, hand, face] = results as [
+    PromiseFulfilledResult<TasksVision.PoseLandmarker>,
+    PromiseFulfilledResult<TasksVision.HandLandmarker>,
+    PromiseFulfilledResult<TasksVision.FaceLandmarker>,
+  ];
+  return { pose: pose.value, hand: hand.value, face: face.value };
 }
 
 export type MediaPipeLandmarkerSet = Awaited<ReturnType<typeof createLandmarkers>>;

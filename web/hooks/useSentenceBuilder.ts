@@ -25,6 +25,9 @@ export function useSentenceBuilder(
   const transcriptRef = useRef<string>("");
   const lastWordRef = useRef<string>("");
   const displayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // One sentence in flight at a time: idle predictions keep arriving while hands are down, and a
+  // second concurrent request could reorder bubbles and cancel the first one's audio.
+  const inFlightRef = useRef(false);
 
   const cancelDisplayTimer = useCallback(() => {
     if (displayTimerRef.current !== null) {
@@ -41,7 +44,8 @@ export function useSentenceBuilder(
 
   const processSentence = useCallback(async () => {
     const sentence = transcriptRef.current;
-    if (sentence.trim().length === 0) return;
+    if (sentence.trim().length === 0 || inFlightRef.current) return;
+    inFlightRef.current = true;
 
     const closeTs = performance.now();
     setTranscript("");
@@ -92,6 +96,7 @@ export function useSentenceBuilder(
     } catch (e) {
       console.error("Error processing sentence", e);
     } finally {
+      inFlightRef.current = false;
       setIsProcessingSentence(false);
     }
   }, [onNewPatientMessage, cancelDisplayTimer]);
