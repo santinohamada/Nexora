@@ -196,6 +196,22 @@ def test_audit_failure_is_swallowed_by_best_effort_wrapper_only():
         pass
 
 
+def test_init_db_widens_old_audit_type_check_keeping_rows():
+    db = _fresh_db()
+    conn = sqlite3.connect(db)
+    old = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'audit_event'").fetchone()[0].replace(", 'reply_sent'", "")
+    conn.executescript("DROP TABLE audit_event;" + old)
+    conn.execute("INSERT INTO audit_event (type, occurred_at, station) VALUES ('fin_atencion', 'x', 'recepcion')")
+    conn.commit()
+    conn.close()
+
+    storage.init_db(db)
+    storage.log_audit_event(db, "reply_sent", station="recepcion")
+    conn = sqlite3.connect(db)
+    assert conn.execute("SELECT type FROM audit_event ORDER BY id").fetchall() == [("fin_atencion",), ("reply_sent",)]
+    conn.close()
+
+
 def test_default_db_path_is_anchored_to_module_dir():
     if "NEXORA_DB_PATH" not in os.environ:
         assert os.path.isabs(storage.DEFAULT_DB_PATH)
@@ -214,5 +230,6 @@ if __name__ == "__main__":
     test_report_message_id_range()
     test_migrate_jsonl_skips_bad_rows_and_is_idempotent()
     test_audit_failure_is_swallowed_by_best_effort_wrapper_only()
+    test_init_db_widens_old_audit_type_check_keeping_rows()
     test_default_db_path_is_anchored_to_module_dir()
     print("test_storage: all assertions passed")

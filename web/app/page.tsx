@@ -42,7 +42,7 @@ export default function LandingPage() {
               <Activity size={32} />
             </div>
             <h2 className="text-xl font-bold text-emerald-900 mb-2">Estación de Recepción</h2>
-            <p className="text-emerald-700/80 text-sm">Panel de control, chat y respuestas de enfermería.</p>
+            <p className="text-emerald-800 text-sm">Panel de control, chat y respuestas de enfermería.</p>
           </Link>
         </div>
       </div>

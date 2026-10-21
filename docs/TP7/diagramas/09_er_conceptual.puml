@@ -49,7 +49,7 @@ package "Base de datos SQLite (data/lsa_salud.db)" {
     }
 
     class EventoDeAuditoría {
-        tipo {prediction | sentence | report |\nconsent | translation_displayed |\nfin_atencion}
+        tipo {prediction | sentence | report |\nconsent | translation_displayed |\nreply_sent | fin_atencion}
         marcaTemporal
         estacion
         camposSegúnTipo

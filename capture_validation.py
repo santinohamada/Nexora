@@ -14,7 +14,7 @@ REPORT_STATIONS = {"paciente", "recepcion"}
 REPORT_WORDS_MAX_COUNT = 20
 REPORT_WORD_MAX_LEN = 32
 
-AUDIT_TYPES = {"consent", "translation_displayed"}
+AUDIT_TYPES = {"consent", "translation_displayed", "fin_atencion", "reply_sent"}
 AUDIT_STATIONS = {"paciente", "recepcion"}
 AUDIT_CONSENT_VALUES = {"accepted", "declined"}
 AUDIT_E2E_MS_MAX = 60000

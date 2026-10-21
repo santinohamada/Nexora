@@ -631,7 +631,7 @@ de la sección se detallan RF-03.1, RF-04.1 y RF-06.1.
 \toprule
 \textbf{ID} & RF-04.1 \\
 \textbf{Prioridad} & Condicional (no bloquea el flujo de comunicación; es una subfunción de auditoría). \\
-\textbf{Descripción} & El sistema registra, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción/síntesis, reporte, consentimiento, traducción mostrada, fin de atención), sin datos identificatorios ni imágenes, video o texto de la conversación, para habilitar métricas operativas de uso . \\
+\textbf{Descripción} & El sistema registra, de forma automática y anónima, un evento de auditoría por cada operación de sistema relevante (predicción, traducción/síntesis, reporte, consentimiento, traducción mostrada, respuesta enviada, fin de atención), sin datos identificatorios ni imágenes, video o texto de la conversación, para habilitar métricas operativas de uso . \\
 \textbf{Entrada} & Finalización de una operación de sistema (SO-01 a SO-05, ver Entregable 08) o un evento anónimo enviado por el frontend (\texttt{consent}, \texttt{translation\_displayed}). \\
 \textbf{Proceso} & El backend (función envoltura \texttt{\_log\_audit} en \texttt{app.py} que delega en \texttt{storage.log\_audit\_event}) inserta el registro estructurado en la tabla \texttt{audit\_event} de SQLite (\texttt{data/lsa\_salud.db}). En la ruta WebSocket (\texttt{/ws/predict}) la escritura se despacha con \texttt{asyncio.to\_thread} para no bloquear el bucle de eventos. \texttt{GET /metrics} ejecuta agregaciones SQL sobre la tabla (conteos por tipo, consentimientos, fuente de traducción, p50/p95/máx.\ de latencia). \\
 \textbf{Salida} & Evento de auditoría anónimo persistido en SQLite (\texttt{data/lsa\_salud.db}). \\

@@ -1,4 +1,4 @@
-import { useState, memo, useCallback, useEffect } from "react";
+import { useState, useRef, memo, useCallback } from "react";
 import { Send, Mic, MicOff } from "lucide-react";
 import { useSpeechToText } from "../../hooks/useSpeechToText";
 
@@ -9,33 +9,26 @@ export const ReceptionControls = memo(function ReceptionControls({
 }) {
   console.log("[Render] ReceptionControls");
   const [receptionText, setReceptionText] = useState("");
-  const [baseText, setBaseText] = useState("");
+  // Text already typed when dictation starts; the dictated segment is appended to it.
+  const baseTextRef = useRef("");
 
   const handleSpeechResult = useCallback((text: string) => {
-    // Si ya había texto escrito, le agregamos el texto dictado
-    if (baseText) {
-      setReceptionText(baseText + " " + text);
-    } else {
-      setReceptionText(text);
-    }
-  }, [baseText]);
+    const base = baseTextRef.current;
+    setReceptionText(base ? base + " " + text : text);
+  }, []);
 
   const { isListening, toggleListening, error, isSupported } = useSpeechToText(handleSpeechResult);
 
-  // Cuando termina de escuchar (isListening pasa a false), guardamos el texto actual como base
-  // para que si vuelve a iniciar dictado no lo pise.
-  useEffect(() => {
-    if (isListening) {
-      setBaseText(receptionText);
-    }
-  }, [isListening]);
-
+  const handleToggleListening = () => {
+    if (!isListening) baseTextRef.current = receptionText.trimEnd();
+    toggleListening();
+  };
 
   const handleSend = () => {
     if (!receptionText.trim()) return;
     onSend(receptionText.trim());
     setReceptionText("");
-    setBaseText("");
+    baseTextRef.current = "";
   };
 
   return (
@@ -44,6 +37,7 @@ export const ReceptionControls = memo(function ReceptionControls({
         <textarea
           value={receptionText}
           onChange={(e) => setReceptionText(e.target.value)}
+          readOnly={isListening} // dictation owns the text while listening
           placeholder="Escribir..."
           className="w-full h-32 bg-slate-100 border border-slate-200 rounded-2xl p-4 text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 resize-none mb-4"
         />
@@ -73,7 +67,8 @@ export const ReceptionControls = memo(function ReceptionControls({
           )}
           <div className="flex items-center gap-6">
             <button
-              onClick={toggleListening}
+              onClick={handleToggleListening}
+              aria-label={isListening ? "Detener dictado" : "Dictar respuesta por voz"}
               disabled={!isSupported}
               className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-all ${
                 isListening

@@ -8,6 +8,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, "..");
 const modelsDir = path.join(webRoot, "public", "models");
 const wasmDir = path.join(webRoot, "public", "mediapipe", "wasm");
+const holisticDir = path.join(webRoot, "public", "mediapipe", "holistic");
+const mediapipeModules = path.join(webRoot, "node_modules", "@mediapipe");
 const wasmSourceDir = path.join(webRoot, "node_modules", "@mediapipe", "tasks-vision", "wasm");
 
 const MODELS = [
@@ -69,6 +71,18 @@ async function ensureWasm() {
   console.log("[fetch-mediapipe-assets] wasm bundle copied to public/mediapipe/wasm");
 }
 
+// Legacy (default) landmark path: serve holistic + drawing_utils locally instead of cdn.jsdelivr.net (RNF-T-02).
+async function ensureHolistic() {
+  const holisticSrc = path.join(mediapipeModules, "holistic");
+  const drawingSrc = path.join(mediapipeModules, "drawing_utils", "drawing_utils.js");
+  if (!existsSync(holisticSrc) || !existsSync(drawingSrc)) {
+    throw new Error("[fetch-mediapipe-assets] @mediapipe/holistic or drawing_utils not found — run npm install first");
+  }
+  await cp(holisticSrc, holisticDir, { recursive: true });
+  await cp(drawingSrc, path.join(holisticDir, "drawing_utils.js"));
+  console.log("[fetch-mediapipe-assets] holistic bundle copied to public/mediapipe/holistic");
+}
+
 async function main() {
   await mkdir(modelsDir, { recursive: true });
   await mkdir(wasmDir, { recursive: true });
@@ -76,6 +90,7 @@ async function main() {
     await ensureModel(model);
   }
   await ensureWasm();
+  await ensureHolistic();
 }
 
 main().catch((err) => {

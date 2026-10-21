@@ -29,6 +29,7 @@ AUDIT_EVENT_TYPES = (
     "consent",
     "translation_displayed",
     "fin_atencion",
+    "reply_sent",
 )
 AUDIT_NUMERIC_FIELDS = ("lstm_ms", "confidence", "translation_ms", "tts_ms", "total_ms", "e2e_ms")
 AUDIT_LATENCY_FIELDS = ("lstm_ms", "translation_ms", "tts_ms", "total_ms", "e2e_ms")
@@ -101,6 +102,33 @@ def _connect(db_path: str):
         conn.close()
 
 
+def _migrate_audit_event_types(conn) -> None:
+    """Databases created before a type was added keep the old CHECK; rebuild the table once to widen it.
+
+    The rebuild runs in one IMMEDIATE transaction (SQLite DDL is transactional), so a crash rolls
+    back to the old table and a concurrent startup waits for the lock, then sees the widened schema.
+    """
+    def widened() -> bool:
+        sql = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'audit_event'").fetchone()["sql"]
+        return all(f"'{t}'" in sql for t in AUDIT_EVENT_TYPES)
+
+    if widened():
+        return
+    conn.commit()
+    conn.execute("BEGIN IMMEDIATE")
+    if widened():
+        return  # another process migrated it while we waited; _connect commits
+    new_sql = _SCHEMA.split("CREATE TABLE IF NOT EXISTS audit_event", 1)[1].split(");", 1)[0]
+    for stmt in (
+        "ALTER TABLE audit_event RENAME TO audit_event_old",
+        f"CREATE TABLE audit_event{new_sql})",
+        "INSERT INTO audit_event SELECT * FROM audit_event_old",
+        "DROP TABLE audit_event_old",
+        "CREATE INDEX IF NOT EXISTS idx_audit_event_type_time ON audit_event(type, occurred_at)",
+    ):
+        conn.execute(stmt)
+
+
 def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
     directory = os.path.dirname(db_path)
     if directory:
@@ -108,6 +136,7 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
     with _connect(db_path) as conn:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.executescript(_SCHEMA)
+        _migrate_audit_event_types(conn)
 
 
 def save_report(

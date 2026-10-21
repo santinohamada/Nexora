@@ -14,6 +14,14 @@ def test_audit_accepts_translation_displayed():
     validate_audit_payload("translation_displayed", "paciente", None, 850.5)
 
 
+def test_audit_accepts_fin_atencion():
+    validate_audit_payload("fin_atencion", "recepcion", None, None)
+
+
+def test_audit_accepts_reply_sent():
+    validate_audit_payload("reply_sent", "recepcion", None, None)
+
+
 def test_audit_rejects_unknown_type():
     try:
         validate_audit_payload("frames", "paciente", None, None)
@@ -98,6 +106,8 @@ if __name__ == "__main__":
     test_audit_accepts_consent_accepted()
     test_audit_accepts_consent_declined()
     test_audit_accepts_translation_displayed()
+    test_audit_accepts_fin_atencion()
+    test_audit_accepts_reply_sent()
     test_audit_rejects_unknown_type()
     test_audit_rejects_unknown_station()
     test_audit_rejects_invalid_consent_value()

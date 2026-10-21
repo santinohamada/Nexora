@@ -6,7 +6,7 @@ export function TopPredictions() {
 
   return (
     <div className="w-full bg-slate-100 rounded-2xl p-4 shadow-sm border border-slate-200 mt-4">
-      <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+      <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">
         Top-3 Predicciones
       </h4>
       <div className="flex flex-row justify-between gap-4">

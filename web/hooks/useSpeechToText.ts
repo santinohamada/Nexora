@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 // Declarations for TypeScript
 declare global {
@@ -11,67 +11,77 @@ declare global {
 export function useSpeechToText(onResult: (text: string) => void) {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [recognition, setRecognition] = useState<any>(null);
+  const [isSupported, setIsSupported] = useState(false);
+  // One recognition instance for the hook's lifetime: start/stop must act on the same object.
+  const recognitionRef = useRef<any>(null);
+  const onResultRef = useRef(onResult);
+  const finalsRef = useRef("");
+
+  useEffect(() => {
+    onResultRef.current = onResult;
+  }, [onResult]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (SpeechRecognition) {
-      const rec = new SpeechRecognition();
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.lang = 'es-AR'; // Español Argentina
+    if (!SpeechRecognition) return; // isSupported=false is the only signal; the UI shows a single notice
 
-      rec.onresult = (event: any) => {
-        let finalTranscript = '';
-        let interimTranscript = '';
+    const rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = 'es-AR'; // Español Argentina
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
+    rec.onresult = (event: any) => {
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcript = event.results[i][0].transcript.trim();
+        if (event.results[i].isFinal) {
+          finalsRef.current = `${finalsRef.current} ${transcript}`.trim();
+        } else {
+          interimTranscript = `${interimTranscript} ${transcript}`.trim();
         }
-        
-        onResult(finalTranscript || interimTranscript);
-      };
+      }
+      // Whole dictation of this session: accumulated finals plus the current interim segment
+      onResultRef.current(`${finalsRef.current} ${interimTranscript}`.trim());
+    };
 
-      rec.onerror = (event: any) => {
-        console.error("Speech recognition error:", event.error);
-        setError(event.error);
-        setIsListening(false);
-      };
+    rec.onerror = (event: any) => {
+      console.error("Speech recognition error:", event.error);
+      setError(event.error);
+      setIsListening(false);
+    };
 
-      rec.onend = () => {
-        setIsListening(false);
-      };
+    rec.onend = () => {
+      setIsListening(false);
+    };
 
-      setRecognition(rec);
-    } else {
-      setError("Tu navegador no soporta el reconocimiento de voz. Intentá usar Google Chrome.");
-    }
-  }, [onResult]);
+    recognitionRef.current = rec;
+    setIsSupported(true);
+    return () => {
+      rec.onresult = rec.onerror = rec.onend = null;
+      try { rec.abort(); } catch { /* not started */ }
+      recognitionRef.current = null;
+    };
+  }, []);
 
   const startListening = useCallback(() => {
-    if (recognition) {
+    const rec = recognitionRef.current;
+    if (rec) {
       setError(null);
+      finalsRef.current = "";
       try {
-        recognition.start();
+        rec.start();
         setIsListening(true);
       } catch (err) {
         console.error(err);
       }
     }
-  }, [recognition]);
+  }, []);
 
   const stopListening = useCallback(() => {
-    if (recognition) {
-      recognition.stop();
-      setIsListening(false);
-    }
-  }, [recognition]);
+    // isListening turns false in onend, once the engine has really stopped and can start again
+    recognitionRef.current?.stop();
+  }, []);
 
   const toggleListening = useCallback(() => {
     if (isListening) {
@@ -81,5 +91,5 @@ export function useSpeechToText(onResult: (text: string) => void) {
     }
   }, [isListening, startListening, stopListening]);
 
-  return { isListening, toggleListening, error, isSupported: !!recognition };
+  return { isListening, toggleListening, error, isSupported };
 }

@@ -636,8 +636,8 @@ video. \\
 \begin{enumerate}[leftmargin=*, itemsep=2pt]
     \item El sistema completa una operación relevante: predicción de una
     seña, traducción y síntesis de voz, reporte de una traducción,
-    consentimiento de cámara, traducción mostrada en pantalla o fin de
-    atención (CU-12).
+    consentimiento de cámara, traducción mostrada en pantalla, respuesta
+    enviada por el personal (CU-04) o fin de atención (CU-12).
     \item El sistema arma un evento de auditoría anónimo con el tipo de
     operación, la marca temporal y los datos propios del tipo de evento,
     sin identidad del paciente ni contenido de imagen, video o texto de
@@ -660,10 +660,12 @@ la tabla \texttt{audit\_event} de la base de datos SQLite
 Entregable 09, Modelo de Datos). Las
 operaciones que disparan el registro corresponden a los endpoints
 \texttt{/predict}, \texttt{/ws/predict}, \texttt{/process\_sentence},
-\texttt{/report} y \texttt{POST /audit} (consentimiento y traducción
-mostrada en pantalla); el tipo de evento toma los valores
+\texttt{/report} y \texttt{POST /audit} (consentimiento, traducción
+mostrada en pantalla, respuesta enviada por el personal y fin de
+atención); el tipo de evento toma los valores
 \texttt{prediction}, \texttt{sentence}, \texttt{report}, \texttt{consent},
-\texttt{translation\_displayed} o \texttt{fin\_atencion}, con campos
+\texttt{translation\_displayed}, \texttt{reply\_sent} o
+\texttt{fin\_atencion}, con campos
 propios por tipo (p.\ ej.\ \texttt{lstm\_ms} y \texttt{confidence} para
 \texttt{prediction}); el envío desde el frontend es \textit{fire-and-forget}
 y, si el payload no pasa la validación, \texttt{POST /audit} responde 400

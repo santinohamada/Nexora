@@ -499,7 +499,7 @@ def audit_event(payload: AuditPayload):
     fields = {"station": payload.station}
     if payload.type == "consent":
         fields["consent"] = payload.consent
-    else:
+    elif payload.type == "translation_displayed":
         fields["e2e_ms"] = round(payload.e2e_ms, 2)
     # Strict: recording the event is this endpoint's whole purpose, so failures reach the caller.
     storage.log_audit_event(DB_PATH, payload.type, **fields)
