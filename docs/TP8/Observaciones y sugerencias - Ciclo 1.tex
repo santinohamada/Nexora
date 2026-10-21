@@ -25,57 +25,33 @@
 
 \begin{enumerate}
   \item La traducción a lenguaje natural no verifica la fidelidad clínica: el modelo de lenguaje
-    agrega síntomas que el paciente no señó y fragmentos de sus instrucciones internas, y el
-    personal los recibe como si fueran del paciente (\mbox{DM-LSA-001}). En un entorno de salud es el
-    defecto más grave del ciclo y debe corregirse antes que cualquier otro. Es intermitente: se
-    observó en 3 de 13 corridas de \mbox{TC-LSA-002-03} y \mbox{TC-LSA-002-05}.
-  \item La secuencia de reposo (\textit{idle}) produce una oración inventada en lugar de indicar
-    que la seña no fue clara (\mbox{DM-LSA-002}). Cuando la cámara es denegada, el paciente no recibe
-    ningún aviso y la pantalla sigue indicando que la visión está activa (\mbox{DM-LSA-007}).
-  \item La pantalla de recepción no ofrece la acción ``Finalizar atención'' y el servicio rechaza el
-    evento correspondiente, por lo que no es posible cerrar la conversación entre un paciente y el
-    siguiente como establece la especificación (\mbox{DM-LSA-006}).
-  \item El registro de auditoría está incompleto: las respuestas del personal no generan eventos
-    (\mbox{DM-LSA-005}) y la consulta de métricas rechaza fechas con zona horaria \texttt{Z}
-    (\mbox{DM-LSA-015}).
-  \item El servicio debe validar todas las entradas en el límite de confianza. Hoy hay datos de
-    forma inválida que producen error 500 o se almacenan, valores \texttt{NaN} que llegan al
-    modelo, e identificadores de mensaje que aceptan tipos no numéricos (\mbox{DM-LSA-004},
-    \mbox{DM-LSA-017}). El protocolo binario del canal de reconocimiento no responde
-    (\mbox{DM-LSA-018}).
-  \item La política de orígenes acepta cualquier sitio, tanto en HTTP como en el canal WebSocket
-    (\mbox{DM-LSA-003}). Debe restringirse a los orígenes de la estación.
-  \item El módulo de captura informa ``¡Guardado!'' aunque el servicio rechace la muestra o no se
-    envíe ninguna, acepta etiquetas con formato inválido, y ``Detener'' no cancela la secuencia
-    en curso (\mbox{DM-LSA-008}, \mbox{DM-LSA-012}). Esto puede contaminar el conjunto de entrenamiento sin que
-    el operador lo advierta.
-  \item El dictado por voz reemplaza el texto que el personal ya había escrito, conserva solo el
-    último segmento y el botón de detener no finaliza la sesión real (\mbox{DM-LSA-013}, \mbox{DM-LSA-014}).
-    Sin soporte de reconocimiento de voz se muestran dos mensajes de error superpuestos
-    (\mbox{DM-LSA-019}).
-  \item La estación depende de una red de distribución externa para cargar el componente de
-    visión: sin acceso a Internet la cámara no inicia (\mbox{DM-LSA-009}). Contradice la restricción de
-    ejecución local.
-  \item Los tiempos de respuesta superan los objetivos: la latencia extremo a extremo y la ruta de
-    reformulación con el modelo de lenguaje exceden el segundo en el percentil 95
-    (\mbox{DM-LSA-010}, \mbox{DM-LSA-016}). Se sugiere repetir la medición en el equipo destino con
-    aceleración gráfica antes de optimizar, ya que el ciclo se ejecutó con procesamiento por
-    software. Los casos con límites de tiempo (\mbox{TC-LSA-003-04}, \mbox{TC-LSA-001-05}) fallan
-    de forma intermitente por la misma causa.
-  \item La interfaz presenta problemas de accesibilidad: contraste insuficiente en las tres
-    pantallas, un botón de micrófono sin nombre accesible y un campo sin etiqueta en el módulo de
-    captura (\mbox{DM-LSA-011}).
-  \item Trece casos quedaron pendientes de ejecución manual porque requieren a una persona
-    realizando señas frente a la cámara. Se sugiere ejecutarlos en el ciclo 2 con el conjunto de
-    datos regrabado y el modelo reentrenado.
-  \item Criterio adoptado: un caso se registra como No aprobado si falló en al menos una de las
-    corridas del ciclo, y se indica la frecuencia (fallas/corridas), porque la salida del modelo
-    de lenguaje y los tiempos no son deterministas. Así, \mbox{TC-LSA-003-04} (mínimo de 900 ms
-    antes del audio) y \mbox{TC-LSA-001-05} (desfasaje máximo de 500 ms entre las dos caras)
-    fallan de forma intermitente cerca de sus límites (\mbox{DM-LSA-016}). Conviene revisarlos
-    en el ciclo 2.
-  \item Hay otras observaciones detalladas en los casos de prueba, incluso en los aprobados. Por
-    favor tenerlas en cuenta para mejorar la calidad de la aplicación.
+    agrega síntomas que el paciente no señó y fragmentos de sus instrucciones internas
+    (\mbox{DM-LSA-001}), y una secuencia sin contenido (solo reposo) se muestra al personal como
+    una oración (\mbox{DM-LSA-002}). En un entorno de salud es lo más grave del ciclo y debe
+    corregirse primero (\mbox{TC-LSA-002-01}).
+  \item Faltan funciones previstas en los casos de uso: la pantalla de recepción no tiene la acción
+    ``Finalizar atención'' (\mbox{DM-LSA-006}), las respuestas del personal no generan el evento
+    de auditoría (\mbox{DM-LSA-005}) y, si se deniega la cámara, el paciente no recibe ningún aviso
+    (\mbox{DM-LSA-007}).
+  \item El servicio debe validar las entradas y restringir el acceso: hay formas de datos
+    inválidas que producen error 500 o se almacenan (\mbox{DM-LSA-004}), tipos incorrectos que se
+    aceptan en los reportes (\mbox{DM-LSA-017}), el protocolo binario del canal de reconocimiento
+    no responde (\mbox{DM-LSA-018}) y la política de orígenes admite cualquier sitio
+    (\mbox{DM-LSA-003}).
+  \item El Modo Captura informa ``¡Guardado!'' aunque no se haya guardado nada y ``Detener'' no
+    cancela la grabación (\mbox{DM-LSA-008}, \mbox{DM-LSA-012}), lo que puede contaminar el conjunto
+    de entrenamiento. El dictado por voz reemplaza el texto ya escrito y pierde segmentos
+    (\mbox{DM-LSA-013}, \mbox{DM-LSA-014}).
+  \item Los tiempos de respuesta superan los objetivos (\mbox{DM-LSA-010}, \mbox{DM-LSA-016}); se
+    sugiere repetir la medición en el equipo destino antes de optimizar. Además, la cámara depende
+    de Internet para iniciar (\mbox{DM-LSA-009}) y la interfaz presenta problemas de accesibilidad
+    (\mbox{DM-LSA-011}).
+  \item Las comprobaciones que requieren a una persona realizando las acciones frente a la
+    estación (señas reales, dictado, captura, latencia percibida, calidad de la voz y de la
+    traducción, y la inspección de la estación) no se ejecutaron en el ciclo 1. Quedan como
+    pasos de \mbox{TC-LSA-001-01}, \mbox{TC-LSA-002-01}, \mbox{TC-LSA-003-01},
+    \mbox{TC-LSA-005-01}, \mbox{TC-LSA-006-01}, \mbox{TC-LSA-010-01}, \mbox{TC-LSA-014-01} y
+    \mbox{TC-LSA-015-01}, y se sugiere ejecutarlas en el ciclo 2.
 \end{enumerate}
 
 \end{document}

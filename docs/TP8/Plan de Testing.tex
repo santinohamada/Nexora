@@ -1,21 +1,22 @@
 % ============================================================================
-% Plan de Testing — LSA Salud. Estructura según el plan modelo de la cátedra
-% (IEEE 829): secciones 1 a 11.
+% Plan de Testing - LSA Salud. Estructura según el plan modelo de la cátedra
+% (IEEE 829), en el mismo orden de secciones.
 % ============================================================================
 \documentclass[12pt, a4paper]{article}
 \usepackage{lsasalud}
+\renewcommand{\versionLSA}{1.1}
 
 \hypersetup{pdftitle={Plan de Testing --- LSA Salud}}
 
 \newcommand{\idPlan}{PT-LSASALUD-G9-01}
-\newcommand{\tc}[1]{\texttt{TC-LSA-#1}}
 
 \begin{document}
 
 \portada{Plan de Testing}{LSASALUD-G9-PT}
 
 \historialRevisiones{
-    1.0 & \today & Equipo LSA Salud & Versión inicial del Plan de Testing del sistema. \\
+    1.0 & 20 de octubre de 2026 & Equipo LSA Salud & Versión inicial del Plan de Testing. \\
+    1.1 & \today & Equipo LSA Salud & Cronograma actualizado con la ejecución del ciclo 2 (regresión). \\
 }
 
 \tableofcontents
@@ -28,567 +29,197 @@
     \Large\textbf{\idPlan}
 \end{center}
 
-\begin{table}[H]
-    \centering
-    \caption{Datos de identificación del plan}
-    \begin{tabularx}{\textwidth}{>{\bfseries}p{5cm} X}
-        \toprule
-        Identificador del plan & \idPlan \\
-        Código de documento & LSASALUD-G9-PT \\
-        Sistema bajo prueba & LSA Salud --- Sistema Inteligente de Comunicación y Reconocimiento de Lengua de Señas Argentina (LSA) \\
-        Versión bajo prueba & Commit \texttt{f29917a} del repositorio del sistema \\
-        Nivel de prueba & Prueba de sistema (caja negra) \\
-        Ciclos previstos & Ciclo 1 (ejecución inicial) y ciclo 2 (regresión) \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
+Plan de testing del sistema LSA Salud. Corresponde a una prueba de sistema con
+dos ciclos: ciclo 1 (ejecución inicial, versión \texttt{f29917a} del
+repositorio) y ciclo 2 (regresión, versión \texttt{0638d22}).
 
 % ============================================================================
 \section{Introducción}
 
-LSA Salud es un sistema que corre íntegramente en una PC local y permite la
-comunicación entre un paciente usuario de LSA y el personal de recepción o
-enfermería del Sanatorio 9 de Julio. El sistema reconoce las señas capturadas
-por cámara, reconstruye una oración natural en español, la sintetiza en voz y
+LSA Salud es un sistema que corre en una PC local y permite la comunicación
+entre un paciente usuario de Lengua de Señas Argentina (LSA) y el personal de
+recepción o enfermería del Sanatorio 9 de Julio: reconoce las señas capturadas
+por cámara, las traduce a una oración en español, la sintetiza en voz y
 sincroniza la conversación con la estación del personal, que responde por
-texto o por dictado de voz. Las secciones siguientes describen la naturaleza
-del sistema bajo prueba, los objetivos y la amplitud de la prueba, y los
-documentos relacionados.
+texto o por dictado.
 
-\subsection{Naturaleza del Proyecto}
-
-El sistema se despliega como estaciones fijas independientes (admisión,
-recepción, triaje, guardia). Cada estación tiene dos caras sincronizadas en el
-mismo navegador mediante \texttt{BroadcastChannel}: la Estación del Paciente
-(cámara, reconocimiento, traducción y voz) y la Estación de Recepción
-(historial de conversación y respuesta). Además incluye un Modo Captura para
-ampliar el vocabulario de señas, un script de reentrenamiento del modelo,
-consentimiento explícito de cámara, reporte de traducciones incorrectas y
-registro de auditoría anónimo en SQLite. Ningún dato de la conversación sale
-de la máquina local.
-
-\subsection{Objetivos y Amplitud de la Prueba del Sistema}
-
-Este plan describe el entorno, las actividades, las tareas, las herramientas y
-el cronograma de la prueba del sistema LSA Salud, que será ejecutada por el
-equipo del proyecto actuando como grupo de testing.
-
-El objetivo de la prueba es asegurar que:
-
-\begin{itemize}
-    \item todas las funcionalidades requeridas están presentes y operan correctamente de acuerdo con la Especificación de Requerimientos (ERS);
-    \item el software alcanza sus requerimientos de rendimiento (latencia de traducción y de síntesis);
-    \item el software es confiable y robusto, y se recupera adecuadamente de fallas (pérdida del WebSocket, modelo de lenguaje o síntesis de voz no disponibles, entradas inválidas);
-    \item se preserva la privacidad de los datos de salud (consentimiento, ausencia de persistencia de la conversación, auditoría sin datos identificatorios, restricción de orígenes);
-    \item el software es fácil de usar y mantener, incluyendo la accesibilidad básica de la interfaz;
-    \item se relaciona correctamente con el software y el hardware externos requeridos (cámara, micrófono, altavoces, Ollama, Piper, Web Speech API).
-\end{itemize}
-
-Se realizará un conjunto completo de pruebas que incluye:
-
-\begin{itemize}
-    \item \textbf{Prueba funcional:} verifica que el sistema integrado cumple los requisitos especificados y determina cuándo está preparado para la prueba de aceptación en el entorno del usuario. Se utiliza la estrategia de \textbf{caja negra}, también denominada ``conducida por los datos'' o ``conducida por la entrada/salida'': el software se considera una caja negra, sin atender al detalle procedimental de los programas, y se buscan situaciones en las que no se ajusta a su especificación, usando ésta como fuente para derivar los casos de prueba. Los casos consisten en conjuntos de datos de entrada que deben generar una salida acorde con la especificación. Se deriva al menos un caso por escenario principal y por extensión de cada caso de uso (CU-01 a CU-12).
-    \item \textbf{Pruebas de rendimiento:} medición de latencia por etapa y de extremo a extremo (RNF-01, RNF-01.1).
-    \item \textbf{Pruebas de seguridad y privacidad:} consentimiento, auditoría anónima, borrado de la conversación, validación de entradas y política de orígenes (RNF-03, RNF-03.1, RNF-T-06).
-    \item \textbf{Pruebas de usabilidad y accesibilidad:} verificación automática con axe-core y revisión manual (RNF-T-05).
-    \item \textbf{Verificación de restricciones del sistema:} precisión del modelo, hardware de la estación fija, dataset clínico, mantenibilidad y portabilidad (RNF-02, RNF-04 a RNF-07, RNF-T-02 a RNF-T-04).
-\end{itemize}
-
-\subsection{Documentos Relacionados}
-
-Los siguientes documentos son usados como fuentes de información para el
-desarrollo de este Plan de Testing:
-
-\begin{itemize}
-    \item Especificación de Requerimientos de Software (ERS, IEEE Std 830-1998).
-    \item Modelo de Casos de Uso y Casos de Uso Reales (diseño de interfaz gráfica).
-    \item Mockups de las pantallas P-01 a P-05.
-    \item Documento de Arquitectura de Software: Vistas Lógica y Física.
-    \item Modelo de Dominio y Modelo de Datos.
-    \item Diagramas de Colaboración.
-    \item Plan modelo de testing de la cátedra (\texttt{PT-PFinal-2020-01-v2}) y plantilla de registro de defectos de la cátedra.
-\end{itemize}
-
-Los siguientes documentos relacionados con la prueba serán preparados para el sistema:
-
-\begin{itemize}
-    \item Casos de Prueba (catálogo de 83 casos, \texttt{casos\_prueba.json}).
-    \item Matriz de cobertura requisito--caso de prueba.
-    \item Defectos--Mejoras (planilla de registro de defectos).
-    \item Observaciones y sugerencias.
-    \item Informe general de pruebas por ciclo.
-\end{itemize}
+Este plan describe el alcance, el enfoque, los recursos y el cronograma de la
+prueba del sistema, a cargo del equipo del proyecto. Se basa en la
+Especificación de Requerimientos (ERS), el modelo de casos de uso y el plan
+modelo de la cátedra. El objetivo es verificar que el sistema cumple con los
+casos de uso CU-01 a CU-12 y con los requerimientos no funcionales de
+rendimiento, privacidad y seguridad, y de restricciones del sistema.
 
 % ============================================================================
 \section{Ítems a Probar}
 
-Todos los ítems que constituyen el sistema LSA Salud serán probados durante la
-prueba del sistema para asegurar que funcionan en conjunto e implementan los
-requerimientos del cliente. Estos ítems están listados a continuación con su
-identificador y número de versión, y constituyen la configuración a probar.
+Se prueban los siguientes ítems, que constituyen la configuración del sistema.
 
 \begin{table}[H]
     \centering
     \caption{Ítems de prueba}
-    \label{tab:items}
     \small
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.7cm} X >{\raggedright\arraybackslash}p{2.2cm}}
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm} X >{\raggedright\arraybackslash}p{2cm}}
         \toprule
         \textbf{Nombre} & \textbf{Identificador} & \textbf{Versión} \\
         \midrule
-        Servicio de reconocimiento y traducción (backend FastAPI) & \texttt{app.py}: \texttt{/ws/predict}, \texttt{/predict}, \texttt{/process\_sentence}, \texttt{/capture}, \texttt{/classes}, \texttt{/dataset\_stats}, \texttt{/report}, \texttt{/audit}, \texttt{/metrics}; \texttt{capture\_validation.py} & \texttt{f29917a} \\
-        Interfaz web (Next.js 14, React, TypeScript) & Directorio \texttt{web/}: P-01 Selección de Estación, P-02 Estación del Paciente, P-03 Estación de Recepción, P-04 Modo Captura, P-05 Diálogo de Consentimiento & \texttt{f29917a} \\
-        Módulo de entrenamiento & \texttt{train\_lstm.py}, \texttt{eval\_model.py}, \texttt{src/model/lstm.py} & \texttt{f29917a} \\
-        Persistencia & \texttt{storage.py}, base SQLite \texttt{data/lsa\_salud.db} (reportes y auditoría) y muestras \texttt{.npy} del dataset & \texttt{f29917a} \\
+        Servicio de reconocimiento y traducción (backend) & \texttt{app.py}: API REST y WebSocket de predicción, traducción, captura, reportes, auditoría y métricas & \texttt{f29917a} \\
+        Interfaz web & Directorio \texttt{web/}: pantallas P-01 a P-05 (selección de estación, paciente, recepción, Modo Captura y consentimiento) & \texttt{f29917a} \\
+        Módulo de entrenamiento & \texttt{train\_lstm.py}, \texttt{eval\_model.py} y modelo de reconocimiento & \texttt{f29917a} \\
+        Persistencia & Base SQLite y muestras del dataset & \texttt{f29917a} \\
         \bottomrule
     \end{tabularx}
 \end{table}
-
-Las dependencias externas necesarias para la ejecución (modelo LSTM
-entrenado, Ollama con \texttt{qwen2:1.5b}, voz Piper
-\texttt{es\_AR-daniela-high}, MediaPipe, Web Speech API) forman parte del
-entorno de prueba y no son ítems bajo prueba; su disponibilidad se verifica
-antes de cada ciclo.
 
 % ============================================================================
 \section{Características a ser Probadas}
 
-A continuación se listan las características a ser probadas, agrupadas por
-caso de uso y por atributo de calidad. Cada una corresponde a un grupo del
-catálogo de casos (\tc{001} a \tc{015}).
-
-\begin{table}[H]
-    \centering
-    \caption{Características a probar}
-    \label{tab:caracteristicas}
-    \small
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.3cm} >{\raggedright\arraybackslash}p{4.6cm} X}
-        \toprule
-        \textbf{Grupo} & \textbf{Característica} & \textbf{Alcance de la prueba} \\
-        \midrule
-        001 & CU-01 Comunicarse mediante LSA & Captura de landmarks, envío de frames, clasificación, umbral de certeza, seña de reposo, construcción y cierre de la oración, protocolo del WebSocket, reconexión, selección de estación. \\
-        002 & CU-02 Traducir secuencia a oración natural & Plantillas médicas, caché de traducciones, modelo de lenguaje local, degradación a las palabras originales, traducción no clara, fidelidad clínica. \\
-        003 & CU-03 Sintetizar oración en voz & Generación de audio, reutilización de audio, motor de síntesis no disponible, reproducción en la interfaz. \\
-        004 & CU-04 Responder al paciente & Envío de respuesta por texto y su sincronización entre caras. \\
-        005 & CU-05 Dictar respuesta por voz & Dictado, estados del micrófono, reconocimiento de voz no disponible, exactitud del dictado. \\
-        006 & CU-06 Capturar muestra de seña & Grabación, cuenta regresiva, persistencia de muestras, validación de forma de los datos, detención anticipada. \\
-        007 & CU-07 Gestionar vocabulario & Consulta de clases y estadísticas, creación y validación de etiquetas nuevas. \\
-        008 & CU-08 Entrenar el modelo & Reentrenamiento con muestras capturadas; caso sin clases ni muestras. \\
-        009 & CU-09 Consentimiento de cámara & Aceptación, rechazo, cámara denegada por el navegador. \\
-        010 & CU-10 Reportar traducción incorrecta & Reporte, falla de envío, validación de la carga, persistencia en SQLite. \\
-        011 & CU-11 Registro de auditoría & Eventos válidos e inválidos, agregación de métricas, anonimato. \\
-        012 & CU-12 Finalizar atención & Borrado de la conversación en las dos caras y preparación para el próximo paciente. \\
-        013 & Privacidad y seguridad & Ausencia de datos identificatorios, validación de entradas, borrado de la conversación, política de orígenes (CORS). \\
-        014 & Rendimiento & Latencia por etapa, percentiles p50/p95, latencia extremo a extremo, latencia percibida. \\
-        015 & Calidad y restricciones & Precisión del modelo, estación fija, dataset clínico, validación lingüística, ejecución local, accesibilidad, mantenibilidad y portabilidad. \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
+\begin{itemize}
+    \item \textbf{Funcionalidad:} los casos de uso CU-01 a CU-12, desde la comunicación mediante LSA y la traducción hasta la captura de muestras, el consentimiento, los reportes, la auditoría y la finalización de la atención.
+    \item \textbf{Rendimiento:} latencia de traducción, síntesis de voz y de extremo a extremo (RNF-01).
+    \item \textbf{Privacidad y seguridad:} ausencia de persistencia de la conversación, auditoría anónima y política de orígenes (RNF-03, RNF-T-06).
+    \item \textbf{Restricciones del sistema:} precisión del modelo, ejecución local, accesibilidad, portabilidad y estación fija (RNF-02, RNF-04 a RNF-07, RNF-T-02 a RNF-T-04).
+\end{itemize}
 
 \subsection{Características que no serán probadas}
 
-\begin{itemize}
-    \item Estructura interna del código (prueba de caja blanca) y cobertura de sentencias.
-    \item Calidad intrínseca del reconocimiento sobre vocabulario ampliado: depende del dataset incorporado y se evalúa en cada sesión de entrenamiento.
-    \item Funcionamiento interno de componentes de terceros (MediaPipe, PyTorch, Ollama, Piper, Web Speech API); solo se prueba la integración del sistema con ellos.
-    \item Carga con múltiples usuarios simultáneos: cada estación atiende un único par paciente--personal (RNF-01.1).
-    \item Otros sistemas operativos y navegadores distintos de Windows y Google Chrome (RNF-T-04).
-    \item Ensamblaje físico y calibración de la estación fija: solo se verifica por inspección durante la instalación (caso \tc{015-03}).
-    \item Pruebas de intrusión y de seguridad de red más allá de la política de orígenes.
-\end{itemize}
+No se prueba la estructura interna del código (caja blanca), el funcionamiento
+interno de los componentes de terceros (MediaPipe, PyTorch, Ollama, Piper y la
+Web Speech API), la carga con múltiples usuarios simultáneos, otros sistemas
+operativos o navegadores distintos de Windows y Google Chrome, ni el
+ensamblaje físico de la estación fija.
 
 % ============================================================================
 \section{Aproximación}
 
-Las pruebas serán llevadas a cabo por el equipo del proyecto, actuando como
-grupo de testing y supervisadas por el tutor del proyecto.
+Las pruebas son funcionales, de caja negra: los casos se derivan de los casos
+de uso y de los requerimientos no funcionales, y se ejecutan en parte con
+herramientas automáticas y en parte de forma manual. El equipo del proyecto
+actúa como grupo de testing, supervisado por el tutor.
 
-\subsection{Fuentes de Datos de Ejemplos del Dominio}
+El conjunto de pruebas consta de 15 casos, uno por cada caso de uso (CU-01 a
+CU-12) y uno por cada grupo de requerimientos no funcionales (privacidad y
+seguridad, rendimiento, y calidad y restricciones). Cada caso agrupa los
+escenarios principal y alternativos de su grupo, e incluye en sus pasos las
+comprobaciones que requieren una persona realizando señas frente a la cámara,
+hablando al micrófono o inspeccionando la estación; estas las ejecuta el equipo
+de forma manual y, hasta entonces, el caso queda como No probado. Los datos de prueba provienen de muestras del dataset y de
+combinaciones de palabras del vocabulario clínico.
 
-Para realizar las pruebas con datos del dominio se emplean: (i) muestras
-\texttt{.npy} del dataset del sistema (\texttt{dataset/custom}) para
-reconocimiento; (ii) combinaciones de palabras del vocabulario clínico para la
-traducción; (iii) una persona usuaria de LSA, o con conocimiento de las señas
-del vocabulario entrenado, para los casos manuales; (iv) para el ciclo 2, un
-conjunto de muestras nuevo, grabado en una sesión independiente del conjunto
-de entrenamiento, que permite medir la generalización del modelo (RNF-02.1).
-Para la validación del vocabulario clínico se requiere el asesoramiento de
-intérpretes de LSA.
-
-\subsection{Personal}
-
-Cuatro integrantes del equipo, con los roles descritos en la
-Sección~\ref{sec:resp}, son responsables del diseño de los casos de prueba, la
-ejecución de las pruebas y la registración de los resultados. Son supervisados
-por el tutor del proyecto.
-
-\subsection{Estrategia de pruebas}
-
-\subsubsection{Modos de ejecución}
-
-El catálogo contiene 83 casos. Cada caso tiene un modo de ejecución:
-
-\begin{itemize}
-    \item \textbf{api} (36 casos): se ejecutan sin navegador contra el backend mediante HTTP, WebSocket o línea de comandos. Un arnés en Python levanta \texttt{uvicorn} en un puerto libre con una base SQLite temporal (variable \texttt{NEXORA\_DB\_PATH}), corre los casos y apaga el servicio; ninguna prueba toca la base de datos real.
-    \item \textbf{ui} (34 casos): se ejecutan con Playwright sobre Chromium. Los dispositivos de cámara y micrófono son falsos (\texttt{--use-fake-device-for-media-stream}). Se levanta un backend aislado, que corre sobre una copia temporal del árbol de ejecución para que las capturas no escriban en el dataset real, y la interfaz Next.js.
-    \item \textbf{manual} (13 casos): requieren una persona real que realice las señas frente a la cámara o hable al micrófono, inspección física o juicio humano (calidad lingüística, latencia percibida, hardware, mantenibilidad).
-\end{itemize}
-
-\subsubsection{Estrategia de simulación en pruebas de interfaz}
-
-Dado que la cámara es falsa, la interfaz no produce señas reales. Para
-verificar la lógica del frontend (umbral, reposo, duplicados, cierre de
-oración por quietud, sincronización) se simulan las dependencias:
-
-\begin{itemize}
-    \item \textbf{Predicciones por WebSocket:} se intercepta la conexión a \texttt{/ws/predict} con \texttt{page.routeWebSocket} y se responde con secuencias de predicciones controladas (clase, confianza, Top-3). Verifica la lógica de la interfaz, no el reconocimiento.
-    \item \textbf{Sincronización entre caras:} se inyectan mensajes en el canal \texttt{BroadcastChannel} desde una pestaña; las demás caras del mismo origen los reciben como si los hubiera emitido la otra estación.
-    \item \textbf{Dispositivos multimedia:} cámara y micrófono falsos de Chromium con permisos preconcedidos; la denegación de cámara se simula con un indicador inyectado antes de cargar la página.
-    \item \textbf{Dictado por voz:} se sustituye \texttt{SpeechRecognition} por un doble controlado, ya que la Web Speech API depende del servicio del navegador y de Internet.
-    \item \textbf{Accesibilidad:} se ejecuta axe-core sobre las pantallas y se verifican las violaciones de severidad crítica y seria.
-\end{itemize}
-
-El reconocimiento real se verifica en dos niveles: en \textbf{api}, enviando
-secuencias de muestras reales del dataset a \texttt{/ws/predict}; y en
-\textbf{manual}, con una persona realizando las señas (casos \tc{001-01} y
-\tc{015-02}).
-
-El modelo de lenguaje no es determinista: los casos de traducción verifican
-propiedades (fuente de la traducción, ausencia de términos ajenos a la
-secuencia, latencia) y no textos exactos.
-
-\subsubsection{Casos por grupo y modo de ejecución}
-
-\begin{table}[H]
-    \centering
-    \caption{Resumen de casos por grupo y modo de ejecución}
-    \label{tab:resumen}
-    \small
-    \begin{tabularx}{\textwidth}{c >{\raggedright\arraybackslash}X r r r r r}
-        \toprule
-        \textbf{Grupo} & \textbf{Descripción} & \textbf{api} & \textbf{ui} & \textbf{manual} & \textbf{Total} & \textbf{Alta} \\
-        \midrule
-        001 & CU-01 Comunicarse mediante LSA & 3 & 6 & 1 & 10 & 7 \\
-        002 & CU-02 Traducir secuencia a oración natural & 6 & 0 & 1 & 7 & 4 \\
-        003 & CU-03 Sintetizar oración en voz & 3 & 1 & 1 & 5 & 2 \\
-        004 & CU-04 Responder al paciente & 0 & 3 & 0 & 3 & 2 \\
-        005 & CU-05 Dictar respuesta por voz & 0 & 3 & 1 & 4 & 1 \\
-        006 & CU-06 Capturar muestra de seña & 3 & 4 & 1 & 8 & 6 \\
-        007 & CU-07 Gestionar vocabulario & 2 & 2 & 0 & 4 & 3 \\
-        008 & CU-08 Entrenar el modelo & 2 & 0 & 0 & 2 & 0 \\
-        009 & CU-09 Consentimiento de cámara & 0 & 4 & 0 & 4 & 2 \\
-        010 & CU-10 Reportar traducción incorrecta & 4 & 3 & 1 & 8 & 7 \\
-        011 & CU-11 Registrar evento de auditoría & 6 & 1 & 0 & 7 & 4 \\
-        012 & CU-12 Finalizar atención & 0 & 3 & 0 & 3 & 2 \\
-        013 & Privacidad y seguridad & 3 & 1 & 0 & 4 & 4 \\
-        014 & Rendimiento & 3 & 1 & 1 & 5 & 2 \\
-        015 & Calidad y restricciones & 1 & 2 & 6 & 9 & 2 \\
-        \midrule
-        & \textbf{Total} & \textbf{36} & \textbf{34} & \textbf{13} & \textbf{83} & \textbf{48} \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-Por prioridad, el catálogo contiene 48 casos de prioridad alta, 29 de
-prioridad media y 6 de prioridad baja. Por categoría: funcional (58),
-integridad de datos (9), seguridad (8), rendimiento (5) y usabilidad (3).
-
-\subsubsection{Ciclos de prueba}
-
-\begin{itemize}
-    \item \textbf{Ciclo 1 (ejecución inicial):} se ejecutan los 83 casos sobre la versión \texttt{f29917a}. Los casos automatizados corren completos; los manuales se ejecutan con el conjunto de muestras disponible. Se registran los resultados y los defectos.
-    \item \textbf{Ciclo 2 (regresión):} una vez corregidos los defectos, se ejecutan nuevamente los casos que fallaron y los que cubren funcionalidad vecina, más la totalidad de la suite automatizada. Incluye los casos manuales con un nuevo conjunto de muestras.
-\end{itemize}
-
-\subsection{Registro}
-
-Todos los eventos observados durante la ejecución se guardan en un registro
-asociado con cada caso: la corrida de \textbf{api} produce
-\texttt{api-results.json} y la de \textbf{ui} produce \texttt{ui-results.json},
-con identificador, estado (aprobado, fallado, bloqueado), resultado observado y
-duración; las trazas de Playwright quedan disponibles para los casos fallados.
-Los resultados de los casos manuales se registran en el mismo formato. Los
-archivos de prueba se ubican en el repositorio del proyecto (directorio
-\texttt{tests/} y documentación del entregable) bajo control de versiones.
-
-Todas las fallas tienen asignado un nivel de severidad y se registran en la
-planilla de defectos. Los defectos se clasifican según la plantilla de la
-cátedra:
-
-\begin{itemize}
-    \item \textbf{Tipo de defecto (1 a 12):} 1 Arquitectónico, 2 Conectividad, 3 Consistencia, 4 Integridad de la BD, 5 Documentación, 6 Funcionalidad, 7 GUI, 8 Performance, 9 Seguridad y controles, 10 Estándares y convenciones, 11 Usabilidad, 12 Otros.
-    \item \textbf{Prioridad y severidad (1 a 4):} 1 Crítico, 2 Alto, 3 Medio, 4 Bajo.
-    \item \textbf{Estado (1 a 7):} 1 Abierto, 2 Siendo revisado por Desarrollo, 3 Devuelto por Desarrollo, 4 Listo para probar en la siguiente versión, 5 Cerrado (Testing y Calidad), 6 Devuelto por (Testing y Calidad), 7 Diferido para la siguiente versión.
-\end{itemize}
-
-Además se registran quién detectó el defecto, cómo fue detectado, el caso de
-prueba asociado, el entorno y la versión.
-
-\subsection{Estado de la Prueba e Indicadores}
-
-El avance se revisa en reuniones semanales del equipo de testing y, durante la
-ejecución de un ciclo, al cierre de cada jornada. Los indicadores que se
-obtienen son:
-
-\begin{itemize}
-    \item cantidad de requisitos cubiertos contra el total de requisitos (según la matriz de cobertura);
-    \item casos ejecutados contra casos planificados, por modo de ejecución y por prioridad;
-    \item casos aprobados, fallados y bloqueados por ciclo;
-    \item cantidad de defectos por nivel de severidad y por tipo, encontrados en cada ciclo;
-    \item defectos abiertos, cerrados y diferidos;
-    \item cantidad de ciclos de prueba realizados;
-    \item latencias p50/p95 por etapa y de extremo a extremo (\texttt{lstm\_ms}, \texttt{translation\_ms}, \texttt{tts\_ms}, \texttt{total\_ms}, \texttt{e2e\_ms}).
-\end{itemize}
-
-\subsection{Herramientas de Testing}
-
-\begin{itemize}
-    \item \textbf{Arnés de pruebas de API} en Python (\texttt{tests/api}), con \texttt{uvicorn} y base SQLite temporal.
-    \item \textbf{Playwright} con Chromium (\texttt{tests/e2e}), cámara y micrófono falsos, y \textbf{axe-core} para accesibilidad.
-    \item \texttt{eval\_model.py} para medir la exactitud del modelo sobre un conjunto de muestras.
-    \item \texttt{GET /metrics} para la agregación de latencias.
-    \item Planilla de defectos de la cátedra y catálogo de casos en JSON.
-    \item Git para versionar el código, las pruebas y la documentación.
-\end{itemize}
-
-\subsection{Criterio de Terminación de la Prueba}
-
-La decisión de terminar la prueba del sistema se basa en (i) la cobertura de
-todos los requerimientos y (ii) la cantidad de defectos abiertos. Se
-considerará completada cuando:
-
-\begin{itemize}
-    \item todos los requisitos funcionales (RF) de la ERS hayan sido cubiertos con al menos un caso de prueba ejecutado;
-    \item el 100\,\% de los casos de prioridad alta (48 casos) haya sido ejecutado;
-    \item no existan defectos abiertos de severidad 1 o 2;
-    \item los defectos de severidad 3 y 4 abiertos estén registrados y, si se difieren, cuenten con una justificación y su estado sea ``Diferido para la siguiente versión''.
-\end{itemize}
-
-Se acepta el riesgo de que el software contenga defectos de baja severidad con
-efecto mínimo sobre los usuarios.
-
-\subsection{Riesgos y Contingencias}
-
-\begin{table}[H]
-    \centering
-    \caption{Riesgos de la prueba y contingencias}
-    \label{tab:riesgos}
-    \small
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5cm} X}
-        \toprule
-        \textbf{Riesgo} & \textbf{Contingencia} \\
-        \midrule
-        Salidas no deterministas del modelo de lenguaje y latencia alta con Ollama frío. & Verificar propiedades y no textos exactos; precalentar el modelo antes de medir; registrar la latencia observada. \\
-        Falta de Internet (la ruta de landmarks por defecto y la Web Speech API dependen de servicios externos en el navegador). & Verificar la conectividad antes de cada ciclo; si no hay acceso, usar la ruta con archivos locales de MediaPipe y marcar los casos afectados como bloqueados. \\
-        Las pruebas de captura y entrenamiento modifican el dataset y los modelos. & Ejecutarlas con etiquetas \texttt{zz\_tc\_*} y sobre una copia del árbol de ejecución; restaurar el estado al finalizar. \\
-        Disponibilidad limitada de una persona usuaria de LSA para los casos manuales. & Agendar la sesión con anticipación; concentrar los 13 casos manuales en una única jornada por ciclo. \\
-        Las muestras de \texttt{dataset/custom} pertenecen al conjunto de entrenamiento y sobreestiman la precisión. & Evaluar RNF-02 con una sesión de grabación independiente en el ciclo 2. \\
-        Rendimiento dependiente del hardware de la estación. & Registrar las especificaciones del equipo de prueba junto con las mediciones. \\
-        Puerto 8000 ocupado por un backend real durante la ejecución de la interfaz. & La configuración falla de inmediato en lugar de reutilizar el servicio, evitando que se use la base real. \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
+Los defectos encontrados se registran en la planilla de defectos de la cátedra
+con tipo, prioridad y severidad (de 1 a 4) y estado (por ejemplo, Abierto o
+Cerrado), y se asocian al caso de prueba que los detectó.
 
 % ============================================================================
-\section{Criterio de Aprobación}
+\section{Criterio de Aprobación / Rechazo}
 
-Los niveles de severidad de los defectos se distribuyen en una escala de 1 a
-4, donde 1 es una falta con efecto crítico en el sistema o el usuario y 4
-indica un efecto bajo.
+La severidad de los defectos se califica de 1 a 4: 1 crítico (el sistema o una
+función esencial deja de operar, o se expone información del paciente), 2 alto
+(una función principal falla sin alternativa razonable), 3 medio (la función
+opera con limitaciones) y 4 bajo (efecto mínimo).
 
-\begin{table}[H]
-    \centering
-    \caption{Escala de severidad}
-    \label{tab:severidad}
-    \small
-    \begin{tabularx}{\textwidth}{c l X}
-        \toprule
-        \textbf{Nivel} & \textbf{Denominación} & \textbf{Criterio} \\
-        \midrule
-        1 & Crítico & El sistema o una función esencial deja de operar, se pierde o expone información del paciente, o no se puede continuar la prueba. \\
-        2 & Alto & Una función principal falla o entrega resultados incorrectos sin alternativa razonable; se incumple un requisito de prioridad alta. \\
-        3 & Medio & Una función opera con limitaciones o existe una alternativa; el efecto sobre el usuario es moderado. \\
-        4 & Bajo & Defecto cosmético, de texto o de documentación, de efecto mínimo. \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-Para este sistema, una prueba será considerada aprobada si el resultado
-obtenido coincide con el resultado esperado o si la falta observada es
-clasificada en un nivel 3 o 4. Eso significa que la prueba puede continuar; sin
-embargo, todas las faltas y defectos asociados deben ser registrados y
-tratados. Los reportes de incidentes de la prueba y los reportes de
-problema o defecto deben ser terminados para todas las fallas observadas. Todas
-las fallas se remiten a desarrollo y se priorizan para su subsecuente
-reparación, seguida por la prueba de regresión realizada por el grupo de
-prueba. Una prueba cuya falla es de severidad 1 o 2 se considera fallada.
-
-Dado que la salida del modelo de lenguaje y los tiempos de respuesta no son
-deterministas, un caso puede aprobar en una corrida y fallar en otra. Un caso
-se registra como No aprobado si falló en al menos una de las corridas del
-ciclo; en Observaciones se indica la frecuencia (fallas/corridas). En un
-contexto de salud, un defecto intermitente es un defecto.
+Un caso de prueba se considera aprobado si el resultado obtenido coincide con
+el esperado; en caso contrario se registra como No aprobado y se documenta un
+defecto. Los casos que no se ejecutaron se registran como No probado. La
+prueba del sistema se aprueba cuando se ejecutaron todos los casos, no hay
+defectos abiertos de severidad 1 o 2, y los de severidad 3 y 4 están
+registrados y, si se difieren, justificados.
 
 % ============================================================================
-\section{Criterio de Suspensión / Recomienzo}
+\section{Criterios de Suspensión y Reanudación}
 
-Normalmente la prueba se suspende al final de cada jornada. Todos los
-documentos relacionados con la prueba se guardan en el repositorio del
-proyecto y las pruebas se recomienzan al comienzo de la jornada siguiente.
-Además, las pruebas se suspenden en los siguientes casos:
-
-\begin{enumerate}[label=(\roman*)]
-    \item se observa una falla de severidad 1 o 2;
-    \item ocurre una falla del entorno, por ejemplo: el backend no inicia, el modelo LSTM no se carga, Ollama o la voz Piper no están disponibles, o el frontend no compila;
-    \item ocurre una falla de hardware (cámara, micrófono, altavoces o equipo de prueba);
-    \item el puerto del backend está ocupado por otra instancia, o se detecta que una prueba podría modificar la base de datos o el dataset reales.
-\end{enumerate}
-
-Cuando el defecto causante de la falla del software es reparado, se ejecuta una
-prueba de regresión sobre la nueva versión. Si la nueva versión pasa la
-regresión, la prueba normal puede ser recomenzada.
-
-Si durante las pruebas hay una falla de hardware o de entorno, el tester
-notifica al responsable correspondiente y recomienza las pruebas cuando las
-reparaciones hayan sido hechas, reiniciando la suite desde el principio para
-asegurar un estado inicial conocido.
+La prueba se suspende al final de cada jornada, ante una falla de severidad 1 o
+2, o ante una falla del entorno (el backend o el modelo no inician, la cámara o
+el micrófono no funcionan). Se reanuda al comienzo de la jornada siguiente o
+cuando el defecto o la falla del entorno se resolvió, ejecutando antes una
+prueba de regresión sobre la nueva versión.
 
 % ============================================================================
 \section{Entregables de la Prueba}
 
-Los siguientes ítems serán generados por el grupo de testing para este proyecto.
-
 \begin{itemize}
-    \item \textbf{Plan de Testing del sistema:} documento que describe el alcance, el acercamiento, los recursos y el cronograma de las actividades de prueba previstas (este documento).
-    \item \textbf{Especificaciones de casos de prueba del sistema:} documento que muestra entradas, resultados previstos y un conjunto de condiciones de ejecución para un ítem de prueba (catálogo de 83 casos con prerrequisitos, procedimiento, resultados esperados y datos de prueba).
-    \item \textbf{Especificaciones de procesos de prueba del sistema:} documento que exhibe la secuencia de acciones para la ejecución de una prueba (procedimiento de cada caso y guía de ejecución de las suites automatizadas).
-    \item \textbf{Registro de las pruebas del sistema:} listado cronológico de detalles relevantes sobre la ejecución de pruebas (resultados de las corridas API, UI y manuales).
-    \item \textbf{Reporte de incidentes de pruebas del sistema:} documento que reporta cualquier acontecimiento ocurrido durante el proceso de prueba que requiera una investigación (planilla de defectos).
-    \item \textbf{Reporte general de pruebas del sistema:} documento que sintetiza las actividades y los resultados de la prueba, con la matriz de cobertura e indicadores por ciclo.
+    \item \textbf{Plan de Testing} (este documento).
+    \item \textbf{Casos de Prueba:} planilla con los casos, sus pasos, resultados esperados y obtenidos.
+    \item \textbf{Defectos:} planilla de registro de defectos, según la plantilla de la cátedra.
+    \item \textbf{Observaciones y sugerencias:} resumen de los principales hallazgos de cada ciclo.
 \end{itemize}
 
 % ============================================================================
 \section{Tareas de Testing}
 
-Un listado de tareas de la prueba se encuentra en la
-Tabla~\ref{tab:tareas}. Fue preparado desarrollando una estructura para las
-tareas relacionadas con las pruebas requeridas por el proyecto. La lista
-enumera cada tarea, sus tareas precedentes, las habilidades especiales
-necesarias, la persona responsable, el esfuerzo requerido y la fecha de
-terminación. Las fechas posteriores al ciclo 1 son planificadas.
-
-\begin{table}[H]
-    \centering
-    \caption{Listado de tareas de testing}
-    \label{tab:tareas}
-    \footnotesize
-    \begin{tabularx}{\textwidth}{c >{\raggedright\arraybackslash}X c >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{2.3cm} r l}
-        \toprule
-        \textbf{N.°} & \textbf{Tarea} & \textbf{Prec.} & \textbf{Habilidades} & \textbf{Responsable} & \textbf{Esf. (h)} & \textbf{Fin} \\
-        \midrule
-        1 & Preparación del ambiente de testing & --- & Python, Node.js, Playwright & Hamada & 8 & 14/10/2026 \\
-        2 & Entrevistas y obtención de ejemplos del dominio (vocabulario, muestras, intérpretes) & --- & Dominio LSA & Véliz & 6 & 15/10/2026 \\
-        3 & Diseño de casos de prueba y de la matriz de cobertura & 1, 2 & Testing de caja negra & Arnedo, Véliz & 24 & 16/10/2026 \\
-        4 & Revisión de casos de prueba & 3 & Testing, ERS & García Tarcic & 6 & 19/10/2026 \\
-        5 & Automatización de casos de API y de UI & 3 & Python, Playwright & Hamada, García Tarcic & 32 & 19/10/2026 \\
-        6 & Ejecución del ciclo 1 y registro de resultados & 4, 5 & Ejecución de pruebas & Todos & 12 & 20/10/2026 \\
-        7 & Registro de defectos y comunicación a las áreas interesadas & 6 & Análisis de defectos & Arnedo & 4 & 21/10/2026 \\
-        8 & Corrección de defectos por desarrollo & 7 & Desarrollo & Equipo de desarrollo & 24 & 27/10/2026 \\
-        9 & Ejecución del ciclo 2: regresión automatizada & 8 & Ejecución de pruebas & Hamada, García Tarcic & 6 & 28/10/2026 \\
-        10 & Ejecución del ciclo 2: casos manuales con nuevo dataset & 8 & LSA, ejecución manual & Véliz, Arnedo & 8 & 29/10/2026 \\
-        11 & Informe general de pruebas y cierre & 9, 10 & Redacción técnica & Todos & 8 & 30/10/2026 \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
+Las tareas de la prueba, en orden, son: preparación del ambiente de testing;
+obtención de ejemplos del dominio; diseño y revisión de los casos de prueba;
+ejecución del ciclo 1 y registro de resultados; registro y comunicación de los
+defectos; corrección por el equipo de desarrollo; ejecución del ciclo 2
+(regresión) y cierre con el informe de resultados.
 
 % ============================================================================
-\section{Entorno de la Prueba}
+\section{Necesidades de Entorno}
 
-El sistema está basado en un backend FastAPI (Python, PyTorch, ONNX) que
-expone API REST y WebSocket, y en una interfaz web Next.js 14 con React y
-TypeScript. El motor de datos es SQLite embebido; las muestras del dataset se
-guardan como archivos \texttt{.npy}. La conversación se sincroniza entre caras
-mediante \texttt{BroadcastChannel}.
+La prueba se realiza sobre una estación local, sin servidores remotos:
+Windows 11, backend en Python 3.10 con FastAPI, interfaz web en Next.js
+ejecutada en Google Chrome, modelo de lenguaje local (Ollama con
+\texttt{qwen2:1.5b}), síntesis de voz Piper, base SQLite embebida, y una
+cámara web, un micrófono y altavoces. Para la accesibilidad se utiliza
+axe-core.
 
-La prueba se desarrolla sobre una estación local, sin servidores remotos:
-
-\begin{table}[H]
-    \centering
-    \caption{Entorno de prueba}
-    \label{tab:entorno}
-    \small
-    \begin{tabularx}{\textwidth}{>{\bfseries\raggedright\arraybackslash}p{4.4cm} X}
-        \toprule
-        Sistema operativo & Windows 11 \\
-        Backend & Python 3.10.11, FastAPI y Uvicorn en el puerto 8000 \\
-        Base de datos & SQLite temporal por corrida (\texttt{NEXORA\_DB\_PATH}); nunca \texttt{data/lsa\_salud.db} \\
-        Frontend & Next.js (\texttt{npm run dev}) en el puerto 3000 \\
-        Navegador & Chromium de Playwright (automatizadas) y Google Chrome (manuales) \\
-        Modelo de lenguaje & Ollama local con \texttt{qwen2:1.5b} \\
-        Síntesis de voz & Piper, voz \texttt{es\_AR-daniela-high} \\
-        Reconocimiento de señas & Modelo LSTM entrenado (\texttt{models/}) y MediaPipe \\
-        Hardware de la estación & PC con cámara web, micrófono y altavoces; dos pantallas o dos ventanas de navegador \\
-        Accesibilidad & axe-core (\texttt{@axe-core/playwright}) \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-Las pruebas \textbf{ui} usan cámara y micrófono falsos y un árbol de ejecución
-temporal. Los casos manuales usan la estación completa con cámara real y la
-persona que realiza las señas.
-
-\subsection{Responsabilidades y personal}
-\label{sec:resp}
+% ============================================================================
+\section{Responsabilidades y Personal}
 
 \begin{table}[H]
     \centering
     \caption{Roles y responsabilidades}
     \small
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}p{4cm} X}
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.6cm} >{\raggedright\arraybackslash}p{3.8cm} X}
         \toprule
-        \textbf{Integrante} & \textbf{Rol en la prueba} & \textbf{Responsabilidades} \\
+        \textbf{Integrante} & \textbf{Rol} & \textbf{Responsabilidades} \\
         \midrule
-        Hamada, Santino & Líder de testing; automatización de API & Ambiente de pruebas, arnés de API, ejecución y control de ciclos. \\
-        García Tarcic, Iñaki Ezequiel & Automatización de UI & Suite Playwright, simulaciones, accesibilidad, revisión de casos. \\
-        Véliz, Héctor Matias & Ejecución manual & Datos del dominio, casos manuales con persona real, sesión de dataset independiente. \\
-        Arnedo, Emmanuel Augusto & Casos de prueba y defectos & Diseño de casos, matriz de cobertura, registro y seguimiento de defectos. \\
-        Vicente, Francisco José (tutor) & Supervisión & Revisión del plan y de los informes. \\
+        Hamada, Santino & Líder de testing & Ambiente de pruebas, automatización y control de ciclos. \\
+        García Tarcic, Iñaki Ezequiel & Automatización y revisión & Automatización de pruebas y revisión de casos. \\
+        Véliz, Héctor Matias & Ejecución manual & Datos del dominio y casos manuales con persona real. \\
+        Arnedo, Emmanuel Augusto & Casos y defectos & Diseño de casos de prueba y registro de defectos. \\
+        Vicente, Francisco José & Tutor & Supervisión y revisión del plan y los informes. \\
+        López, Emmanuel & Cotutor & Supervisión. \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-El equipo no requiere capacitación adicional en el sistema; sí se requiere que
-quien ejecute los casos manuales conozca las señas del vocabulario entrenado
-(\texttt{yo}, \texttt{cabeza}, \texttt{dolor}, \texttt{respirar}) y el
-procedimiento de cada caso.
-
 % ============================================================================
-\section{Cronogramas}
+\section{Cronograma}
 
-A continuación se detalla el cronograma de la prueba. El ciclo 1 se ejecuta el
-20/10/2026; las demás fechas posteriores son planificadas.
+El ciclo 1 se ejecutó el 20/10/2026 sobre la versión \texttt{f29917a}. El ciclo
+2 (regresión) se ejecutó el 21/10/2026 sobre la versión \texttt{0638d22}, una
+vez corregidos los defectos; las comprobaciones manuales con una persona real
+quedan pendientes y las ejecuta el equipo.
 
 \begin{table}[H]
     \centering
     \caption{Cronograma de la prueba}
-    \label{tab:cronograma}
     \small
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm} >{\raggedright\arraybackslash}p{3.3cm} X}
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}p{3.6cm} X}
         \toprule
-        \textbf{Hito} & \textbf{Fecha} & \textbf{Descripción} \\
+        \textbf{Actividad} & \textbf{Fecha} & \textbf{Estado} \\
         \midrule
-        Preparación del ambiente y de los casos & 12/10--19/10/2026 & Tareas 1 a 5. \\
-        Ciclo 1 & 20/10/2026 & Ejecución de los 83 casos (36 api, 34 ui, 13 manual). \\
-        Registro y comunicación de defectos & 21/10/2026 & Planilla de defectos y envío a desarrollo (planificado). \\
-        Corrección por desarrollo & 22/10--27/10/2026 & Prioridad a defectos de severidad 1 y 2 (planificado). \\
-        Ciclo 2, regresión automatizada & 28/10/2026 & Suite API y UI completa sobre la versión corregida (planificado). \\
-        Ciclo 2, casos manuales con nuevo dataset & 29/10/2026 & Casos manuales con muestras de una sesión independiente (planificado). \\
-        Informe general y cierre & 30/10/2026 & Verificación de los criterios de terminación (planificado). \\
+        Preparación del ambiente y diseño de los casos & Hasta el 19/10/2026 & Realizada \\
+        Ciclo 1: ejecución inicial & 20/10/2026 & Ejecutado \\
+        Corrección de defectos por desarrollo & 21/10/2026 & Realizada \\
+        Ciclo 2: regresión & 21/10/2026 & Ejecutado \\
+        Ciclo 2: comprobaciones manuales con persona real & A definir por el equipo & Pendiente \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-\subsection{Aprobaciones}
+% ============================================================================
+\section{Riesgos y Contingencias}
+
+\begin{itemize}
+    \item Las salidas del modelo de lenguaje y los tiempos de respuesta varían entre ejecuciones; se verifican propiedades y no textos exactos, y se registra el equipo de prueba junto con las mediciones.
+    \item La disponibilidad de una persona usuaria de LSA para los casos manuales es limitada; se agenda con anticipación y se concentran los casos manuales en una única jornada por ciclo.
+    \item Las pruebas de captura y entrenamiento modifican el dataset; se ejecutan con etiquetas de prueba y se restaura el estado al finalizar.
+\end{itemize}
+
+% ============================================================================
+\section{Aprobaciones}
 
 \begin{table}[H]
     \centering

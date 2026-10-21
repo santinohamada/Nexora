@@ -3,2698 +3,803 @@
     "sistema": "LSA Salud",
     "version_sistema": "f29917a",
     "ciclo": 1,
-    "groups": {
-      "001": "CU-01 Comunicarse mediante Lengua de Señas Argentina",
-      "002": "CU-02 Traducir Secuencia de Señas a Oración Natural",
-      "003": "CU-03 Sintetizar Oración en Voz",
-      "004": "CU-04 Responder al Paciente",
-      "005": "CU-05 Dictar Respuesta por Voz",
-      "006": "CU-06 Capturar Muestra de Seña para Entrenamiento",
-      "007": "CU-07 Gestionar Vocabulario de Señas",
-      "008": "CU-08 Entrenar el Modelo de Reconocimiento",
-      "009": "CU-09 Otorgar Consentimiento Explícito de Cámara",
-      "010": "CU-10 Reportar Traducción Incorrecta o Ambigua",
-      "011": "CU-11 Registrar Evento de Auditoría",
-      "012": "CU-12 Finalizar Atención y Preparar la Estación para el Próximo Paciente",
-      "013": "Privacidad y seguridad (RNF-03.1, RNF-T-06)",
-      "014": "Rendimiento (RNF-01.1)",
-      "015": "Calidad, estación fija y restricciones del sistema (RNF-02, RNF-04 a RNF-07, RNF-T-02, RNF-T-03, RNF-T-04, RNF-T-05)"
+    "fecha": "2026-10-20",
+    "nota": "Un caso por grupo; el campo 'consolida' conserva el mapeo con los 83 casos originales.",
+    "ciclo_2": {
+      "ciclo": 2,
+      "fecha": "2026-10-21",
+      "version_sistema": "0638d22",
+      "tipo": "Regresión automatizada; las comprobaciones manuales quedan a cargo del equipo",
+      "resumen": {
+        "Si": 7,
+        "No": 0,
+        "No probado": 8
+      }
     }
   },
   "cases": [
     {
       "id": "TC-LSA-001-01",
       "grupo": "001",
-      "cu": "CU-01",
-      "rf": [
-        "RF-01",
-        "RF-01.1",
-        "RF-01.2",
-        "RF-01.3",
-        "RF-01.4",
-        "RF-01.5",
-        "RF-01.6",
-        "RF-01.7"
-      ],
-      "rnf": [
-        "RNF-01",
-        "RNF-T-05"
-      ],
-      "objetivo": "Verificar el escenario principal de CU-01 de punta a punta con una persona real que realiza las señas frente a la cámara.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "P-02 / CU-01",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Estación completa levantada (backend, frontend, Ollama activo y modelo qwen2:1.5b cargado, voz Piper presente).",
-        "Dos ventanas del mismo navegador Chrome: /paciente (P-02) y /recepcion (P-03).",
-        "Consentimiento de cámara otorgado en P-02 (CU-09).",
-        "Una persona que conoce las señas yo, cabeza y dolor del vocabulario entrenado."
-      ],
-      "procedimiento": [
-        "1. Ubicarse frente a la cámara y verificar que el área de video muestra la imagen y los puntos de referencia dibujados.",
-        "2. Realizar la seña yo, luego cabeza y luego dolor, encadenadas.",
-        "3. Observar el panel Top-3 Predicciones y la ventana de oración en construcción durante las señas.",
-        "4. Bajar las manos y quedarse quieto durante 2 segundos.",
-        "5. Observar el panel Conversación de P-02 y el panel Historial del Paciente de P-03.",
-        "6. Escuchar el audio.",
-        "7. Consultar GET /metrics al finalizar."
-      ],
-      "resultados_esperados": [
-        "1.- Los landmarks se dibujan en vivo sobre la imagen del paciente; el indicador muestra \"EN VIVO · Visión por computadora\".",
-        "3.- Las tres barras de Top-3 Predicciones se actualizan; cada palabra reconocida con confianza >= 70 % (y no idle) se agrega a la ventana superpuesta al video (por ejemplo \"yo cabeza dolor\").",
-        "4.- Tras >= 800 ms de quietud la ventana pasa a \"Generando respuesta de IA...\" sin que medie ningún botón de confirmación.",
-        "5.- Aparece una burbuja del rol PACIENTE con el texto \"Me duele la cabeza.\" en P-02 y, simultáneamente, en P-03; la ventana de oración desaparece.",
-        "6.- El audio con la frase se reproduce automáticamente aprox. 1 s después de mostrarse el texto, con voz en español rioplatense.",
-        "7.- counts incluye eventos prediction (uno por cada ventana enviada), 1 sentence y 1 translation_displayed; ningún evento contiene texto de la conversación."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "Requiere una persona real haciendo señas LSA; la cámara falsa de Chromium no produce landmarks reconocibles. El backend se prueba por separado en TC-LSA-001-02."
-    },
-    {
-      "id": "TC-LSA-001-02",
-      "grupo": "001",
-      "cu": "CU-01",
-      "rf": [
-        "RF-01.3",
-        "RF-01.5",
-        "RF-01.6",
-        "RF-04.1"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar la cadena de backend de CU-01 (clasificación por WebSocket, armado de secuencia y traducción) usando muestras reales del dataset.",
+      "modulo": "P-01, P-02, P-03, Backend / CU-01",
+      "objetivo": "Verificar el flujo de CU-01 (comunicarse mediante LSA): reconocimiento de señas, armado y cierre de la oración, y sus alternativas.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "Backend / CU-01",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Muestras reales presentes en dataset/custom (forma (45, 75, 4), float32)."
+        "Backend y frontend en ejecución; P-02 y P-03 abiertas en Google Chrome con el consentimiento de cámara otorgado.",
+        "Muestras del dataset y una persona que conoce las señas yo, cabeza y dolor."
       ],
       "procedimiento": [
-        "1. Abrir ws://localhost:8000/ws/predict?v=1 y enviar como texto JSON {\"frames\": <muestra yo>} (lista de 45 frames de 75 landmarks de 4 valores).",
-        "2. Repetir el envío con una muestra de cabeza y una de dolor, en la misma conexión.",
-        "3. Armar la secuencia con las tres palabras recibidas (\"yo cabeza dolor\") y enviarla con POST /process_sentence {\"words\": \"yo cabeza dolor\"}.",
-        "4. Consultar GET /metrics."
+        "Una persona realiza las señas yo, cabeza y dolor frente a la cámara y luego baja las manos.",
+        "Enviar al WebSocket muestras reales y predicciones simuladas (confianza de 70 %, reposo y repeticiones) y observar la oración armada.",
+        "Verificar el cierre de la oración y la burbuja en ambas caras, sin botón de confirmación.",
+        "Cerrar el WebSocket y simular una respuesta NO_CLARO.",
+        "Enviar al WebSocket mensajes inválidos y una trama binaria v2 válida."
       ],
       "resultados_esperados": [
-        "1.- Respuesta JSON con claves sign, confidence y top3; sign = \"yo\" y confidence >= 70.",
-        "2.- sign = \"cabeza\" y sign = \"dolor\" respectivamente, ambas con confidence >= 70; top3 tiene 3 elementos ordenados de mayor a menor confianza y la suma de confianzas es <= 100.",
-        "3.- HTTP 200 con natural_sentence = \"Me duele la cabeza.\", source = \"template\", audio_base64 no vacío, latency_ms numérico.",
-        "4.- counts.prediction aumento en 3 y counts.sentence en 1; translation_source.template aumento en 1."
+        "1.- Se reconocen las señas y se muestra \"Me duele la cabeza.\" en ambas caras con voz.",
+        "2.- Solo se agregan palabras con confianza >= 70 %, sin idle ni repeticiones consecutivas.",
+        "3.- La oración se cierra al reconocerse el reposo y la diferencia entre caras es <= 500 ms.",
+        "4.- Reintento de conexión sin errores; con NO_CLARO no se genera burbuja.",
+        "5.- El protocolo v1 devuelve errores sin cerrar la conexión; la trama v2 válida devuelve la seña dolor."
       ],
-      "ejecucion": "api",
-      "datos_prueba": "Muestras: dataset/custom/yo/1784298863533.npy, dataset/custom/cabeza/1784299817701.npy, dataset/custom/dolor/1784301773196.npy. El reconocimiento sobre muestras del conjunto de entrenamiento NO mide generalización (ver TC-LSA-015-02)."
-    },
-    {
-      "id": "TC-LSA-001-03",
-      "grupo": "001",
-      "cu": "CU-01",
-      "rf": [
-        "RF-01.1",
-        "RF-01.2"
+      "resultado_obtenido": "Ventanas de 20 a 45 frames; clasificación yo 99,83 %, cabeza 99,84 %, dolor 99,4 %; traducción \"Me duele la cabeza.\"; umbral y repeticiones correctos; reposo 20/20 como idle. Burbuja en ambas caras con 511 ms de diferencia en la última medición (límite 500 ms). Reintento a los 2,5 s sin errores; NO_CLARO sin burbuja; P-01 correcta. Toda trama binaria v2, incluso la válida, respondió {\"error\": \"'text'\"}.",
+      "observaciones": "No aprobado: DM-LSA-016 (diferencia entre caras en el límite) y DM-LSA-018 (protocolo v2 inalcanzable). Pendiente para el ciclo 2: la prueba de punta a punta con una persona real que realiza las señas (paso 1).",
+      "consolida": [
+        "TC-LSA-001-01",
+        "TC-LSA-001-02",
+        "TC-LSA-001-03",
+        "TC-LSA-001-04",
+        "TC-LSA-001-05",
+        "TC-LSA-001-06",
+        "TC-LSA-001-07",
+        "TC-LSA-001-08",
+        "TC-LSA-001-09",
+        "TC-LSA-001-10"
       ],
-      "rnf": [
-        "RNF-T-01"
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-016",
+        "DM-LSA-018"
       ],
-      "objetivo": "Verificar la captura de cámara en P-02 y el envío periódico de frames al WebSocket (mínimo 20 frames, cada 8 frames nuevos, máximo 45).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-02 / CU-01",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Consentimiento aceptado en P-02 con la cámara falsa.",
-        "Playwright escucha los frames de page.on('websocket') hacia /ws/predict."
-      ],
-      "procedimiento": [
-        "1. Abrir /paciente, pulsar \"Acepto y continúo\" y esperar a que la cámara se active.",
-        "2. Verificar el elemento video, el canvas superpuesto y el indicador de estado.",
-        "3. Registrar durante 10 s los mensajes de texto enviados por el WebSocket a /ws/predict?v=1 y la cantidad de frames de cada uno.",
-        "4. Inspeccionar la estructura de un mensaje: cada frame debe tener 75 landmarks de 4 números."
-      ],
-      "resultados_esperados": [
-        "2.- El texto \"Activando cámara...\" desaparece, video.srcObject es un MediaStream con una pista de video activa, el canvas existe y el indicador \"EN VIVO · Visión por computadora\" está visible.",
-        "3.- La conexión se abre con ?v=1; el primer mensaje contiene exactamente 20 frames y los siguientes crecen en pasos de al menos 8 frames (normalmente 28, 36 y 44) hasta estabilizarse en 45; ningún mensaje supera 45 frames (se admite que se omita algún envío si hay una respuesta pendiente).",
-        "4.- Cada frame es una lista de 75 landmarks y cada landmark una lista de 4 números [x, y, z, visibilidad]."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "La cámara falsa muestra un patron sintético: no hay persona, los frames contienen landmarks en cero, lo que es suficiente para verificar la cadencia y el formato. No se evalúa el reconocimiento. Hallazgo previo D-09: con el backend por defecto (legacy) no se capturan blendshapes."
-    },
-    {
-      "id": "TC-LSA-001-04",
-      "grupo": "001",
-      "cu": "CU-01",
-      "rf": [
-        "RF-01.3",
-        "RF-01.4",
-        "RF-05"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar que el frontend solo agrega palabras con confianza >= 70 %, descarta el estado idle y descarta repeticiones consecutivas, aunque el panel Top-3 se actualice siempre (extensiones 3a, 3b y 5a).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-02 / CU-01",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Consentimiento aceptado.",
-        "WebSocket /ws/predict interceptado con page.routeWebSocket para responder con predicciones simuladas (el reconocimiento real no se evalúa en este caso)."
-      ],
-      "procedimiento": [
-        "1. Responder {\"sign\":\"dolor\",\"confidence\":65,\"top3\":[{\"sign\":\"dolor\",\"confidence\":65},{\"sign\":\"cabeza\",\"confidence\":20},{\"sign\":\"yo\",\"confidence\":15}]}.",
-        "2. Responder una predicción dolor con confidence 90 pero con idle en el top3 con confidence 60.",
-        "3. Responder una predicción con sign \"idle\" y confidence 95.",
-        "4. Responder dolor con confidence 70.0 y top3 sin idle.",
-        "5. Responder otra vez dolor con confidence 90 (repetición consecutiva), luego cabeza con 90 y luego dolor con 90.",
-        "6. Leer en cada paso los elementos #pred-sign-0, #pred-conf-0 y #pred-bar-0 y el contenido de la ventana de oración."
-      ],
-      "resultados_esperados": [
-        "1.- Las barras se actualizan (#pred-sign-0 = \"dolor\", #pred-conf-0 = \"65.0%\") pero no se agrega ninguna palabra: la ventana de oración no aparece.",
-        "2.- Las barras se actualizan pero no se agrega palabra (idle domina el top-3 con más de 50 %).",
-        "3.- Las barras se actualizan; idle nunca se agrega a la secuencia.",
-        "4.- Con confianza exactamente 70.0 la palabra \"dolor\" se agrega (el umbral es inclusivo, RF-01.3) y aparece en la ventana.",
-        "5.- La repetición consecutiva de la misma palabra no se duplica; la secuencia resultante es \"dolor cabeza dolor\"."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Mensaje de prueba por paso: ver procedimiento. CU-01 real 5a dice \"supera el 70 %\" mientras que RF-01.3/RF-01.4 dicen >= 70 % (D-21)."
-    },
-    {
-      "id": "TC-LSA-001-05",
-      "grupo": "001",
-      "cu": "CU-01",
-      "rf": [
-        "RF-01.4",
-        "RF-01.7",
-        "RF-01.5"
-      ],
-      "rnf": [
-        "RNF-T-05"
-      ],
-      "objetivo": "Verificar el cierre de oración por quietud (>= 800 ms desde la última predicción distinta de reposo) y la publicación automática de la burbuja en ambas caras sin botón de confirmación.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-02, P-03 / CU-01",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "P-02 y P-03 abiertas en dos páginas del mismo contexto de navegador (mismo origen).",
-        "Predicciones simuladas vía page.routeWebSocket; cámara falsa estática (magnitud de movimiento 0).",
-        "Playwright registra las peticiones a /process_sentence con marca de tiempo."
-      ],
-      "procedimiento": [
-        "1. En P-02 simular las predicciones yo, cabeza y dolor (confidence 90) con 100 ms de separación y registrar el instante de la última.",
-        "2. No enviar más predicciones y observar la ventana de oración.",
-        "3. Registrar el instante de la petición POST /process_sentence y su cuerpo.",
-        "4. Observar el indicador de procesamiento y las burbujas en P-02 y en P-03.",
-        "5. Buscar en P-02 cualquier botón de confirmación o envío entre el cierre y la burbuja."
-      ],
-      "resultados_esperados": [
-        "1.- La ventana muestra \"yo cabeza dolor\".",
-        "3.- La petición se emite >= 800 ms después de la última predicción no idle y su cuerpo es {\"words\":\"yo cabeza dolor\"}.",
-        "4.- Mientras responde el backend se ve \"Generando respuesta de IA...\"; luego la ventana desaparece y aparece una burbuja PACIENTE con \"Me duele la cabeza.\" en P-02 y en P-03 (en menos de 500 ms entre ambas).",
-        "5.- No existe ningún botón de confirmación intermedio."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Predicción simulada: {\"sign\":\"yo\",\"confidence\":90,\"top3\":[{\"sign\":\"yo\",\"confidence\":90},{\"sign\":\"idle\",\"confidence\":6},{\"sign\":\"cabeza\",\"confidence\":4}]} (análoga para cabeza y dolor)."
-    },
-    {
-      "id": "TC-LSA-001-06",
-      "grupo": "001",
-      "cu": "CU-01",
-      "rf": [
-        "RF-01.2"
-      ],
-      "rnf": [
-        "RNF-T-01"
-      ],
-      "objetivo": "Verificar la reconexión automática del WebSocket cada 2 s sin mostrar errores al paciente (extensión *a).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-02 / CU-01",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Consentimiento aceptado; conexión /ws/predict abierta (page.routeWebSocket permite cerrarla desde el servidor)."
-      ],
-      "procedimiento": [
-        "1. Cerrar la conexión WebSocket desde el servidor y registrar el instante.",
-        "2. Registrar el instante del siguiente intento de conexión a /ws/predict.",
-        "3. Durante el corte, observar el video y buscar cualquier texto de error en la página.",
-        "4. Una vez reconectado, responder una predicción simulada con confianza 90 y verificar que se procesa."
-      ],
-      "resultados_esperados": [
-        "2.- El nuevo intento de conexión se produce aprox. 2 s después del cierre (entre 1.8 s y 3 s).",
-        "3.- El video sigue mostrando la cámara (srcObject activo) y la página no muestra ningún mensaje de error ni de desconexión.",
-        "4.- La palabra se agrega a la ventana de oración: el reconocimiento se reanuda sin intervención del paciente."
-      ],
-      "ejecucion": "ui"
-    },
-    {
-      "id": "TC-LSA-001-07",
-      "grupo": "001",
-      "cu": "CU-01",
-      "rf": [
-        "RF-01.5"
-      ],
-      "rnf": [
-        "RNF-T-01"
-      ],
-      "objetivo": "Verificar que cuando el sistema no logra una traducción clara (respuesta NO_CLARO) no se genera burbuja y la ventana desaparece (extensiones 6a/10a).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-02 / CU-01",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Predicciones simuladas; POST /process_sentence interceptado con page.route para responder {\"original\":\"dolor\",\"natural_sentence\":\"NO_CLARO\",\"audio_base64\":\"\",\"source\":\"ollama\",\"latency_ms\":10}."
-      ],
-      "procedimiento": [
-        "1. Simular la predicción dolor con confianza 90 y esperar el cierre de oración.",
-        "2. Observar la ventana de oración y el panel Conversación.",
-        "3. Verificar las peticiones a POST /audit."
-      ],
-      "resultados_esperados": [
-        "2.- \"Generando respuesta de IA...\" aparece y luego desaparece; el panel sigue mostrando \"La conversación aparecerá aquí\" (no se agrega ninguna burbuja).",
-        "3.- No se envía ningún evento translation_displayed."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Este caso prueba solo el filtro del frontend con la respuesta simulada. Hallazgo D-05: el backend real nunca devuelve \"NO_CLARO\" (devuelve las palabras originales), ver TC-LSA-002-08."
-    },
-    {
-      "id": "TC-LSA-001-08",
-      "grupo": "001",
-      "cu": "CU-01",
-      "rf": [
-        "RF-01.3",
-        "RF-01.4",
-        "RF-05"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar a nivel de backend que el estado de reposo se reconoce como idle y que una ventana degradada produce baja confianza (mecanismo de umbral).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "Backend / CU-01",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
-      ],
-      "procedimiento": [
-        "1. Enviar por /ws/predict las 20 muestras de dataset/custom/idle/ (una por mensaje).",
-        "2. Enviar la muestra de dolor truncada a sus primeros 10 frames.",
-        "3. Enviar por POST /predict la misma ventana de 10 frames."
-      ],
-      "resultados_esperados": [
-        "1.- Las 20 respuestas tienen sign = \"idle\" y confidence >= 70, por lo que el frontend no las agrega a la secuencia.",
-        "2.- La respuesta tiene confidence < 70 (observado 27.89 %), por lo que el frontend la descarta.",
-        "3.- HTTP 200 con el mismo criterio (confidence < 70)."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Muestras: dataset/custom/idle/*.npy; dataset/custom/dolor/1784301773196.npy[:10]. Observado previamente: sign=cabeza, confidence=27.89 para los 10 primeros frames de la muestra de dolor."
-    },
-    {
-      "id": "TC-LSA-001-09",
-      "grupo": "001",
-      "cu": "CU-01",
-      "rf": [
-        "RF-T-06"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar la página de inicio (P-01) y la navegación a cada estación.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-01 / CU-01",
-      "prioridad": "Baja",
-      "prerrequisitos": [
-        "Frontend iniciado en puerto 3000."
-      ],
-      "procedimiento": [
-        "1. Abrir /.",
-        "2. Pulsar la tarjeta \"Estación del Paciente\".",
-        "3. Volver a / y pulsar la tarjeta \"Estación de Recepción\"."
-      ],
-      "resultados_esperados": [
-        "1.- Se muestra el título \"Bienvenido a Nexora\" y las dos tarjetas \"Estación del Paciente\" y \"Estación de Recepción\".",
-        "2.- La URL pasa a /paciente y se muestra el diálogo de consentimiento (no se activa la cámara).",
-        "3.- La URL pasa a /recepcion y se muestra \"Estación de Recepción / Enfermería\"."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Hallazgo D-19: la interfaz usa la marca \"Nexora\" (logo y título) mientras que los documentos formales llaman al sistema LSA Salud."
-    },
-    {
-      "id": "TC-LSA-001-10",
-      "grupo": "001",
-      "cu": "CU-01",
-      "rf": [
-        "RF-01.2"
-      ],
-      "rnf": [
-        "RNF-T-01"
-      ],
-      "objetivo": "Verificar el protocolo del WebSocket de predicción: JSON por defecto (v1) y marco binario opcional (v2), con sus mensajes de error y sin cerrar la conexión.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "Backend / CU-01",
-      "prioridad": "Baja",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Muestra real de dataset/custom/dolor (45, 75, 4)."
-      ],
-      "procedimiento": [
-        "1. Abrir /ws/predict?v=1 y enviar un texto que no es JSON, un JSON sin clave frames y un JSON con 4 frames; luego una muestra valida.",
-        "2. Quedarse sin enviar nada durante 6 s.",
-        "3. Abrir /ws/predict?v=2 y enviar un marco binario válido: 4 bytes de cabecera (0x02, 0, 0, 0) más los float32 de 45 frames x 75 landmarks x 4 valores.",
-        "4. En v2, enviar un marco de 2 bytes, uno con cabecera 0x03, uno con 4 frames, uno con 65 frames y uno con una longitud no multiplo de un frame."
-      ],
-      "resultados_esperados": [
-        "1.- Cada entrada inválida recibe {\"error\": ...} (por ejemplo {\"error\": \"Too few frames (min 5)\"}) y la conexión sigue abierta; la muestra valida devuelve sign \"dolor\".",
-        "2.- A los 5 s (WS_RECEIVE_TIMEOUT_MS) el servidor envía {\"error\": \"receive timeout\"} y la conexión sigue abierta.",
-        "3.- Se devuelve una predicción con sign \"dolor\" y confidence >= 70.",
-        "4.- Respuestas de error \"binary header too short\", \"unsupported binary version\", \"frame count out of range\" (menos de 5 o más de 64 frames) y \"binary payload misaligned\"; la conexión sigue abierta."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-07 (previo): el servidor siempre usa JSON v1 porque lee scope[\"query\"] (inexistente); un marco binario produce {\"error\": \"'text'\"}. El frontend usa v1 por defecto (NEXT_PUBLIC_WS_PROTOCOL). La ERS no especifica v2. Muestra: dataset/custom/dolor/1784301773196.npy"
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Reconocimiento de yo, cabeza y dolor con 99,99 % de confianza; traducción \"Me duele la cabeza.\"; ventanas de 20 a 45 frames; umbral del 70 % inclusivo y repeticiones consecutivas sin duplicar; reposo 30/30 como idle. Burbuja en ambas caras con 64 ms de diferencia (límite 500 ms). Reintento de conexión a los 2155 ms sin errores en pantalla; NO_CLARO sin burbuja ni evento; P-01 correcta. El protocolo v1 devuelve errores sin cerrar la conexión y la trama binaria v2 válida devuelve la seña dolor.",
+        "aprobado": "No probado",
+        "observaciones": "DM-LSA-016 y DM-LSA-018 verificados y cerrados; DM-LSA-021 a DM-LSA-024 y DM-LSA-028, hallados en el ciclo 2, corregidos y cerrados. Pendiente (lo ejecutará el equipo): prueba de punta a punta con una persona real que realiza las señas (paso 1).",
+        "defectos_verificados": [
+          "DM-LSA-016",
+          "DM-LSA-018",
+          "DM-LSA-021",
+          "DM-LSA-022",
+          "DM-LSA-023",
+          "DM-LSA-024",
+          "DM-LSA-028"
+        ],
+        "pendiente_manual": [
+          "Paso 1: persona real realizando las señas yo, cabeza y dolor frente a la cámara"
+        ],
+        "comprobaciones_automatizadas": "API 001-02, 001-08, 001-10; UI 001-03 a 001-07 y 001-09; unitarias de inferencia y características"
+      }
     },
     {
       "id": "TC-LSA-002-01",
       "grupo": "002",
-      "cu": "CU-02",
-      "rf": [
-        "RF-01.5"
-      ],
-      "rnf": [
-        "RNF-01"
-      ],
-      "objetivo": "Verificar la traducción de una secuencia que coincide con una plantilla médica (escenario principal de CU-02).",
+      "modulo": "Backend / CU-02",
+      "objetivo": "Verificar la traducción de la secuencia de señas a una oración natural: plantillas, normalización, modelo de lenguaje, degradación y traducciones no claras.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "Backend / CU-02",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
+        "Backend en ejecución con el modelo de lenguaje local activo."
       ],
       "procedimiento": [
-        "1. Enviar POST /process_sentence con {\"words\": \"yo cabeza dolor\"}.",
-        "2. Enviar POST /process_sentence con {\"words\": \"dolor\"}.",
-        "3. Enviar POST /process_sentence con {\"words\": \"cabeza dolor respirar yo\"}."
+        "Enviar a /process_sentence combinaciones con plantilla, en otro orden, en mayúsculas, con repeticiones e idle, y una secuencia vacía.",
+        "Enviar combinaciones sin plantilla y repetir una consulta.",
+        "Enviar \"yo brazo dolor\" y \"fiebre tos\" y revisar la fidelidad de la oración.",
+        "Con el modelo de lenguaje detenido o sin responder, enviar una secuencia sin plantilla.",
+        "Enviar \"idle idle\" e \"idle\"."
       ],
       "resultados_esperados": [
-        "1.- HTTP 200; original = \"yo cabeza dolor\", natural_sentence = \"Me duele la cabeza.\", source = \"template\".",
-        "2.- HTTP 200; natural_sentence = \"Tengo dolor.\", source = \"template\".",
-        "3.- HTTP 200; natural_sentence = \"Me duele la cabeza, no puedo respirar bien.\", source = \"template\".",
-        "3.- Además, todas las respuestas incluyen audio_base64 y latency_ms numérico."
+        "1.- Oración de plantilla (source = template), normalizada; 400 para la secuencia vacía.",
+        "2.- Oración del modelo (source = ollama) y reutilización desde la caché.",
+        "3.- Una única oración fiel, sin términos ausentes ni fragmentos de instrucciones internas.",
+        "4.- Se devuelven las palabras originales con respuesta 200.",
+        "5.- La traducción se descarta (NO_CLARO o vacía)."
       ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-002-02",
-      "grupo": "002",
-      "cu": "CU-02",
-      "rf": [
-        "RF-01.5"
+      "resultado_obtenido": "Plantillas y normalización correctas (\"yo cabeza dolor\" -> \"Me duele la cabeza.\"); caché y degradación a las palabras originales correctas. \"yo brazo dolor\" devolvió \"Me duele el brazo. (NO agregues fiebre, ni cansancio, ni nada extra.)\" y, para \"yo dolor pecho\", el modelo devolvió en una ocasión un fragmento de sus instrucciones internas. \"idle idle\" e \"idle\" devolvieron esas mismas palabras como oración.",
+      "observaciones": "No aprobado: DM-LSA-001 (fidelidad clínica) y DM-LSA-002 (traducción no clara). Pendiente para el ciclo 2: evaluación humana de la calidad lingüística de las traducciones.",
+      "consolida": [
+        "TC-LSA-002-01",
+        "TC-LSA-002-02",
+        "TC-LSA-002-03",
+        "TC-LSA-002-04",
+        "TC-LSA-002-05",
+        "TC-LSA-002-06",
+        "TC-LSA-002-07"
       ],
-      "rnf": [],
-      "objetivo": "Verificar la normalización de la secuencia (mayúsculas, orden, repeticiones y palabra idle) y la validación de entrada vacía.",
-      "categoria": "Funcional",
-      "tipo": "Unidad",
-      "pantalla": "Backend / CU-02",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-001",
+        "DM-LSA-002"
       ],
-      "procedimiento": [
-        "1. Enviar las secuencias \"dolor yo cabeza\", \"CABEZA Dolor YO\", \"yo yo cabeza dolor idle\" y \"idle dolor\".",
-        "2. Enviar la secuencia \"cabeza\", \"yo\", \"respirar yo\" y \"dolor respirar yo\".",
-        "3. Enviar {\"words\": \"\"} y {\"words\": \"   \"}.",
-        "4. Enviar {} (sin campo words)."
-      ],
-      "resultados_esperados": [
-        "1.- Las tres primeras devuelven natural_sentence = \"Me duele la cabeza.\" con source = \"template\" (orden, mayúsculas, repeticiones e idle no alteran el resultado); \"idle dolor\" devuelve \"Tengo dolor.\".",
-        "2.- Respuestas \"Tengo algo en la cabeza.\", \"Necesito comunicar algo.\", \"No puedo respirar bien.\" y \"Tengo dolor y no puedo respirar bien.\", todas con source = \"template\".",
-        "3.- HTTP 400 con {\"detail\": \"Empty words\"} en ambos casos.",
-        "4.- HTTP 422 (campo words requerido)."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Plantillas alcanzables con el vocabulario entrenado (cabeza, dolor, respirar, yo): 15 combinaciones no vacías. Las entradas con ayuda, doctor o revisar son inalcanzables para el modelo actual."
-    },
-    {
-      "id": "TC-LSA-002-03",
-      "grupo": "002",
-      "cu": "CU-02",
-      "rf": [
-        "RF-01.5"
-      ],
-      "rnf": [
-        "RNF-T-01"
-      ],
-      "objetivo": "Verificar la delegación al modelo de lenguaje local para una combinación sin plantilla y la reutilización posterior desde la caché (extensión 3a1 y 3a2).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "Backend / CU-02",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Ollama activo con qwen2:1.5b y modelo ya cargado en memoria (ejecutar una llamada de calentamiento previa)."
-      ],
-      "procedimiento": [
-        "1. Enviar {\"words\": \"yo dolor pecho\"}.",
-        "2. Enviar {\"words\": \"pecho dolor yo yo\"} (misma combinación normalizada, otro orden).",
-        "3. Consultar GET /metrics."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 200; source = \"ollama\"; natural_sentence es una oración no vacía que menciona \"pecho\" (observado: \"Me duele el pecho.\") y no menciona partes del cuerpo o síntomas ausentes de la secuencia.",
-        "2.- HTTP 200; source = \"cache\", natural_sentence idéntica a la anterior y latency_ms <= 50.",
-        "3.- translation_source contiene \"ollama\": 1 y \"cache\": 1 (más las plantillas previas, si hubiera)."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "El texto exacto del modelo de lenguaje no es determinista: las verificaciones son por propiedades. Orden de búsqueda esperado: plantilla, caché (200 entradas), modelo de lenguaje."
-    },
-    {
-      "id": "TC-LSA-002-04",
-      "grupo": "002",
-      "cu": "CU-02",
-      "rf": [
-        "RF-01.5"
-      ],
-      "rnf": [
-        "RNF-T-01",
-        "RNF-T-02"
-      ],
-      "objetivo": "Verificar la degradación cuando Ollama no está disponible o no responde a tiempo: se usan las palabras originales sin interrumpir el flujo (extensión 3a2a).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "Backend / CU-02",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Servicio Ollama detenido (o modelo descargado de memoria para provocar el tiempo de espera de 8 s)."
-      ],
-      "procedimiento": [
-        "1. Enviar {\"words\": \"fiebre tos\"} y medir el tiempo de respuesta.",
-        "2. Repetir la misma petición.",
-        "3. Reiniciar Ollama y repetir la petición."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 200 (no 5xx); natural_sentence = \"fiebre tos\" (palabras originales), source = \"ollama\", audio_base64 presente, respuesta en <= 10 s.",
-        "2.- La traducción de reserva no se cachea: source sigue siendo \"ollama\" y no \"cache\".",
-        "3.- Con Ollama activo la respuesta ya es una oración generada por el modelo."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Observado: con Ollama frío, la primera llamada excedió los 8 s y devolvió las palabras originales (latency_ms aprox. 10400). Hallazgo D-15."
-    },
-    {
-      "id": "TC-LSA-002-05",
-      "grupo": "002",
-      "cu": "CU-02",
-      "rf": [
-        "RF-01.8",
-        "RF-05"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar la fidelidad clínica: la oración generada por el modelo de lenguaje no debe incorporar términos ausentes de la secuencia ni texto de instrucciones internas.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "Backend / CU-02",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Ollama activo y calentado."
-      ],
-      "procedimiento": [
-        "1. Enviar {\"words\": \"yo brazo dolor\"}.",
-        "2. Enviar {\"words\": \"yo dolor pecho\"} y {\"words\": \"fiebre tos\"}.",
-        "3. Revisar el texto devuelto buscando términos clínicos (síntomas, medicamentos, partes del cuerpo) que no estén en la secuencia y fragmentos de las instrucciones del prompt."
-      ],
-      "resultados_esperados": [
-        "1.- natural_sentence = una única oración que contiene solo términos presentes en la secuencia (por ejemplo \"Me duele el brazo.\"); no contiene \"fiebre\", \"cansancio\" ni el texto \"NO agregues\".",
-        "2.- Ninguna oración agrega términos clínicos ausentes; si el sistema detecta un término ausente debe devolver el texto original de la secuencia (RF-01.8).",
-        "3.- No hay fragmentos de instrucciones internas en ninguna respuesta."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-04 (previo): para \"yo brazo dolor\" el sistema devolvió \"Me duele el brazo. (NO agregues fiebre, ni cansancio, ni nada extra).\", es decir copió el ejemplo del prompt; además app.py no implementa ninguna verificación de términos clínicos posterior a la generación. Para \"fiebre tos\" se obtuvo \"Tiene febre y tos.\" (error ortográfico)."
-    },
-    {
-      "id": "TC-LSA-002-06",
-      "grupo": "002",
-      "cu": "CU-02",
-      "rf": [
-        "RF-01.5"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar que una combinación que el modelo de lenguaje considera no clara se descarta y no genera mensaje (extensión 3a2b).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "Backend / CU-02",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Ollama activo y calentado."
-      ],
-      "procedimiento": [
-        "1. Enviar {\"words\": \"idle idle\"} (ejemplo NO_CLARO del propio prompt).",
-        "2. Enviar {\"words\": \"idle\"}.",
-        "3. Comprobar que la respuesta no ofrece al frontend un texto mostrable como oración (natural_sentence vacío o igual a \"NO_CLARO\", que es lo único que el frontend descarta)."
-      ],
-      "resultados_esperados": [
-        "1.- Segun CU-02 3a2b la traducción se descarta: natural_sentence = \"NO_CLARO\" o vacío.",
-        "2.- Idem para la secuencia \"idle\".",
-        "3.- El frontend no muestra ninguna burbuja para esta respuesta."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-05 (previo): el backend devuelve HTTP 200 con natural_sentence = \"idle idle\" (las palabras originales) porque sobreescribe la traducción con las palabras cuando el modelo responde NO_CLARO o texto; el frontend solo filtra el literal \"NO_CLARO\", por lo que mostraría una burbuja con palabras crudas."
-    },
-    {
-      "id": "TC-LSA-002-07",
-      "grupo": "002",
-      "cu": "CU-02",
-      "rf": [
-        "RF-01.5",
-        "RF-01.8"
-      ],
-      "rnf": [],
-      "objetivo": "Evaluar con juicio humano la calidad lingüística de las traducciones del modelo de lenguaje: naturalidad, persona gramatical y ausencia de invenciones.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "Backend / CU-02",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Ollama activo.",
-        "Un evaluador hablante de español rioplatense y, idealmente, un intérprete de LSA."
-      ],
-      "procedimiento": [
-        "1. Enviar 10 secuencias sin plantilla (por ejemplo: \"yo dolor pecho\", \"ella dolor pecho\", \"yo dolor brazo\", \"yo respirar dolor pecho\", \"fiebre tos\", \"yo mareo\").",
-        "2. El evaluador puntúa cada oración de 1 a 5 en naturalidad, respeto de la persona gramatical y fidelidad (sin síntomas agregados)."
-      ],
-      "resultados_esperados": [
-        "2.- Promedio >= 4/5 en cada criterio y 0 oraciones con síntomas, medicamentos o partes del cuerpo agregados; una oración con sujeto \"ella\" no debe conjugarse en primera persona."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "La evaluación de naturalidad y fidelidad requiere criterio humano."
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Plantillas y normalización correctas (\"yo cabeza dolor\" -> \"Me duele la cabeza.\" en 283 ms); caché (segunda consulta con source=cache y 0 ms) y degradación a las palabras originales con el modelo de lenguaje caído o sin responder (8 s) correctas. \"yo brazo dolor\" -> \"Me duele el brazo.\" y \"yo dolor pecho\" -> \"Tengo dolor en el pecho.\" (461 y 503 ms), sin fragmentos de instrucciones ni términos clínicos ajenos; \"fiebre tos\" -> \"Tiene fiebre y tos.\". \"idle idle\" e \"idle\" devuelven NO_CLARO sin audio.",
+        "aprobado": "No probado",
+        "observaciones": "DM-LSA-001 y DM-LSA-002 verificados y cerrados. Pendiente (lo ejecutará el equipo): evaluación humana de la calidad lingüística de las traducciones.",
+        "defectos_verificados": [
+          "DM-LSA-001",
+          "DM-LSA-002"
+        ],
+        "pendiente_manual": [
+          "Evaluación humana de la calidad lingüística de las traducciones"
+        ],
+        "comprobaciones_automatizadas": "API 002-01 a 002-06; unitarias de fidelidad"
+      }
     },
     {
       "id": "TC-LSA-003-01",
       "grupo": "003",
-      "cu": "CU-03",
-      "rf": [
-        "RF-01.6"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar la síntesis de voz del escenario principal: el audio devuelto es un WAV válido en base64.",
+      "modulo": "Backend, P-02 / CU-03",
+      "objetivo": "Verificar la síntesis de voz de la oración: audio válido, caché, degradación sin el motor de voz y exhibición del texto antes del audio.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "Backend / CU-03",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Archivo voices/es_AR-daniela-high.onnx presente y cargado (log \"[Nexora] Piper TTS Model loaded (warmed up)\")."
+        "Backend y frontend en ejecución con la voz Piper instalada."
       ],
       "procedimiento": [
-        "1. Enviar {\"words\": \"dolor\"} a POST /process_sentence.",
-        "2. Decodificar audio_base64 y analizar el contenido.",
-        "3. Enviar {\"words\": \"cabeza dolor respirar yo\"} y comparar las duraciones."
+        "Enviar \"dolor\" a /process_sentence y validar el audio devuelto.",
+        "Repetir la misma oración y comparar la latencia.",
+        "Retirar la voz y repetir la consulta.",
+        "En P-02, medir el tiempo entre mostrar la burbuja y reproducir el audio.",
+        "Escuchar el audio y evaluar acento, inteligibilidad y volumen."
       ],
       "resultados_esperados": [
-        "1.- HTTP 200 con audio_base64 no vacío.",
-        "2.- Los bytes decodificados comienzan con \"RIFF\" y \"WAVE\"; mono, 16 bits, frecuencia = la del modelo de voz; duración > 0.3 s.",
-        "3.- El audio de la frase más larga dura más que el de \"Tengo dolor.\"."
+        "1.- Audio WAV válido en base64.",
+        "2.- La repetición reutiliza la caché.",
+        "3.- Respuesta 200 con audio vacío; el mensaje se entrega sin audio.",
+        "4.- El texto se muestra al menos 900 ms antes del audio.",
+        "5.- Voz con acento argentino, inteligible y con volumen adecuado."
       ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-003-02",
-      "grupo": "003",
-      "cu": "CU-03",
-      "rf": [
-        "RF-01.6"
+      "resultado_obtenido": "WAV mono de 16 bits y 22 050 Hz; síntesis de 1564 ms y repetición de 0 ms; sin la voz, respuesta 200 con audio vacío. Reproducción entre 838 y 919 ms después de la burbuja (mínimo 900 ms).",
+      "observaciones": "No aprobado: el tiempo de exhibición del texto no alcanza el mínimo en la mayoría de las mediciones (DM-LSA-016). Pendiente para el ciclo 2: evaluación humana de la calidad de la voz (paso 5).",
+      "consolida": [
+        "TC-LSA-003-01",
+        "TC-LSA-003-02",
+        "TC-LSA-003-03",
+        "TC-LSA-003-04",
+        "TC-LSA-003-05"
       ],
-      "rnf": [
-        "RNF-01"
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-016"
       ],
-      "objetivo": "Verificar la reutilización del audio desde la caché para una misma oración (extensión 2a).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "Backend / CU-03",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
-      ],
-      "procedimiento": [
-        "1. Enviar {\"words\": \"cabeza dolor respirar yo\"} (oración aún no sintetizada) y registrar latency_ms.",
-        "2. Repetir la petición.",
-        "3. Enviar {\"words\": \"yo cabeza dolor\"} y luego {\"words\": \"dolor yo cabeza\"}."
-      ],
-      "resultados_esperados": [
-        "1.- Primera respuesta con audio_base64 y latency_ms mayor a 100 ms (síntesis).",
-        "2.- audio_base64 idéntico al anterior y latency_ms <= 50 ms.",
-        "3.- Ambas secuencias comparten la oración \"Me duele la cabeza.\" y devuelven el mismo audio_base64; la segunda con latency_ms <= 50 ms."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "La caché de audio guarda hasta 50 oraciones (LRU); el desalojo no se prueba aquí."
-    },
-    {
-      "id": "TC-LSA-003-03",
-      "grupo": "003",
-      "cu": "CU-03",
-      "rf": [
-        "RF-01.6"
-      ],
-      "rnf": [
-        "RNF-T-01"
-      ],
-      "objetivo": "Verificar la degradación cuando el motor Piper no está cargado: el mensaje se entrega sin audio (extensión 3a).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "Backend / CU-03",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Iniciar el backend con la carpeta voices/ renombrada o sin el archivo es_AR-daniela-high.onnx (log \"[Nexora] Piper TTS Model not found\").",
-        "Base SQLite temporal."
-      ],
-      "procedimiento": [
-        "1. Enviar {\"words\": \"dolor\"} a POST /process_sentence.",
-        "2. Consultar GET /metrics."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 200 con natural_sentence = \"Tengo dolor.\", audio_base64 = \"\" y sin error.",
-        "2.- Se registro el evento sentence; el servicio sigue operativo."
-      ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-003-04",
-      "grupo": "003",
-      "cu": "CU-03",
-      "rf": [
-        "RF-01.6",
-        "RF-01.7"
-      ],
-      "rnf": [
-        "RNF-T-05"
-      ],
-      "objetivo": "Verificar que el texto se muestra antes del audio (ventana de exhibición de 1000 ms) y que sin audio no se intenta reproducir.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-02 / CU-03",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Predicciones simuladas; POST /process_sentence interceptado para devolver una frase fija con un WAV mínimo válido en audio_base64; window.Audio instrumentado con un espía sobre play()."
-      ],
-      "procedimiento": [
-        "1. Simular la predicción dolor (90) y esperar el cierre de oración.",
-        "2. Registrar el instante en que aparece la burbuja y el instante de la llamada a Audio.play().",
-        "3. Repetir con la respuesta interceptada audio_base64 = \"\"."
-      ],
-      "resultados_esperados": [
-        "2.- play() se invoca entre 900 y 1500 ms después de mostrarse la burbuja (ventana por defecto de 1000 ms).",
-        "3.- La burbuja se muestra igual y no se crea ni reproduce ningún Audio."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "La calidad percibida del audio se evalúa en TC-LSA-003-05."
-    },
-    {
-      "id": "TC-LSA-003-05",
-      "grupo": "003",
-      "cu": "CU-03",
-      "rf": [
-        "RF-01.6"
-      ],
-      "rnf": [
-        "RNF-T-05"
-      ],
-      "objetivo": "Evaluar la calidad de la voz sintetizada: acento argentino, inteligibilidad y volumen en la estación.",
-      "categoria": "Usabilidad",
-      "tipo": "Aceptación",
-      "pantalla": "P-03 / CU-03",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Estación con parlantes comerciales.",
-        "Tres oyentes (personal de recepción) en el box de atención."
-      ],
-      "procedimiento": [
-        "1. Reproducir las 15 frases de plantilla alcanzables (por ejemplo \"Me duele la cabeza.\", \"Tengo dolor y no puedo respirar bien.\").",
-        "2. Cada oyente puntúa de 1 a 5 la inteligibilidad y el acento rioplatense."
-      ],
-      "resultados_esperados": [
-        "2.- Promedio >= 4/5 en inteligibilidad y acento; el 100 % de las frases se entiende a 1.5 m de distancia en ambiente de guardia."
-      ],
-      "ejecucion": "manual"
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "WAV mono de 16 bits y 22 050 Hz (0,68 s para \"Tengo dolor.\"); síntesis de 616 ms y repetición de 0 ms; sin la voz, respuesta 200 con audio vacío y la oración como texto. En P-02 la reproducción comienza 1048 ms después de mostrarse la burbuja (mínimo 900 ms) y, con audio vacío, no se crea ningún reproductor.",
+        "aprobado": "No probado",
+        "observaciones": "Se cumple el tiempo previo al audio (parte de DM-LSA-016, cerrado). Pendiente (lo ejecutará el equipo): evaluación humana de la calidad de la voz (paso 5).",
+        "defectos_verificados": [],
+        "pendiente_manual": [
+          "Paso 5: escuchar el audio y evaluar acento, inteligibilidad y volumen"
+        ],
+        "comprobaciones_automatizadas": "API 003-01 a 003-03; UI 003-04"
+      }
     },
     {
       "id": "TC-LSA-004-01",
       "grupo": "004",
-      "cu": "CU-04",
-      "rf": [
-        "RF-02.1"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar el estado inicial de P-03 y la validación de texto vacío antes de habilitar el envío.",
+      "modulo": "P-03, P-02 / CU-04",
+      "objetivo": "Verificar que el personal responde al paciente por texto y que la respuesta se sincroniza en ambas caras.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "P-03 / CU-04",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08)."
+        "Frontend en ejecución con P-02 y P-03 abiertas en el mismo navegador."
       ],
       "procedimiento": [
-        "1. Abrir /recepcion.",
-        "2. Observar el botón \"Enviar\" con el área de texto vacía.",
-        "3. Escribir tres espacios en el área \"Escribir...\".",
-        "4. Escribir \"  Pase a la sala 2  \" y pulsar \"Enviar\".",
-        "5. Borrar el contenido del área."
+        "Abrir P-03 y verificar el estado inicial y que Enviar está deshabilitado con el área vacía o con solo espacios.",
+        "Escribir \"  Pase a la sala 2  \" y pulsar Enviar.",
+        "Observar la conversación en P-03 y en P-02.",
+        "Enviar un texto con etiquetas HTML y otro de 1000 caracteres."
       ],
       "resultados_esperados": [
-        "1.- Se muestran \"Estación de Recepción / Enfermería\", \"Historial del Paciente\" y el texto \"No hay mensajes en la conversación.\".",
-        "2.- El botón \"Enviar\" está deshabilitado.",
-        "3.- Con solo espacios el botón sigue deshabilitado.",
-        "4.- Se agrega una burbuja con el texto sin espacios laterales (\"Pase a la sala 2\") y el área queda vacía.",
-        "5.- El botón vuelve a estar deshabilitado."
+        "1.- \"Enviar\" deshabilitado.",
+        "2.- La burbuja contiene \"Pase a la sala 2\" y el área queda vacía.",
+        "3.- La burbuja RECEPCIONISTA aparece en ambas caras, sin botón de reporte.",
+        "4.- Se muestra como texto plano y la interfaz no se rompe."
       ],
-      "ejecucion": "ui"
-    },
-    {
-      "id": "TC-LSA-004-02",
-      "grupo": "004",
-      "cu": "CU-04",
-      "rf": [
-        "RF-02",
-        "RF-02.1",
-        "RF-01.7"
+      "resultado_obtenido": "Estado inicial y botón deshabilitado correctos; la burbuja aparece en ambas caras con 1 ms de diferencia; las etiquetas HTML se muestran literalmente y el texto de 1000 caracteres se conserva sin desborde.",
+      "observaciones": "Sin observaciones. No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-004-01",
+        "TC-LSA-004-02",
+        "TC-LSA-004-03"
       ],
-      "rnf": [
-        "RNF-T-05"
-      ],
-      "objetivo": "Verificar el escenario principal de CU-04: la respuesta escrita aparece en ambas caras sincronizadas.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-03, P-02 / CU-04",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "P-02 (con consentimiento aceptado) y P-03 abiertas en dos páginas del mismo contexto."
-      ],
-      "procedimiento": [
-        "1. En P-03 escribir \"Pase a la sala 2, por favor.\".",
-        "2. Pulsar \"Enviar\" y medir el tiempo hasta que la burbuja aparezca en P-02.",
-        "3. Inyectar en P-03 un mensaje del paciente (BroadcastChannel nexora-chat) y verificar que aparece con el botón \"Reportar traducción\".",
-        "4. Comparar el orden de los mensajes en ambas caras."
-      ],
-      "resultados_esperados": [
-        "2.- En P-03 aparece una burbuja del rol RECEPCIONISTA alineada a la derecha con el texto y el área se vacía; la misma burbuja aparece en P-02 en menos de 500 ms y no tiene botón \"Reportar traducción\".",
-        "3.- El mensaje del paciente se muestra en P-03 con el rol PACIENTE y el botón \"Reportar traducción\".",
-        "4.- Ambas caras muestran los mensajes en el mismo orden y sin duplicados (deduplicación por id al reenviar el mismo id)."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Mensaje inyectado: {\"type\":\"MESSAGE\",\"payload\":{\"id\":1700000000001,\"role\":\"PACIENTE\",\"text\":\"Me duele la cabeza.\",\"time\":\"10:00\",\"words\":[\"yo\",\"cabeza\",\"dolor\"]}}. Reinyectar el mismo id debe dejar una sola burbuja."
-    },
-    {
-      "id": "TC-LSA-004-03",
-      "grupo": "004",
-      "cu": "CU-04",
-      "rf": [
-        "RF-02.1"
-      ],
-      "rnf": [
-        "RNF-03"
-      ],
-      "objetivo": "Verificar que el contenido de una respuesta se muestra como texto plano y que un texto muy largo no rompe la interfaz.",
-      "categoria": "Seguridad",
-      "tipo": "Funcional",
-      "pantalla": "P-03 / CU-04",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Escuchar el evento de diálogo y de error de página (page.on('dialog'), page.on('pageerror'))."
-      ],
-      "procedimiento": [
-        "1. Enviar desde P-03 el texto \"<img src=x onerror=alert(1)> <b>negrita</b>\".",
-        "2. Enviar un texto de 1000 caracteres con acentos, ñ y signos ¿?¡!.",
-        "3. Observar P-03 y P-02."
-      ],
-      "resultados_esperados": [
-        "1.- Las etiquetas se muestran literalmente como texto; no se ejecuta ningún script ni se dispara ningún diálogo; no hay errores de página.",
-        "2.- El texto completo aparece sin pérdida de caracteres y la página no genera barra de desplazamiento horizontal.",
-        "3.- Ambas caras muestran el mismo contenido."
-      ],
-      "ejecucion": "ui"
+      "aprobado": "Si",
+      "defectos": [],
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Estado inicial y botón Enviar deshabilitado (área vacía o solo espacios) correctos; la burbuja \"Pase a la sala 2\" aparece en ambas caras con 104 ms de diferencia; el mensaje del paciente inyectado se muestra con rol PACIENTE y no se duplica al reinyectar el mismo id; las etiquetas HTML se muestran literalmente (0 diálogos) y el texto de 1000 caracteres se conserva sin desborde.",
+        "aprobado": "Si",
+        "observaciones": "Sin observaciones. No quedan comprobaciones manuales pendientes.",
+        "defectos_verificados": [],
+        "pendiente_manual": [],
+        "comprobaciones_automatizadas": "UI 004-01 a 004-03"
+      }
     },
     {
       "id": "TC-LSA-005-01",
       "grupo": "005",
-      "cu": "CU-05",
-      "rf": [
-        "RF-02.2",
-        "RF-02.1"
-      ],
-      "rnf": [
-        "RNF-T-04"
-      ],
-      "objetivo": "Verificar el escenario principal del dictado: el texto transcripto se suma al texto ya escrito y queda listo para enviarse.",
+      "modulo": "P-03 / CU-05",
+      "objetivo": "Verificar el dictado de la respuesta por voz: acumulación del texto, varios segmentos, detención y caminos de excepción.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "P-03 / CU-05",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "window.SpeechRecognition sustituido por un doble de prueba (add_init_script) que emite resultados parciales y finales controlados; el reconocimiento real depende de servidores de Google."
+        "P-03 abierta en Google Chrome; reconocimiento de voz simulado para las pruebas automáticas y micrófono operativo para la prueba real."
       ],
       "procedimiento": [
-        "1. Escribir \"Buenos días\" en el área de texto.",
-        "2. Pulsar el botón de micrófono.",
-        "3. El doble emite el parcial \"pase\" y luego el final \"pase por favor\".",
-        "4. Pulsar nuevamente el botón de micrófono.",
-        "5. Pulsar \"Enviar\"."
+        "Escribir \"Buenos días\", activar el micrófono y dictar \"pase\".",
+        "Dictar dos segmentos finales consecutivos.",
+        "Pulsar nuevamente el micrófono para detener el dictado.",
+        "Repetir en un navegador sin soporte de voz y con un error de micrófono.",
+        "Realizar un dictado real con micrófono y reconocimiento en español de Argentina."
       ],
       "resultados_esperados": [
-        "2.- Aparece \"Escuchando... click para detener\"; el doble reporta lang = \"es-AR\", continuous = true e interimResults = true.",
-        "3.- El área muestra primero \"Buenos días pase\" y después \"Buenos días pase por favor\" (el dictado se acumula sobre el texto previo).",
-        "4.- El indicador vuelve a \"← Click para hablar\".",
-        "5.- La respuesta \"Buenos días pase por favor\" se envía y aparece en P-03 y P-02."
+        "1.- El área contiene \"Buenos días pase\".",
+        "2.- Se conservan ambos segmentos.",
+        "3.- La sesión de reconocimiento se detiene.",
+        "4.- Un único aviso y la respuesta escrita sigue funcionando.",
+        "5.- El texto dictado se transcribe correctamente."
       ],
-      "ejecucion": "ui",
-      "datos_prueba": "La exactitud del reconocimiento de voz real se evalúa en TC-LSA-005-04. Texto del indicador en TP7: \"Click para hablar\" (D-21)."
-    },
-    {
-      "id": "TC-LSA-005-02",
-      "grupo": "005",
-      "cu": "CU-05",
-      "rf": [
-        "RF-02.2"
+      "resultado_obtenido": "Con el dictado simulado el área mostró \"pase\" (se esperaba \"Buenos días pase\") y, con dos segmentos, solo \"y su credencial\"; la sesión iniciada siguió activa tras detener. Sin soporte de voz: micrófono deshabilitado y respuesta escrita funcional, con dos avisos distintos; el error not-allowed se informa correctamente.",
+      "observaciones": "No aprobado: DM-LSA-013, DM-LSA-014 y DM-LSA-019. Pendiente para el ciclo 2: el dictado real en Chrome (paso 5).",
+      "consolida": [
+        "TC-LSA-005-01",
+        "TC-LSA-005-02",
+        "TC-LSA-005-03",
+        "TC-LSA-005-04"
       ],
-      "rnf": [],
-      "objetivo": "Verificar que varios segmentos finales dictados en una misma sesión se conservan en el área de texto.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-03 / CU-05",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Doble de SpeechRecognition como en TC-LSA-005-01."
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-013",
+        "DM-LSA-014",
+        "DM-LSA-019"
       ],
-      "procedimiento": [
-        "1. Pulsar el botón de micrófono con el área vacía.",
-        "2. El doble emite un resultado final \"necesito su documento\" (resultIndex 0) y después un segundo resultado final \"y su credencial\" (resultIndex 1) en la misma sesión continua.",
-        "3. Leer el contenido del área de texto."
-      ],
-      "resultados_esperados": [
-        "3.- El área contiene \"necesito su documento y su credencial\" (CU-05 paso 5: el sistema conserva el texto transcripto)."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Hallazgo D-14 (análisis de código, a confirmar en ejecución): useSpeechToText entrega solo el texto de los resultados nuevos y ReceptionControls reemplaza el contenido, por lo que el primer segmento se perdería."
-    },
-    {
-      "id": "TC-LSA-005-03",
-      "grupo": "005",
-      "cu": "CU-05",
-      "rf": [
-        "RF-02.2"
-      ],
-      "rnf": [
-        "RNF-T-04"
-      ],
-      "objetivo": "Verificar los caminos de excepción del dictado: navegador sin soporte (1a) y error de micrófono (2a).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-03 / CU-05",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08)."
-      ],
-      "procedimiento": [
-        "1. Cargar /recepcion eliminando window.SpeechRecognition y window.webkitSpeechRecognition (add_init_script).",
-        "2. Intentar pulsar el botón de micrófono y escribir manualmente una respuesta.",
-        "3. En otro contexto con el doble de SpeechRecognition, pulsar el micrófono y hacer que el doble dispare onerror con error = \"not-allowed\"."
-      ],
-      "resultados_esperados": [
-        "1.- Se muestra \"El navegador no soporta reconocimiento de voz.\" y el botón de micrófono está deshabilitado.",
-        "2.- Escribir y enviar sigue funcionando.",
-        "3.- Se muestra \"Error de micrófono: not-allowed\", el indicador vuelve a \"← Click para hablar\" y el sistema deja de escuchar."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Hallazgo D-14: sin soporte el hook además fija error = \"Tu navegador no soporta el reconocimiento de voz. Intentá usar Google Chrome.\", por lo que también se renderiza \"Error de micrófono: Tu navegador no soporta ...\" (aviso duplicado no previsto en CU-05 real 1a)."
-    },
-    {
-      "id": "TC-LSA-005-04",
-      "grupo": "005",
-      "cu": "CU-05",
-      "rf": [
-        "RF-02.2"
-      ],
-      "rnf": [
-        "RNF-T-04"
-      ],
-      "objetivo": "Verificar el dictado real en Google Chrome con micrófono y reconocimiento es-AR.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "P-03 / CU-05",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Google Chrome con acceso a Internet (la Web Speech API envía el audio al servicio del navegador) y micrófono habilitado.",
-        "Una persona hablante de español rioplatense."
-      ],
-      "procedimiento": [
-        "1. Abrir /recepcion, pulsar el micrófono y dictar \"Necesito su documento de identidad y su credencial\".",
-        "2. Detener el dictado y revisar el texto.",
-        "3. Enviar la respuesta."
-      ],
-      "resultados_esperados": [
-        "2.- Aparecen resultados parciales durante el habla y el texto final es sustancialmente correcto (<= 1 palabra incorrecta).",
-        "3.- La respuesta se envía y se muestra en ambas caras."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "Depende del servicio de voz del navegador (fuera del control del sistema) y de la voz del usuario."
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Con el dictado simulado (es-AR, continuo) el área acumula el texto: \"Buenos días pase\" y, tras el segmento final, \"Buenos días pase por favor\"; con dos segmentos finales queda \"necesito su documento y su credencial\"; al pulsar de nuevo el micrófono el indicador vuelve a \"Click para hablar\" y la instancia deja de estar activa. Sin soporte de voz: aviso único, micrófono deshabilitado y respuesta escrita funcional; el error not-allowed se informa correctamente.",
+        "aprobado": "No probado",
+        "observaciones": "DM-LSA-013, DM-LSA-014 y DM-LSA-019 verificados y cerrados. Pendiente (lo ejecutará el equipo): dictado real en Chrome con micrófono y reconocimiento en español de Argentina (paso 5).",
+        "defectos_verificados": [
+          "DM-LSA-013",
+          "DM-LSA-014",
+          "DM-LSA-019"
+        ],
+        "pendiente_manual": [
+          "Paso 5: dictado real con micrófono y reconocimiento en español de Argentina"
+        ],
+        "comprobaciones_automatizadas": "UI 005-01 a 005-03"
+      }
     },
     {
       "id": "TC-LSA-006-01",
       "grupo": "006",
-      "cu": "CU-06",
-      "rf": [
-        "RF-T-03",
-        "RF-T-04",
-        "RF-T-02"
-      ],
-      "rnf": [
-        "RNF-05"
-      ],
-      "objetivo": "Verificar el escenario principal de CU-06: grabar una muestra con cuenta regresiva de 3 s, 45 frames y guardado asociado a la etiqueta.",
+      "modulo": "P-04, Backend / CU-06",
+      "objetivo": "Verificar la captura de muestras de señas: grabación, repeticiones, etiquetas nuevas, detención anticipada y validación de los datos de /capture.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "P-04 / CU-06",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08). Todas las etiquetas creadas por el caso usan el prefijo zz_tc_ y sus carpetas se eliminan al finalizar (dataset/custom/zz_tc_*).",
-        "Consentimiento aceptado y cámara falsa activa en /paciente.",
-        "Playwright intercepta (sin modificar) POST /capture para inspeccionar el cuerpo."
+        "Backend y frontend en ejecución; Modo Captura (P-04) abierto con el consentimiento de cámara otorgado."
       ],
       "procedimiento": [
-        "1. En P-02 pulsar \"Ajustes (Modo Captura)\".",
-        "2. Verificar el contenido de la pantalla y seleccionar el chip \"dolor\" (Repeticiones = 1).",
-        "3. Pulsar \"Empezar\" y registrar los números de la cuenta regresiva y los instantes.",
-        "4. Observar el indicador de grabación hasta el guardado.",
-        "5. Verificar el cuerpo de POST /capture, la respuesta y el archivo resultante en dataset/custom/dolor/.",
-        "6. Volver al paso 2 y comprobar el contador del chip."
+        "Grabar una muestra con una etiqueta existente y otra nueva (cuenta regresiva de 3 s, 45 frames).",
+        "Grabar tres repeticiones y probar el campo Repeticiones con 0, vacío y -2.",
+        "Pulsar Detener durante la cuenta regresiva y durante la grabación.",
+        "Enviar a /capture muestras con pocos frames, valores NaN y formas inválidas.",
+        "Grabar una seña con una persona real y revisar que la muestra contenga manos detectadas."
       ],
       "resultados_esperados": [
-        "1.- Se muestra \"Modo de Captura\", \"Seña a grabar:\", el botón \"Volver a Inferencia\", los chips de las clases del modelo y de las carpetas del dataset ordenados alfabéticamente y sin el chip \"idle\"; cada chip muestra su contador entre paréntesis, por ejemplo \"dolor (20)\".",
-        "2.- Debajo del video se lee \"Grabando para: dolor (20 muestras)\".",
-        "3.- Se muestra la cuenta regresiva 3, 2, 1 (aprox. 1 s por número).",
-        "4.- Se muestra el indicador \"GRABANDO\" y después \"Procesando...\" y \"¡Guardado!\".",
-        "5.- El cuerpo contiene label = \"dolor\", mode = \"legacy\" y frames con 45 elementos de 75 landmarks de 4 valores; respuesta HTTP 200 con status \"ok\", saved_to y samples_for_label igual a la cantidad previa + 1 (21 con la etiqueta dolor); el archivo es un .npy de forma (45, 75, 4) float32.",
-        "6.- El chip muestra \"dolor (21)\" (la cantidad previa + 1)."
+        "1.- Archivo .npy de forma (45, 75, 4); la carpeta de una etiqueta nueva se crea al guardar.",
+        "2.- Se guardan tres muestras; \"¡Guardado!\" solo aparece si se guardó algo.",
+        "3.- Detener cancela la grabación sin guardar.",
+        "4.- Los datos inválidos se rechazan con 400, sin errores 500 ni archivos corruptos.",
+        "5.- La muestra contiene landmarks de manos."
       ],
-      "ejecucion": "ui",
-      "datos_prueba": "Para no alterar el dataset real se puede usar la etiqueta de prueba zz_tc_006 (creada con \"Nueva seña\") en lugar de dolor y borrar su carpeta luego. Con la cámara falsa los frames tienen landmarks en cero: valida el flujo, no la calidad de la seña (ver TC-LSA-006-09)."
-    },
-    {
-      "id": "TC-LSA-006-02",
-      "grupo": "006",
-      "cu": "CU-06",
-      "rf": [
-        "RF-T-03"
+      "resultado_obtenido": "Grabación simple y de tres repeticiones correctas, con archivos de forma (45, 75, 4) y carpeta creada al guardar. Con Repeticiones = -2 se mostró \"¡Guardado!\" sin guardar nada. \"Detener\" no canceló la secuencia: se guardó una muestra. /capture rechazó con 400 pocos frames, NaN y blendshapes faltantes, pero aceptó una forma (5, 2, 2) y respondió 500 ante formas irregulares.",
+      "observaciones": "No aprobado: DM-LSA-004, DM-LSA-008 y DM-LSA-012. Pendiente para el ciclo 2: la grabación con una persona real (paso 5).",
+      "consolida": [
+        "TC-LSA-006-01",
+        "TC-LSA-006-02",
+        "TC-LSA-006-03",
+        "TC-LSA-006-04",
+        "TC-LSA-006-05",
+        "TC-LSA-006-06",
+        "TC-LSA-006-07",
+        "TC-LSA-006-08"
       ],
-      "rnf": [],
-      "objetivo": "Verificar la grabación de varias repeticiones consecutivas y el comportamiento del campo Repeticiones.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-04 / CU-06",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08). Todas las etiquetas creadas por el caso usan el prefijo zz_tc_ y sus carpetas se eliminan al finalizar (dataset/custom/zz_tc_*).",
-        "Modo Captura abierto con la etiqueta zz_tc_006 seleccionada."
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-004",
+        "DM-LSA-008",
+        "DM-LSA-012"
       ],
-      "procedimiento": [
-        "1. Establecer Repeticiones = 3 y pulsar \"Empezar\".",
-        "2. Observar el indicador de muestra y contar las peticiones POST /capture.",
-        "3. Al finalizar, observar el contador de la etiqueta.",
-        "4. Probar el campo Repeticiones con los valores 0, vacío y -2 y pulsar \"Empezar\" en cada caso."
-      ],
-      "resultados_esperados": [
-        "2.- El indicador pasa por \"MUESTRA 1 / 3\", \"MUESTRA 2 / 3\" y \"MUESTRA 3 / 3\"; se emiten exactamente 3 peticiones POST /capture con 45 frames cada una.",
-        "3.- El contador de zz_tc_006 aumenta en 3.",
-        "4.- 0 y vacío se normalizan a 1 repetición; -2 no debe permitirse (el campo declara min=1): no debe mostrarse \"¡Guardado!\" sin haber guardado ninguna muestra."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Hallazgo D-11 (análisis de código): con -2 el bucle no ejecuta ninguna repetición y la pantalla igualmente muestra \"¡Guardado!\"."
-    },
-    {
-      "id": "TC-LSA-006-03",
-      "grupo": "006",
-      "cu": "CU-06",
-      "rf": [
-        "RF-T-01",
-        "RF-T-04"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar la creación de una etiqueta nueva y que la carpeta solo se crea al guardar la primera muestra (extensión 2a).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-04 / CU-06",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08). Todas las etiquetas creadas por el caso usan el prefijo zz_tc_ y sus carpetas se eliminan al finalizar (dataset/custom/zz_tc_*).",
-        "Modo Captura abierto."
-      ],
-      "procedimiento": [
-        "1. Pulsar \"Nueva seña\" y escribir \"zz_tc_006\" en el campo \"Nombre de la nueva seña...\".",
-        "2. Pulsar \"Agregar\".",
-        "3. Verificar el texto debajo del video y comprobar si existe dataset/custom/zz_tc_006.",
-        "4. Grabar una muestra (Repeticiones = 1).",
-        "5. Comprobar nuevamente la carpeta y GET /dataset_stats."
-      ],
-      "resultados_esperados": [
-        "2.- Aparece el chip \"zz_tc_006\" seleccionado.",
-        "3.- Se lee \"Grabando para: zz_tc_006\" con el aviso \"(nueva — la carpeta se crea al grabar)\" y la carpeta todavía no existe.",
-        "5.- La carpeta existe con 1 archivo .npy y /dataset_stats incluye zz_tc_006: 1; el chip muestra \"zz_tc_006 (1)\"."
-      ],
-      "ejecucion": "ui"
-    },
-    {
-      "id": "TC-LSA-006-04",
-      "grupo": "006",
-      "cu": "CU-06",
-      "rf": [
-        "RF-T-03"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar que \"Detener\" cancela la repetición en curso sin guardarla, tanto durante la cuenta regresiva como durante la grabación (extensión 6a / 5a real).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-04 / CU-06",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08). Todas las etiquetas creadas por el caso usan el prefijo zz_tc_ y sus carpetas se eliminan al finalizar (dataset/custom/zz_tc_*).",
-        "Modo Captura abierto con zz_tc_006 seleccionada y Repeticiones = 2; POST /capture observado."
-      ],
-      "procedimiento": [
-        "1. Pulsar \"Empezar\" y, durante la cuenta regresiva, pulsar \"Detener\".",
-        "2. Esperar 8 s y observar la pantalla, las peticiones POST /capture y la carpeta de la etiqueta.",
-        "3. Pulsar \"Empezar\", esperar al indicador \"GRABANDO\" y pulsar \"Detener\" tras unos pocos frames.",
-        "4. Esperar 8 s y repetir las observaciones."
-      ],
-      "resultados_esperados": [
-        "1.- El botón vuelve a \"Empezar\" y desaparece la cuenta regresiva.",
-        "2.- No se emite ninguna petición POST /capture, la pantalla permanece en su estado inicial y el contador de la etiqueta no cambia.",
-        "4.- No se guarda la repetición cancelada ni se continúa con repeticiones restantes; el contador no cambia."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Hallazgo D-12 (análisis de código, a confirmar en ejecución): handleStop no aborta recordOneSample ni el bucle de repeticiones; tras detener durante la cuenta regresiva la secuencia continuaría grabando, y al detener durante la grabación se enviaría a /capture la muestra parcial (se guarda si tiene >= 5 frames)."
-    },
-    {
-      "id": "TC-LSA-006-05",
-      "grupo": "006",
-      "cu": "CU-06",
-      "rf": [
-        "RF-T-04"
-      ],
-      "rnf": [
-        "RNF-03"
-      ],
-      "objetivo": "Verificar las validaciones de POST /capture: cantidad mínima de frames, etiqueta, valores no finitos y modo tasks con blendshapes.",
-      "categoria": "Integridad de datos",
-      "tipo": "Integridad",
-      "pantalla": "Backend / CU-06",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Etiqueta de prueba zz_tc_006; eliminar dataset/custom/zz_tc_006, dataset/custom_tasks/zz_tc_006 y dataset/custom_blendshapes/zz_tc_006 al finalizar."
-      ],
-      "procedimiento": [
-        "1. POST /capture con 4 frames válidos (75x4) y label zz_tc_006.",
-        "2. POST /capture con 5 frames válidos.",
-        "3. POST /capture con un valor NaN dentro de un frame (cuerpo JSON con literal NaN).",
-        "4. POST /capture con mode = \"tasks\" sin blendshapes; con 4 filas de blendshapes para 5 frames; con filas de 51 valores; con 5 filas de 52 valores.",
-        "5. POST /capture con mode = \"xx\" (modo desconocido)."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 400 {\"detail\": \"Too few frames (min 5)\"}.",
-        "2.- HTTP 200 {\"status\":\"ok\",\"saved_to\":\"dataset/custom/zz_tc_006/<timestamp>.npy\",\"samples_for_label\":1}.",
-        "3.- HTTP 400 {\"detail\": \"Non-finite frame value\"}.",
-        "4.- HTTP 400 \"Missing blendshapes for tasks mode\", \"Blendshapes frame count mismatch\", \"Blendshapes row must have 52 values\"; y HTTP 200 con archivos en dataset/custom_tasks/zz_tc_006 y dataset/custom_blendshapes/zz_tc_006 para la última.",
-        "5.- Se acepta y se trata como legacy (200)."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-09: el modo por defecto (legacy) no guarda blendshapes y el modo tasks usa tres árboles de carpetas, mientras RF-T-04 menciona un único árbol con blendshapes. Hallazgo D-22: modos desconocidos se tratan distinto en /capture (legacy) y /dataset_stats (tasks)."
-    },
-    {
-      "id": "TC-LSA-006-06",
-      "grupo": "006",
-      "cu": "CU-06",
-      "rf": [
-        "RF-T-04"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar la persistencia de la muestra: archivo .npy con forma (45, 75, 4), nombre por marca de tiempo, contador incremental y solo landmarks (sin imágenes).",
-      "categoria": "Integridad de datos",
-      "tipo": "Integridad",
-      "pantalla": "Backend / CU-06",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Etiqueta de prueba zz_tc_006 inexistente al inicio."
-      ],
-      "procedimiento": [
-        "1. POST /capture con los 45 frames de la muestra dataset/custom/yo/1784298863533.npy y label zz_tc_006.",
-        "2. Cargar el archivo guardado con numpy.",
-        "3. Repetir la petición y consultar GET /dataset_stats.",
-        "4. Listar los archivos nuevos del árbol de datos."
-      ],
-      "resultados_esperados": [
-        "2.- shape = (45, 75, 4), dtype float32 y valores iguales a los enviados (allclose); el nombre es <ms epoch>.npy.",
-        "3.- samples_for_label = 2 y /dataset_stats incluye \"zz_tc_006\": 2.",
-        "4.- Solo existen archivos .npy numéricos; no se guardo ningún video, imagen ni archivo de audio (RNF-03)."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "dataset/custom/yo/1784298863533.npy"
-    },
-    {
-      "id": "TC-LSA-006-07",
-      "grupo": "006",
-      "cu": "CU-06",
-      "rf": [
-        "RF-T-04"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar que /capture rechaza muestras con forma inválida para no corromper el dataset de entrenamiento.",
-      "categoria": "Integridad de datos",
-      "tipo": "Integridad",
-      "pantalla": "Backend / CU-06",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Etiqueta de prueba zz_tc_006; limpiar dataset/custom/zz_tc_006 al finalizar."
-      ],
-      "procedimiento": [
-        "1. POST /capture con 5 frames de 2 landmarks de 2 valores cada uno.",
-        "2. POST /capture con frames de longitudes irregulares (listas dentadas).",
-        "3. POST /predict con 6 frames de 3 landmarks y por /ws/predict (JSON) con la misma ventana inválida.",
-        "4. Enviar por /ws/predict un frame con un NaN."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 400 (forma esperada (T, 75, 4)); no se crea ningún archivo.",
-        "2.- HTTP 400 y no 500.",
-        "3.- HTTP 400 en /predict y mensaje de error JSON en /ws/predict; la conexión sigue abierta.",
-        "4.- Se rechaza la ventana; no se devuelve confidence NaN."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-10 (previo): el caso 1 devuelve 200 y guarda un .npy de forma (5, 2, 2) que rompe el entrenamiento; el caso 2 y /predict devuelven 500 Internal Server Error; por WebSocket un NaN produce una respuesta con confidence NaN (JSON inválido)."
-    },
-    {
-      "id": "TC-LSA-006-08",
-      "grupo": "006",
-      "cu": "CU-06",
-      "rf": [
-        "RF-T-04"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar con una persona real que la muestra grabada en Modo Captura contiene manos detectadas y representa la seña.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "P-04 / CU-06",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Persona que conoce la seña a grabar; cámara web real; consentimiento otorgado."
-      ],
-      "procedimiento": [
-        "1. Entrar a Modo Captura, crear la etiqueta zz_tc_006 y grabar 3 repeticiones de la seña \"dolor\".",
-        "2. Analizar las muestras .npy generadas contando los frames con landmarks de mano distintos de cero."
-      ],
-      "resultados_esperados": [
-        "2.- Al menos el 80 % de los 45 frames de cada muestra tiene landmarks de al menos una mano con visibilidad distinta de cero; las muestras pueden ser cargadas por train_lstm.py sin errores."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "La calidad de la seña grabada depende de un humano (Temas abiertos de CU-06: no hay validación automática de calidad)."
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Grabación simple (cuenta regresiva 3, 2, 1; 45 frames; archivo (45, 75, 4) float32 con blendshapes de 45 x 52; carpeta creada al guardar) y de tres repeticiones correctas; los valores 0, vacío y -2 de Repeticiones se normalizan a 1 y con -2 no se muestra \"¡Guardado!\" ni se envía ninguna solicitud. \"Detener\" cancela la cuenta regresiva y la grabación sin guardar muestras (0 solicitudes y 0 archivos). /capture rechaza con 400 pocos frames, NaN, blendshapes faltantes y formas inválidas ((5, 2, 2) e irregulares) sin crear archivos.",
+        "aprobado": "No probado",
+        "observaciones": "DM-LSA-004, DM-LSA-008 y DM-LSA-012 verificados y cerrados; DM-LSA-020 y DM-LSA-027, hallados en el ciclo 2, corregidos y cerrados. Pendiente (lo ejecutará el equipo): grabación con una persona real y revisión de que la muestra contenga manos detectadas (paso 5).",
+        "defectos_verificados": [
+          "DM-LSA-004",
+          "DM-LSA-008",
+          "DM-LSA-012",
+          "DM-LSA-020",
+          "DM-LSA-027"
+        ],
+        "pendiente_manual": [
+          "Paso 5: grabar una seña con una persona real y revisar que la muestra contenga manos detectadas"
+        ],
+        "comprobaciones_automatizadas": "API 006-05 a 006-07; UI 006-01 a 006-04; unitarias de validación de captura"
+      }
     },
     {
       "id": "TC-LSA-007-01",
       "grupo": "007",
-      "cu": "CU-07",
-      "rf": [
-        "RF-T-02"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar la consulta de clases del modelo y de estadísticas de muestras por etiqueta.",
+      "modulo": "P-04, Backend / CU-07",
+      "objetivo": "Verificar la gestión del vocabulario: consulta de clases y estadísticas, lista de etiquetas, etiquetas nuevas y validación de su formato.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "Backend / CU-07",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Dataset con 5 carpetas de 20 muestras (cabeza, dolor, idle, respirar, yo)."
+        "Backend y frontend en ejecución; Modo Captura abierto."
       ],
       "procedimiento": [
-        "1. GET /classes.",
-        "2. GET /dataset_stats.",
-        "3. Crear la carpeta vacía dataset/custom/zz_tc_007 y un archivo de texto dentro de dataset/custom y repetir GET /dataset_stats.",
-        "4. GET /dataset_stats?mode=tasks."
+        "Consultar GET /classes y GET /dataset_stats.",
+        "Verificar la lista de etiquetas, el filtro de búsqueda y la creación de \"ZZ_UI_Nueva\".",
+        "Agregar las etiquetas \"fiebre alta\", \"dolor!\" y una de 33 caracteres.",
+        "Enviar a /capture etiquetas en los límites de longitud y con caracteres no permitidos."
       ],
       "resultados_esperados": [
-        "1.- HTTP 200 con [\"cabeza\", \"dolor\", \"idle\", \"respirar\", \"yo\"], igual al contenido de models/custom_classes.json.",
-        "2.- HTTP 200 con {\"cabeza\": 20, \"dolor\": 20, \"idle\": 20, \"respirar\": 20, \"yo\": 20}.",
-        "3.- Aparece \"zz_tc_007\": 0 y se ignora el archivo suelto (solo se cuentan archivos .npy en carpetas).",
-        "4.- Devuelve las etiquetas del árbol dataset/custom_tasks (no las de dataset/custom)."
+        "1.- Clases y cantidad de muestras coherentes.",
+        "2.- Lista combinada sin idle; la etiqueta nueva se crea en minúsculas.",
+        "3.- Las etiquetas inválidas se rechazan con un mensaje de formato.",
+        "4.- Solo se aceptan de 1 a 32 caracteres (minúsculas, dígitos y guion bajo)."
       ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-22: cualquier valor de mode distinto de legacy en /dataset_stats se interpreta como tasks."
-    },
-    {
-      "id": "TC-LSA-007-02",
-      "grupo": "007",
-      "cu": "CU-07",
-      "rf": [
-        "RF-T-01",
-        "RF-T-02"
+      "resultado_obtenido": "Consultas, lista combinada, búsqueda y normalización correctas. Las tres etiquetas inválidas se agregaron sin mensaje de formato y, al grabar, el backend respondió 400 y la interfaz mostró \"¡Guardado!\". Los límites de /capture se validan correctamente.",
+      "observaciones": "No aprobado: la interfaz no valida el formato de la etiqueta (DM-LSA-008). No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-007-01",
+        "TC-LSA-007-02",
+        "TC-LSA-007-03",
+        "TC-LSA-007-04"
       ],
-      "rnf": [],
-      "objetivo": "Verificar la lista combinada de etiquetas en Modo Captura, el filtro de búsqueda y la creación de una etiqueta valida (escenario principal y extensión 4a, camino válido).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-04 / CU-07",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08). Todas las etiquetas creadas por el caso usan el prefijo zz_tc_ y sus carpetas se eliminan al finalizar (dataset/custom/zz_tc_*).",
-        "Crear previamente por API las carpetas zz_tc_a, zz_tc_b y zz_tc_c con una muestra cada una para superar las 6 etiquetas."
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-008"
       ],
-      "procedimiento": [
-        "1. Entrar a Modo Captura.",
-        "2. Observar la lista de chips y el campo de búsqueda.",
-        "3. Escribir \"zz_tc\" en \"Buscar seña...\".",
-        "4. Pulsar \"Nueva seña\", escribir \"ZZ_TC_Nueva\" y pulsar Enter; luego intentar crear \"dolor\" de nuevo."
-      ],
-      "resultados_esperados": [
-        "2.- La lista es la unión de /classes y /dataset_stats, ordenada alfabéticamente y sin \"idle\"; el campo \"Buscar seña...\" aparece porque hay más de 6 etiquetas; los chips con muestras muestran su contador.",
-        "3.- Solo se muestran las etiquetas que contienen \"zz_tc\".",
-        "4.- Se crea y selecciona el chip \"zz_tc_nueva\" (pasado a minúsculas); al repetir \"dolor\" no se duplica el chip y se selecciona el existente."
-      ],
-      "ejecucion": "ui"
-    },
-    {
-      "id": "TC-LSA-007-03",
-      "grupo": "007",
-      "cu": "CU-07",
-      "rf": [
-        "RF-T-01"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar que una etiqueta con formato inválido se rechaza antes de aceptarla (extensión 4a) y que el usuario no recibe un falso mensaje de guardado.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-04 / CU-07",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08). Todas las etiquetas creadas por el caso usan el prefijo zz_tc_ y sus carpetas se eliminan al finalizar (dataset/custom/zz_tc_*).",
-        "Modo Captura abierto; POST /capture observado."
-      ],
-      "procedimiento": [
-        "1. Crear la etiqueta \"fiebre alta\" (con espacio) con \"Nueva seña\" y \"Agregar\".",
-        "2. Seleccionarla, dejar Repeticiones = 1 y pulsar \"Empezar\".",
-        "3. Observar la pantalla al terminar y la respuesta de POST /capture.",
-        "4. Repetir con \"dolor!\" y con una etiqueta de 33 caracteres."
-      ],
-      "resultados_esperados": [
-        "1.- La etiqueta se rechaza con un mensaje que indica el formato permitido (solo minúsculas, números y guion bajo, hasta 32 caracteres) y no se agrega ningún chip.",
-        "3.- No se llega a grabar; si el backend rechaza la muestra (HTTP 400 \"Invalid label\") la interfaz informa el error y no muestra \"¡Guardado!\".",
-        "4.- Mismo resultado para todas las etiquetas inválidas."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Hallazgo D-11 (análisis de código): handleAddNewLabel solo recorta y pasa a minúsculas, y recordOneSample ignora la respuesta HTTP de /capture, por lo que el resultado esperable actual es un chip aceptado, un POST /capture con 400 y la pantalla \"¡Guardado!\" sin ningún dato guardado."
-    },
-    {
-      "id": "TC-LSA-007-04",
-      "grupo": "007",
-      "cu": "CU-07",
-      "rf": [
-        "RF-T-01"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar los límites del patron de etiqueta en POST /capture (1 a 32 caracteres, minúsculas, digitos y guion bajo).",
-      "categoria": "Integridad de datos",
-      "tipo": "Unidad",
-      "pantalla": "Backend / CU-07",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Eliminar dataset/custom/<etiquetas de prueba> al finalizar."
-      ],
-      "procedimiento": [
-        "1. POST /capture (5 frames válidos) con label \"a\", \"a_1\", y una etiqueta de 32 caracteres (\"z\" x 32).",
-        "2. POST /capture con una etiqueta de 33 caracteres.",
-        "3. POST /capture con label \"\", \"Dolor\", \"zz probe\", \"dolor!\", \"../x\" y \"ñ\"."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 200 en los tres casos.",
-        "2.- HTTP 400 {\"detail\": \"Invalid label\"}.",
-        "3.- HTTP 400 {\"detail\": \"Invalid label\"} en todos; en particular \"../x\" no escribe fuera de dataset/custom."
-      ],
-      "ejecucion": "api"
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Consultas /classes y /dataset_stats correctas (5 clases con 30 muestras cada una); la lista combina clases y estadísticas sin \"idle\", el filtro de búsqueda y el alta de \"ZZ_UI_Nueva\" funcionan; las etiquetas \"fiebre alta\", \"dolor!\" y la de 33 caracteres se rechazan con mensaje de formato y no se agregan; /capture acepta etiquetas de 1 a 32 caracteres y devuelve 400 para las de 0 o 33 caracteres y con caracteres no permitidos.",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-008 verificado y cerrado (la interfaz valida el formato de la etiqueta). No quedan comprobaciones manuales pendientes.",
+        "defectos_verificados": [
+          "DM-LSA-008"
+        ],
+        "pendiente_manual": [],
+        "comprobaciones_automatizadas": "API 007-01 y 007-04; UI 007-02 y 007-03"
+      }
     },
     {
       "id": "TC-LSA-008-01",
       "grupo": "008",
-      "cu": "CU-08",
-      "rf": [
-        "RF-T-05"
-      ],
-      "rnf": [
-        "RNF-02"
-      ],
-      "objetivo": "Verificar el escenario principal de CU-08: reentrenar el modelo desde la línea de comandos y cargarlo en el siguiente inicio.",
+      "modulo": "Entrenamiento / CU-08",
+      "objetivo": "Verificar el reentrenamiento del modelo desde la línea de comandos y el comportamiento sin datos de entrenamiento.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "CLI train_lstm.py / CU-08",
-      "prioridad": "Media",
       "prerrequisitos": [
-        "EJECUTAR SOBRE UNA COPIA del repositorio o con respaldo previo: el entrenamiento sobrescribe models/custom_classes.json y genera models/lstm_v1_45frames.pth, que app.py prioriza sobre models/lstm.pth.",
-        "Dataset dataset/custom con 5 clases x 20 muestras.",
-        "GPU o CPU con PyTorch instalado."
+        "Dataset con muestras por etiqueta en dataset/custom."
       ],
       "procedimiento": [
-        "1. Ejecutar python train_lstm.py y capturar la salida estándar.",
-        "2. Verificar los archivos de modelo y de clases.",
-        "3. Iniciar el backend y consultar GET /classes y GET /.",
-        "4. Enviar por /ws/predict una muestra de cada clase."
+        "Ejecutar train_lstm.py.",
+        "Verificar el modelo generado y su carga en el sistema.",
+        "Verificar la clasificación de una muestra por clase.",
+        "Ejecutar el entrenamiento sin dataset/custom y con la carpeta vacía."
       ],
       "resultados_esperados": [
-        "1.- La salida contiene \"Clases encontradas: ['cabeza', 'dolor', 'idle', 'respirar', 'yo']\", \"Total samples: 100\", 50 líneas \"Epoch n/50\" con exactitud de validación y el cierre \"Training complete. Best val acc: XX.XX%. Model saved to models/lstm_v1_45frames.pth\" con exactitud >= 90 %.",
-        "2.- models/lstm_v1_45frames.pth y models/custom_classes.json existen con fecha actualizada.",
-        "3.- El backend informa \"Custom LSTM Model loaded ... 5 classes\"; /classes devuelve las 5 clases.",
-        "4.- Cada muestra se clasifica con la etiqueta correcta."
+        "1.- El entrenamiento finaliza sin errores y guarda el modelo.",
+        "2.- El modelo se carga con las clases del dataset.",
+        "3.- Cada muestra se clasifica con su clase.",
+        "4.- Mensaje \"graba algunos datos primero\" y modelos sin cambios."
       ],
-      "ejecucion": "api",
-      "datos_prueba": "Ejecución por línea de comandos (subproceso), sin HTTP; se clasifica api porque es automatizable sin navegador ni intervención humana. División 80/20 con semilla fija 42, 50 épocas."
-    },
-    {
-      "id": "TC-LSA-008-02",
-      "grupo": "008",
-      "cu": "CU-08",
-      "rf": [
-        "RF-T-05"
+      "resultado_obtenido": "Entrenamiento de 17 s, 50 épocas, mejor exactitud de validación del 100 %; modelo cargado con 5 clases y ventanas de 45 frames; cada clase se clasificó correctamente. Sin dataset y con la carpeta vacía: mensaje \"Por favor graba algunos datos primero.\" y models/ sin cambios.",
+      "observaciones": "La exactitud corresponde a muestras del conjunto de entrenamiento. No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-008-01",
+        "TC-LSA-008-02"
       ],
-      "rnf": [],
-      "objetivo": "Verificar los mensajes y la ausencia de efectos cuando no hay datos de entrenamiento (extensión 2a).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "CLI train_lstm.py / CU-08",
-      "prioridad": "Baja",
-      "prerrequisitos": [
-        "Directorio de trabajo temporal (copia del repo) sin carpeta dataset/custom, y otro con dataset/custom vacía."
-      ],
-      "procedimiento": [
-        "1. Ejecutar python train_lstm.py sin la carpeta dataset/custom.",
-        "2. Crear dataset/custom vacía y ejecutar de nuevo.",
-        "3. Verificar el contenido de models/."
-      ],
-      "resultados_esperados": [
-        "1.- Imprime \"Dataset path dataset/custom not found. Por favor graba algunos datos primero.\" y termina sin error.",
-        "2.- Imprime \"No se encontraron clases en el dataset. Por favor graba algunos datos primero.\".",
-        "3.- Ningún archivo de models/ fue creado ni modificado."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Ejecución por línea de comandos (subproceso)."
+      "aprobado": "Si",
+      "defectos": [],
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Entrenamiento de 18 s (código de salida 0); modelo cargado con 5 clases y ventanas de 45 frames; cada clase se clasificó correctamente (confianza de 99,99 a 100 %). Sin dataset/custom y con la carpeta vacía: mensaje \"Por favor graba algunos datos primero.\" y models/ sin cambios.",
+        "aprobado": "Si",
+        "observaciones": "La exactitud corresponde a muestras del conjunto de entrenamiento. No quedan comprobaciones manuales pendientes.",
+        "defectos_verificados": [],
+        "pendiente_manual": [],
+        "comprobaciones_automatizadas": "API 008-01 y 008-02"
+      }
     },
     {
       "id": "TC-LSA-009-01",
       "grupo": "009",
-      "cu": "CU-09",
-      "rf": [
-        "RF-03",
-        "RF-03.1",
-        "RF-04.1"
-      ],
-      "rnf": [
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar que el diálogo de consentimiento bloquea la cámara hasta aceptar y que al aceptar se activa la cámara y se audita (escenario principal).",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "P-05 / CU-09",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "navigator.mediaDevices.getUserMedia instrumentado con un espía (add_init_script) antes de cargar la página."
-      ],
-      "procedimiento": [
-        "1. Abrir /paciente.",
-        "2. Inspeccionar el diálogo y el resto de la página; intentar pulsar \"Ajustes (Modo Captura)\" detrás del diálogo.",
-        "3. Pulsar \"Acepto y continúo\".",
-        "4. Consultar la petición POST /audit y GET /metrics."
-      ],
-      "resultados_esperados": [
-        "1.- Se muestra un diálogo con role=\"dialog\", aria-modal=\"true\" y el título \"Consentimiento para usar la cámara\", el texto \"Usamos tu cámara solo para reconocer tus señas y traducirlas a texto y voz. No se guarda ningún video ni imagen: el procesamiento ocurre en este dispositivo.\" y los botones \"No acepto\" y \"Acepto y continúo\"; el foco queda en el diálogo.",
-        "2.- getUserMedia no fue invocado (0 llamadas) y el contenido principal tiene el atributo inert (no es interactivo).",
-        "3.- El diálogo se cierra, getUserMedia se invoca 1 vez y se muestra \"EN VIVO · Visión por computadora\".",
-        "4.- Se envío POST /audit con {\"type\":\"consent\",\"station\":\"paciente\",\"consent\":\"accepted\"} y respuesta 200 {\"status\":\"ok\"}; consent.accepted = 1 en /metrics."
-      ],
-      "ejecucion": "ui"
-    },
-    {
-      "id": "TC-LSA-009-02",
-      "grupo": "009",
-      "cu": "CU-09",
-      "rf": [
-        "RF-03",
-        "RF-03.1",
-        "RF-04.1"
-      ],
-      "rnf": [
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar el rechazo del consentimiento, la cámara inactiva y la opción de reconsiderar (extensión 3a).",
+      "modulo": "P-02 / CU-09",
+      "objetivo": "Verificar el consentimiento explícito de cámara: aceptación, rechazo, permiso denegado por el navegador y ausencia de persistencia.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "P-05 / CU-09",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "getUserMedia instrumentado con un espía."
+        "Frontend en ejecución."
       ],
       "procedimiento": [
-        "1. Abrir /paciente y pulsar \"No acepto\".",
-        "2. Observar el diálogo, la cámara y la petición de auditoría.",
-        "3. Pulsar \"Reconsiderar\".",
-        "4. Pulsar \"Acepto y continúo\".",
-        "5. Consultar GET /metrics."
+        "Abrir /paciente y verificar el diálogo de consentimiento.",
+        "Pulsar \"Acepto y continúo\".",
+        "Recargar, pulsar \"No acepto\" y luego \"Reconsiderar\".",
+        "Aceptar y denegar el permiso de cámara en el navegador.",
+        "Recargar la página."
       ],
       "resultados_esperados": [
-        "2.- El diálogo muestra \"El traductor necesita la cámara para funcionar. Podés reconsiderar cuando quieras.\" y solo el botón \"Reconsiderar\"; getUserMedia sigue en 0 llamadas; el resto de la página sigue inerte; se envío POST /audit con consent = \"declined\".",
-        "3.- Se restablece el diálogo inicial con \"No acepto\" y \"Acepto y continúo\".",
-        "4.- La cámara se activa (getUserMedia 1 vez).",
-        "5.- consent = {\"accepted\": 1, \"declined\": 1}."
+        "1.- Diálogo modal que bloquea la pantalla; cámara inactiva.",
+        "2.- Se activa la cámara y se registra el consentimiento.",
+        "3.- Mensaje informativo, cámara inactiva y opción de reconsiderar.",
+        "4.- Se informa al paciente que no hay acceso a la cámara.",
+        "5.- El diálogo vuelve a mostrarse; no se almacena el consentimiento."
       ],
-      "ejecucion": "ui"
-    },
-    {
-      "id": "TC-LSA-009-03",
-      "grupo": "009",
-      "cu": "CU-09",
-      "rf": [
-        "RF-03.1"
+      "resultado_obtenido": "Diálogo modal con foco y contenido inerte; la cámara se solicitó solo tras aceptar. \"No acepto\" muestra el mensaje y \"Reconsiderar\"; aceptación y rechazo se registran. Tras recargar vuelve el diálogo sin ninguna clave de consentimiento almacenada. Con el permiso denegado por el navegador no se muestra ningún mensaje y el indicador \"EN VIVO\" sigue visible.",
+      "observaciones": "No aprobado: no se informa la cámara denegada (DM-LSA-007). No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-009-01",
+        "TC-LSA-009-02",
+        "TC-LSA-009-03",
+        "TC-LSA-009-04"
       ],
-      "rnf": [
-        "RNF-T-01"
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-007"
       ],
-      "objetivo": "Verificar el comportamiento cuando el navegador deniega el permiso de cámara tras haber consentido (extensión 3b).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-05, P-02 / CU-09",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Contexto de navegador SIN cámara falsa permitida: getUserMedia rechazado (NotAllowedError)."
-      ],
-      "procedimiento": [
-        "1. Abrir /paciente y pulsar \"Acepto y continúo\".",
-        "2. Esperar 5 s y observar P-02.",
-        "3. Verificar si se envían mensajes a /ws/predict."
-      ],
-      "resultados_esperados": [
-        "2.- El sistema informa el error (por ejemplo \"No se pudo acceder a la cámara.\"), no se muestra video y el indicador de carga no permanece indefinidamente.",
-        "3.- No se envía ningún frame al backend."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Hallazgo D-13 (análisis de código): useMediaPipe fija status = \"error\" y error = \"No se pudo acceder a la cámara.\" pero PacientePage no renderiza ninguno de los dos; el paciente no recibe ningún mensaje."
-    },
-    {
-      "id": "TC-LSA-009-04",
-      "grupo": "009",
-      "cu": "CU-09",
-      "rf": [
-        "RF-03.1"
-      ],
-      "rnf": [
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar que el consentimiento no se conserva entre recargas (sin persistencia) y que /recepcion nunca activa la cámara.",
-      "categoria": "Seguridad",
-      "tipo": "Funcional",
-      "pantalla": "P-05 / CU-09",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "getUserMedia instrumentado."
-      ],
-      "procedimiento": [
-        "1. Abrir /paciente, aceptar el consentimiento y recargar la página.",
-        "2. Revisar localStorage, sessionStorage y cookies.",
-        "3. Abrir /recepcion y esperar 3 s."
-      ],
-      "resultados_esperados": [
-        "1.- Tras recargar vuelve a mostrarse el diálogo de consentimiento y getUserMedia no se invoca hasta aceptar nuevamente.",
-        "2.- No existe ninguna clave que almacene el consentimiento.",
-        "3.- getUserMedia no se invoca nunca en /recepcion."
-      ],
-      "ejecucion": "ui"
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Diálogo modal (role=dialog, aria-modal) con foco y contenido inerte; la cámara se solicita solo tras aceptar (0 llamadas a getUserMedia antes y 1 después); \"No acepto\" muestra el mensaje y \"Reconsiderar\"; aceptación y rechazo se registran en /metrics. Con el permiso denegado por el navegador se muestra \"No se pudo acceder a la cámara.\", desaparece \"Activando cámara...\" y se oculta el indicador \"EN VIVO\". Tras recargar vuelve el diálogo sin ninguna clave de consentimiento almacenada.",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-007 verificado y cerrado; DM-LSA-026 (regresión de DM-LSA-007 detectada por la regresión automatizada) corregido y cerrado. No quedan comprobaciones manuales pendientes.",
+        "defectos_verificados": [
+          "DM-LSA-007",
+          "DM-LSA-026"
+        ],
+        "pendiente_manual": [],
+        "comprobaciones_automatizadas": "UI 009-01 a 009-04"
+      }
     },
     {
       "id": "TC-LSA-010-01",
       "grupo": "010",
-      "cu": "CU-10",
-      "rf": [
-        "RF-06",
-        "RF-06.1",
-        "RF-01.7"
-      ],
-      "rnf": [
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar el escenario principal de CU-10: reportar una traducción desde P-02 y ver el mensaje marcado en ambas caras.",
+      "modulo": "P-02, P-03, Backend / CU-10",
+      "objetivo": "Verificar el reporte de traducciones incorrectas: desde ambas pantallas, fallo de envío, persistencia, validación de /report y resumen.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "P-02, P-03 / CU-10",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "P-02 (consentimiento aceptado) y P-03 abiertas en el mismo contexto.",
-        "Mensaje del paciente inyectado por BroadcastChannel en la página P-02."
+        "Backend con base SQLite de prueba y frontend en ejecución; mensaje del paciente visible en P-02 y P-03."
       ],
       "procedimiento": [
-        "1. Inyectar el mensaje del paciente \"Me duele la cabeza.\" con id 1700000000001 y words [\"yo\",\"cabeza\",\"dolor\"].",
-        "2. En P-02 pulsar \"Reportar traducción\" (hacer lento POST /report para ver el estado intermedio).",
-        "3. Observar las burbujas de P-02 y de P-03.",
-        "4. Consultar la base SQLite."
+        "Pulsar \"Reportar traducción\" en P-02 y repetir desde P-03; verificar que los mensajes del personal no tienen el botón.",
+        "Cortar la conexión, reportar y pulsar el botón dos veces seguidas.",
+        "Enviar a /report un reporte válido y valores límite o inválidos de text, station, words y message_id.",
+        "Consultar GET /reports/summary con distintos valores de limit.",
+        "Pedir a usuarios reales que reporten una traducción y comenten si el aviso es claro."
       ],
       "resultados_esperados": [
-        "2.- El botón pasa a \"Enviando...\" y se emite POST /report con {\"text\":\"Me duele la cabeza.\",\"station\":\"paciente\",\"message_id\":1700000000001,\"words\":[\"yo\",\"cabeza\",\"dolor\"]}; respuesta 200 con status \"ok\", report_id y message_id.",
-        "3.- En P-02 el texto queda tachado con fondo/borde ámbar, el botón se reemplaza por la insignia \"Traducción reportada\" y se muestra \"Traducción reportada. Repetí la seña para enviar el mensaje de nuevo.\"; en P-03 la misma burbuja queda tachada con \"Traducción reportada como incorrecta. No la tomes como válida: el paciente va a repetir la seña.\".",
-        "4.- reported_message tiene 1 fila (text y client_message_id), recognized_word 3 filas en posiciones 0, 1 y 2, translation_report 1 fila con station = \"paciente\" y audit_event 1 fila type = \"report\"."
+        "1.- El mensaje queda marcado en ambas caras y solo los del paciente tienen el botón.",
+        "2.- Error con opción de reintentar; se envía un único reporte.",
+        "3.- Reportes persistidos; se rechazan los valores fuera de rango y de tipo incorrecto.",
+        "4.- Estructura correcta, con limit entre 1 y 100.",
+        "5.- El aviso es comprensible."
       ],
-      "ejecucion": "ui",
-      "datos_prueba": "Mensaje: {\"type\":\"MESSAGE\",\"payload\":{\"id\":1700000000001,\"role\":\"PACIENTE\",\"text\":\"Me duele la cabeza.\",\"time\":\"10:00\",\"words\":[\"yo\",\"cabeza\",\"dolor\"]}}"
-    },
-    {
-      "id": "TC-LSA-010-02",
-      "grupo": "010",
-      "cu": "CU-10",
-      "rf": [
-        "RF-06.1"
+      "resultado_obtenido": "Reporte marcado en ambas caras y guardado en SQLite; con la conexión cortada se muestra \"No se pudo enviar el reporte. Probá de nuevo.\" y con doble clic hay una única petición. Límites de text, station y words y el resumen correctos; message_id = true y message_id = \"12\" se aceptaron con 200 en lugar de rechazarse.",
+      "observaciones": "No aprobado: la validación acepta tipos incorrectos (DM-LSA-017). Pendiente para el ciclo 2: la evaluación del aviso con usuarios reales (paso 5).",
+      "consolida": [
+        "TC-LSA-010-01",
+        "TC-LSA-010-02",
+        "TC-LSA-010-03",
+        "TC-LSA-010-04",
+        "TC-LSA-010-05",
+        "TC-LSA-010-06",
+        "TC-LSA-010-07",
+        "TC-LSA-010-08"
       ],
-      "rnf": [],
-      "objetivo": "Verificar el reporte iniciado desde P-03 y que el botón solo aparece en mensajes del paciente.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-03, P-02 / CU-10",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "P-02 y P-03 abiertas; un mensaje del paciente inyectado y una respuesta del personal enviada desde P-03."
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-017"
       ],
-      "procedimiento": [
-        "1. Observar las burbujas en P-03.",
-        "2. En P-03 pulsar \"Reportar traducción\" en la burbuja del paciente.",
-        "3. Observar P-02 y P-03 y la petición POST /report."
-      ],
-      "resultados_esperados": [
-        "1.- La burbuja del paciente tiene el botón \"Reportar traducción\"; la burbuja RECEPCIONISTA no lo tiene.",
-        "3.- Se emite POST /report con station = \"recepcion\"; en ambas caras el mensaje queda tachado con \"Traducción reportada\"; P-03 muestra \"Traducción reportada como incorrecta. No la tomes como válida: el paciente va a repetir la seña.\" y P-02 muestra \"Traducción reportada. Repetí la seña para enviar el mensaje de nuevo.\"."
-      ],
-      "ejecucion": "ui"
-    },
-    {
-      "id": "TC-LSA-010-03",
-      "grupo": "010",
-      "cu": "CU-10",
-      "rf": [
-        "RF-06.1"
-      ],
-      "rnf": [
-        "RNF-T-01"
-      ],
-      "objetivo": "Verificar el fallo de envío del reporte (extensión 3a / 2a real) y el guardado contra doble clic.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-02 / CU-10",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Mensaje del paciente inyectado; P-03 abierta en paralelo."
-      ],
-      "procedimiento": [
-        "1. Interceptar POST /report y abortar la conexión; pulsar \"Reportar traducción\".",
-        "2. Observar la burbuja en P-02 y en P-03.",
-        "3. Quitar la interceptación (con retardo de 1 s en la respuesta) y hacer doble clic muy rápido en el botón.",
-        "4. Contar las peticiones POST /report y las filas de translation_report."
-      ],
-      "resultados_esperados": [
-        "1.- Aparece \"No se pudo enviar el reporte. Probá de nuevo.\" al pie de la burbuja y el botón vuelve a estar disponible como \"Reportar traducción\".",
-        "2.- El mensaje no se tacha en P-02 ni en P-03.",
-        "4.- Se emite exactamente 1 petición POST /report y se crea 1 fila en translation_report; luego el mensaje queda reportado en ambas caras."
-      ],
-      "ejecucion": "ui"
-    },
-    {
-      "id": "TC-LSA-010-04",
-      "grupo": "010",
-      "cu": "CU-10",
-      "rf": [
-        "RF-06.1"
-      ],
-      "rnf": [
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar el registro de un reporte y su persistencia estructurada en SQLite.",
-      "categoria": "Integridad de datos",
-      "tipo": "Integridad",
-      "pantalla": "Backend / CU-10",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
-      ],
-      "procedimiento": [
-        "1. POST /report con {\"text\":\"Me duele la cabeza.\",\"station\":\"paciente\",\"words\":[\"yo\",\"cabeza\",\"dolor\"],\"message_id\":1700000000001}.",
-        "2. Repetir exactamente la misma petición.",
-        "3. POST /report con el mismo text y station recepción, sin message_id, dos veces.",
-        "4. Leer las tablas de la base SQLite."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 200 {\"status\":\"ok\",\"report_id\":1,\"message_id\":1}.",
-        "2.- HTTP 200 con el mismo message_id y un report_id nuevo (el mensaje se reutiliza; 2 reportes del mismo mensaje).",
-        "3.- Las dos peticiones sin message_id crean dos mensajes distintos (message_id diferentes) porque un client_message_id nulo no se deduplica.",
-        "4.- recognized_word no se duplica en el segundo reporte; translation_report tiene una fila por reporte con station y reported_at en UTC ISO 8601; audit_event tiene una fila type=\"report\" por reporte."
-      ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-010-05",
-      "grupo": "010",
-      "cu": "CU-10",
-      "rf": [
-        "RF-06.1"
-      ],
-      "rnf": [
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar los límites y valores inválidos de text y station en POST /report, y el tratamiento literal de caracteres especiales.",
-      "categoria": "Integridad de datos",
-      "tipo": "Unidad",
-      "pantalla": "Backend / CU-10",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
-      ],
-      "procedimiento": [
-        "1. text de 1 carácter y de 500 caracteres con station \"paciente\"/\"recepcion\".",
-        "2. text de 501 caracteres; text \"\"; text \"   \"; text numérico 5; petición sin station.",
-        "3. station \"admin\", \"Paciente\" y \"\".",
-        "4. text \"x'); DROP TABLE reported_message;--\" y un texto con emojis y acentos."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 200.",
-        "2.- 501 caracteres: HTTP 400 {\"detail\": \"Text too long\"}; vacío o solo espacios: 400 {\"detail\": \"Empty text\"}; text numérico y station ausente: HTTP 422.",
-        "3.- HTTP 400 {\"detail\": \"Invalid station\"} (la comparación distingue mayúsculas).",
-        "4.- HTTP 200; el texto se guarda literalmente y las tablas siguen intactas."
-      ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-010-06",
-      "grupo": "010",
-      "cu": "CU-10",
-      "rf": [
-        "RF-06.1"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar los límites de words (hasta 20 palabras de 1 a 32 caracteres) y de message_id (0 a 2^53-1).",
-      "categoria": "Integridad de datos",
-      "tipo": "Unidad",
-      "pantalla": "Backend / CU-10",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
-      ],
-      "procedimiento": [
-        "1. words con 20 elementos y con 21 elementos; words vacío [].",
-        "2. words con una palabra de 32 caracteres, de 33 caracteres y una palabra vacía \"\".",
-        "3. message_id = 0, 9007199254740991, -1, 9007199254740992, 1.5, \"abc\".",
-        "4. message_id = true y message_id = \"12\"."
-      ],
-      "resultados_esperados": [
-        "1.- 20 y [] -> 200; 21 -> 400 {\"detail\": \"Too many words\"}.",
-        "2.- 32 -> 200; 33 y \"\" -> 400 {\"detail\": \"Invalid word\"}.",
-        "3.- 0 y 9007199254740991 -> 200; -1 y 9007199254740992 -> 400 {\"detail\": \"Invalid message_id\"}; 1.5 y \"abc\" -> 422.",
-        "4.- true -> 400 {\"detail\": \"Invalid message_id\"} (un booleano no es un identificador válido); \"12\" -> 422 (tipo inválido, igual que \"abc\")."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-17 (previo): true y \"12\" se aceptan (200) porque Pydantic los convierte a entero antes de la validación propia."
-    },
-    {
-      "id": "TC-LSA-010-07",
-      "grupo": "010",
-      "cu": "CU-10",
-      "rf": [
-        "RF-06.1"
-      ],
-      "rnf": [],
-      "objetivo": "Verificar el resumen de reportes GET /reports/summary: estructura, orden y límite acotado a 1..100.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "Backend / CU-10",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Sembrar 105 mensajes distintos: 104 reportados una vez cada uno y el mensaje \"Me duele la cabeza.\" (con words [\"yo\",\"cabeza\",\"dolor\"]) reportado 4 veces."
-      ],
-      "procedimiento": [
-        "1. GET /reports/summary sin parámetros.",
-        "2. GET /reports/summary?limit=1, limit=5.",
-        "3. GET /reports/summary?limit=0 y limit=-3.",
-        "4. GET /reports/summary?limit=100, limit=101 y limit=1000.",
-        "5. GET /reports/summary?limit=abc."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 200 con total_reports, top_messages (hasta 10) y top_words; el primer mensaje es \"Me duele la cabeza.\" con reports = 4 y last_reported_at; top_words incluye {\"word\":\"cabeza\",\"reports\":4}.",
-        "2.- 1 y 5 elementos respectivamente.",
-        "3.- Se acota a 1 elemento.",
-        "4.- 100 elementos en los tres casos (tope 100).",
-        "5.- HTTP 422."
-      ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-010-08",
-      "grupo": "010",
-      "cu": "CU-10",
-      "rf": [
-        "RF-06",
-        "RF-06.1"
-      ],
-      "rnf": [],
-      "objetivo": "Evaluar con usuarios reales si el aviso de traducción reportada es comprensible y orienta la acción correcta.",
-      "categoria": "Usabilidad",
-      "tipo": "Aceptación",
-      "pantalla": "P-02, P-03 / CU-10",
-      "prioridad": "Baja",
-      "prerrequisitos": [
-        "Estación completa; un paciente (o rol equivalente) y un miembro del personal."
-      ],
-      "procedimiento": [
-        "1. El paciente reporta una traducción incorrecta y lee el aviso en P-02.",
-        "2. El personal lee el aviso en P-03 y explica con sus palabras qué debe hacer.",
-        "3. Registrar si ambos comprenden la acción: repetir la seña / no actuar sobre la traducción."
-      ],
-      "resultados_esperados": [
-        "2.- Ambos usuarios describen correctamente la acción esperada sin ayuda, y el texto es legible a 1 m (tamaño y contraste)."
-      ],
-      "ejecucion": "manual"
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Reporte marcado en ambas caras (texto tachado e insignia \"Traducción reportada\") y guardado en SQLite (mensaje, palabras reconocidas en las posiciones 0 a 2 y reporte); con la conexión cortada se muestra \"No se pudo enviar el reporte. Probá de nuevo.\" y con doble clic hay una única petición. Límites de text (1 a 500), station, words (hasta 20) y message_id correctos: message_id = true y \"12\" se rechazan (400 y 422); el resumen /reports/summary respeta limit (máximo 100).",
+        "aprobado": "No probado",
+        "observaciones": "DM-LSA-017 verificado y cerrado. Pendiente (lo ejecutará el equipo): evaluación del aviso de reporte con usuarios reales (paso 5).",
+        "defectos_verificados": [
+          "DM-LSA-017"
+        ],
+        "pendiente_manual": [
+          "Paso 5: usuarios reales reportan una traducción y comentan si el aviso es claro"
+        ],
+        "comprobaciones_automatizadas": "API 010-04 a 010-07; UI 010-01 a 010-03; unitarias de validación de reportes y de almacenamiento"
+      }
     },
     {
       "id": "TC-LSA-011-01",
       "grupo": "011",
-      "cu": "CU-11",
-      "rf": [
-        "RF-04",
-        "RF-04.1",
-        "RF-03.1"
-      ],
-      "rnf": [
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar el registro de eventos de consentimiento enviados por el frontend a POST /audit y su agregación en /metrics.",
+      "modulo": "Backend, P-02, P-03 / CU-11",
+      "objetivo": "Verificar el registro de auditoría: eventos de consentimiento, del backend y de la respuesta del personal, anonimato, validación y métricas.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "Backend / CU-11",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
+        "Backend con base SQLite de prueba y frontend en ejecución."
       ],
       "procedimiento": [
-        "1. POST /audit {\"type\":\"consent\",\"station\":\"paciente\",\"consent\":\"accepted\"}.",
-        "2. POST /audit {\"type\":\"consent\",\"station\":\"paciente\",\"consent\":\"declined\"}.",
-        "3. Leer la tabla audit_event y GET /metrics."
+        "Enviar a POST /audit eventos de consentimiento y valores inválidos de tipo, estación y consentimiento.",
+        "Generar una predicción, una oración y un reporte, y enviar una respuesta del personal desde P-03; contar los eventos.",
+        "Enviar campos adicionales y simular un fallo de escritura de la base.",
+        "Consultar GET /metrics, con y sin filtro since (futuro, de ayer y con sufijo Z)."
       ],
       "resultados_esperados": [
-        "1.- HTTP 200 {\"status\":\"ok\"}.",
-        "2.- HTTP 200 {\"status\":\"ok\"}.",
-        "3.- audit_event tiene 2 filas type=\"consent\", station=\"paciente\", consent=accepted/declined, occurred_at en UTC ISO 8601 y el resto de campos nulos; /metrics devuelve counts.consent = 2 y consent = {\"accepted\": 1, \"declined\": 1}."
+        "1.- Eventos registrados; los inválidos se rechazan con 400 o 422.",
+        "2.- Se registran los eventos del backend y el de la respuesta del personal, sin texto de la conversación.",
+        "3.- Los campos adicionales se ignoran; el fallo de escritura no interrumpe el resto.",
+        "4.- Conteos y percentiles correctos; el filtro acepta cualquier fecha ISO 8601."
       ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-011-02",
-      "grupo": "011",
-      "cu": "CU-11",
-      "rf": [
-        "RF-04.1"
+      "resultado_obtenido": "Eventos de consentimiento, prediction, sentence y report registrados y agregados, con validación y anonimato correctos; con la base bloqueada /process_sentence respondió 200 y /audit respondió 500. Al enviar la respuesta del personal no se emitió ningún POST /audit. El filtro since con sufijo Z respondió 400 \"Invalid since timestamp\".",
+      "observaciones": "No aprobado: DM-LSA-005 (evento de la respuesta del personal) y DM-LSA-015 (filtro since). No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-011-01",
+        "TC-LSA-011-02",
+        "TC-LSA-011-03",
+        "TC-LSA-011-04",
+        "TC-LSA-011-05",
+        "TC-LSA-011-06",
+        "TC-LSA-011-07"
       ],
-      "rnf": [
-        "RNF-03.1"
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-005",
+        "DM-LSA-015"
       ],
-      "objetivo": "Verificar la validación de POST /audit (tipo, estación, consentimiento y e2e_ms entre 0 y 60000) y que un evento inválido no se registra.",
-      "categoria": "Integridad de datos",
-      "tipo": "Unidad",
-      "pantalla": "Backend / CU-11",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Contar las filas de audit_event antes de la prueba."
-      ],
-      "procedimiento": [
-        "1. POST /audit con type \"prediction\", \"fin_atencion\" y \"x\" (station paciente).",
-        "2. POST /audit con station \"x\"; sin station.",
-        "3. POST /audit type consent sin consent y con consent \"maybe\".",
-        "4. POST /audit type translation_displayed con e2e_ms = 0, 60000, 60000.01, -1, omitido (null).",
-        "5. Comparar el número de filas."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 400 {\"detail\": \"Invalid audit type\"}.",
-        "2.- station inválida: 400 {\"detail\": \"Invalid station\"}; ausente: 422.",
-        "3.- HTTP 400 {\"detail\": \"Invalid consent value\"}.",
-        "4.- 0 y 60000 -> 200; 60000.01, -1 y null -> 400 {\"detail\": \"Invalid e2e_ms\"}.",
-        "5.- Solo se insertaron las filas de las peticiones con 200."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-02: fin_atencion es un tipo válido del esquema (RF-04.1) pero /audit lo rechaza y ningún código lo emite. Hallazgo D-17: un e2e_ms enviado como \"5\" o true se acepta por conversión de Pydantic."
-    },
-    {
-      "id": "TC-LSA-011-03",
-      "grupo": "011",
-      "cu": "CU-11",
-      "rf": [
-        "RF-04",
-        "RF-04.1"
-      ],
-      "rnf": [
-        "RNF-01.1"
-      ],
-      "objetivo": "Verificar los eventos que registra el propio backend: prediction, sentence y report, con sus campos de latencia.",
-      "categoria": "Funcional",
-      "tipo": "Integridad",
-      "pantalla": "Backend / CU-11",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
-      ],
-      "procedimiento": [
-        "1. Enviar 3 ventanas por /ws/predict.",
-        "2. Enviar POST /process_sentence con \"yo cabeza dolor\" (plantilla) y \"dolor yo cabeza\" (repetida).",
-        "3. Enviar un POST /report válido.",
-        "4. Leer audit_event."
-      ],
-      "resultados_esperados": [
-        "1.- 3 filas type=\"prediction\" con lstm_ms > 0 y confidence entre 0 y 100, sin station.",
-        "2.- 2 filas type=\"sentence\" con translation_ms, tts_ms, total_ms >= 0, source = \"template\" y word_count = 3.",
-        "3.- 1 fila type=\"report\" con station.",
-        "4.- Ningún registro contiene texto de la conversación, frames ni audio."
-      ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-011-04",
-      "grupo": "011",
-      "cu": "CU-11",
-      "rf": [
-        "RF-04.1",
-        "RF-02.1"
-      ],
-      "rnf": [
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar que enviar una respuesta del personal (CU-04) dispara el evento de auditoría incluido por CU-11 (paso 6 de CU-04).",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "P-03 / CU-11",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Conteo inicial de GET /metrics registrado."
-      ],
-      "procedimiento": [
-        "1. En P-03 enviar la respuesta \"Pase a la sala 2\".",
-        "2. Observar las peticiones POST /audit emitidas por el frontend.",
-        "3. Consultar GET /metrics y comparar con el conteo inicial."
-      ],
-      "resultados_esperados": [
-        "2.- El frontend emite un evento de auditoría anónimo por la operación (CU-04 paso 6), sin el texto de la respuesta.",
-        "3.- El total de eventos aumento en 1 y ningún campo contiene el texto enviado."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Hallazgo D-03 (análisis de código): RecepcionPage no llama a sendAudit y el esquema de audit_event no tiene un tipo para respuestas del personal; no se registra ningún evento."
-    },
-    {
-      "id": "TC-LSA-011-05",
-      "grupo": "011",
-      "cu": "CU-11",
-      "rf": [
-        "RF-04.1"
-      ],
-      "rnf": [
-        "RNF-01.1"
-      ],
-      "objetivo": "Verificar la estructura y el calculo de GET /metrics (conteos, percentiles p50/p95/max) y el filtro since.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "pantalla": "Backend / CU-11",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Base SQLite vacía."
-      ],
-      "procedimiento": [
-        "1. GET /metrics.",
-        "2. Registrar 4 eventos translation_displayed con e2e_ms = 100, 200, 300, 400 vía POST /audit.",
-        "3. GET /metrics y leer latency_ms.e2e_ms.",
-        "4. GET /metrics?since=<fecha futura en formato YYYY-MM-DDTHH:MM:SS>.",
-        "5. GET /metrics?since=ayer.",
-        "6. GET /metrics?since=2026-01-01T00:00:00Z."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 200 {\"counts\": {}, \"consent\": {\"accepted\": 0, \"declined\": 0}, \"reports\": 0, \"translation_source\": {}, \"latency_ms\": {}}.",
-        "3.- latency_ms.e2e_ms = {\"p50\": 200.0, \"p95\": 400.0, \"max\": 400.0, \"count\": 4}.",
-        "4.- counts vacío (ningún evento posterior a la fecha).",
-        "5.- HTTP 400 {\"detail\": \"Invalid since timestamp\"}.",
-        "6.- Una marca ISO 8601 con sufijo Z (formato de Date.toISOString) es valida y se aplica como filtro (HTTP 200)."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-16 (previo): con Python 3.10 la marca con sufijo Z devuelve HTTP 400 porque datetime.fromisoformat no acepta Z."
-    },
-    {
-      "id": "TC-LSA-011-06",
-      "grupo": "011",
-      "cu": "CU-11",
-      "rf": [
-        "RF-04",
-        "RF-04.1"
-      ],
-      "rnf": [
-        "RNF-03",
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar el anonimato de los eventos: el esquema solo admite campos operativos y se ignoran campos extra enviados por un cliente.",
-      "categoria": "Seguridad",
-      "tipo": "Integridad",
-      "pantalla": "Backend / CU-11",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
-      ],
-      "procedimiento": [
-        "1. Inspeccionar el esquema de audit_event (PRAGMA table_info).",
-        "2. POST /audit {\"type\":\"consent\",\"station\":\"recepcion\",\"consent\":\"accepted\",\"name\":\"Juan Perez\",\"text\":\"hola\",\"ip\":\"10.0.0.5\"}.",
-        "3. Ejecutar un flujo completo (WebSocket, process_sentence con \"dolor\", un reporte) y buscar los textos \"Juan Perez\" y \"Tengo dolor.\" en los bytes de data/lsa_salud.db, -wal y -shm."
-      ],
-      "resultados_esperados": [
-        "1.- Las columnas son: id, type, occurred_at, station, consent, lstm_ms, confidence, translation_ms, tts_ms, total_ms, e2e_ms, source, word_count; no hay columnas de texto libre, usuario, IP ni binarios.",
-        "2.- HTTP 200 y el evento se guarda sin los campos extra.",
-        "3.- Ninguno de los textos aparece en los archivos de la base (la oración no reportada no se guarda)."
-      ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-011-07",
-      "grupo": "011",
-      "cu": "CU-11",
-      "rf": [
-        "RF-04.1"
-      ],
-      "rnf": [
-        "RNF-T-01"
-      ],
-      "objetivo": "Verificar que un fallo de escritura de auditoría no interrumpe las operaciones del backend (best-effort) mientras que /audit informa el error.",
-      "categoria": "Integridad de datos",
-      "tipo": "Integridad",
-      "pantalla": "Backend / CU-11",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Segunda conexión SQLite que mantiene una transacción BEGIN EXCLUSIVE sobre la base durante la prueba."
-      ],
-      "procedimiento": [
-        "1. Con la base bloqueada, enviar POST /process_sentence con \"dolor\".",
-        "2. Con la base bloqueada, enviar POST /audit {\"type\":\"consent\",\"station\":\"paciente\",\"consent\":\"accepted\"}.",
-        "3. Liberar el bloqueo y repetir las dos peticiones."
-      ],
-      "resultados_esperados": [
-        "1.- HTTP 200 con natural_sentence = \"Tengo dolor.\" (el evento de auditoría se pierde pero la operación no falla; puede demorar hasta el timeout de 5 s).",
-        "2.- HTTP 500 (la escritura es estricta porque es el único propósito del endpoint).",
-        "3.- Ambas peticiones responden 200 y los eventos se registran."
-      ],
-      "ejecucion": "api"
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Eventos de consentimiento, prediction (lstm_ms), sentence (total_ms y fuente) y report registrados y agregados en /metrics; validación de type, station, consent y e2e_ms y anonimato correctos (las columnas no contienen texto de la conversación); con la base bloqueada /process_sentence responde 200 y /audit responde 500. Al enviar la respuesta del personal el frontend emite 1 POST /audit. El filtro since con sufijo Z responde 200 (4 eventos con una marca anterior, 0 con una posterior).",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-005 y DM-LSA-015 verificados y cerrados. No quedan comprobaciones manuales pendientes.",
+        "defectos_verificados": [
+          "DM-LSA-005",
+          "DM-LSA-015"
+        ],
+        "pendiente_manual": [],
+        "comprobaciones_automatizadas": "API 011-01 a 011-03, 011-05 a 011-07; UI 011-04; unitarias de auditoría y almacenamiento"
+      }
     },
     {
       "id": "TC-LSA-012-01",
       "grupo": "012",
-      "cu": "CU-12",
-      "rf": [
-        "RF-04.1"
-      ],
-      "rnf": [
-        "RNF-03",
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar el escenario principal de CU-12: Finalizar atención desde P-03 vacía la conversación en ambas caras y audita el fin.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "P-03, P-02 / CU-12",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "P-02 y P-03 abiertas en el mismo contexto con una conversación de al menos 3 mensajes (uno del paciente, dos del personal)."
-      ],
-      "procedimiento": [
-        "1. En P-03 localizar y pulsar el botón \"Finalizar atención\".",
-        "2. Observar P-03 y P-02.",
-        "3. Consultar GET /metrics.",
-        "4. Abrir una tercera pestaña de /recepcion y recargar P-02."
-      ],
-      "resultados_esperados": [
-        "1.- Existe un botón \"Finalizar atención\" en P-03.",
-        "2.- El panel de P-03 muestra \"No hay mensajes en la conversación.\" de inmediato y el de P-02 muestra \"La conversación aparecerá aquí\".",
-        "3.- counts.fin_atencion = 1 (evento anónimo sin contenido de la conversación).",
-        "4.- Ninguna pestaña recupera mensajes anteriores."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Hallazgo D-01 (previo): P-03 no tiene ningún botón \"Finalizar atención\"; el único control de borrado es \"Limpiar Historial\" en P-02. Hallazgo D-02: no se registra fin_atencion."
-    },
-    {
-      "id": "TC-LSA-012-02",
-      "grupo": "012",
-      "cu": "CU-12",
-      "rf": [
-        "RF-01.7"
-      ],
-      "rnf": [
-        "RNF-03",
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar el mecanismo técnico de borrado sincronizado (evento CLEAR por BroadcastChannel) accionado desde P-02 y por mensaje inyectado.",
+      "modulo": "P-03, P-02 / CU-12",
+      "objetivo": "Verificar que el personal finaliza la atención y la conversación se vacía en ambas caras para el próximo paciente.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "P-02, P-03 / CU-12",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "P-02 y P-03 abiertas con conversación de 3 mensajes."
+        "Frontend en ejecución con una conversación en curso en P-02 y P-03."
       ],
       "procedimiento": [
-        "1. En P-02 pulsar \"Limpiar Historial\".",
-        "2. Observar P-02 y P-03.",
-        "3. Reinyectar mensajes y publicar {\"type\":\"CLEAR\"} por BroadcastChannel desde una tercera página del mismo origen.",
-        "4. Observar ambas caras."
+        "En P-03, ubicar y pulsar \"Finalizar atención\".",
+        "Observar la conversación en ambas caras.",
+        "Usar \"Limpiar Historial\" de P-02 y revisar P-03.",
+        "Finalizar con P-02 cerrada y abrirla después."
       ],
       "resultados_esperados": [
-        "2.- Ambas caras muestran el estado vacío (\"La conversación aparecerá aquí\" y \"No hay mensajes en la conversación.\").",
-        "4.- Ambas caras vuelven a vaciarse."
+        "1.- Existe el botón \"Finalizar atención\".",
+        "2.- La conversación se vacía en ambas caras y se registra fin_atencion.",
+        "3.- El borrado se sincroniza en ambas caras.",
+        "4.- P-02 inicia vacía."
       ],
-      "ejecucion": "ui",
-      "datos_prueba": "Cubre el mecanismo existente (SO-09 limpiarConversacion); no reemplaza TC-LSA-012-01, que verifica el control de P-03 y el evento de auditoría."
-    },
-    {
-      "id": "TC-LSA-012-03",
-      "grupo": "012",
-      "cu": "CU-12",
-      "rf": [],
-      "rnf": [
-        "RNF-03"
+      "resultado_obtenido": "No existe el botón \"Finalizar atención\" en P-03 y no se registra fin_atencion. \"Limpiar Historial\" de P-02 vacía ambas caras y el borrado se sincroniza desde otra página; una P-02 abierta después inicia vacía y no hay conversación en el almacenamiento del navegador.",
+      "observaciones": "No aprobado: DM-LSA-006. No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-012-01",
+        "TC-LSA-012-02",
+        "TC-LSA-012-03"
       ],
-      "objetivo": "Verificar la extensión 3a: si P-02 no estaba abierta al finalizar, al abrirla la conversación inicia vacía (sin datos persistidos).",
-      "categoria": "Seguridad",
-      "tipo": "Funcional",
-      "pantalla": "P-02, P-03 / CU-12",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Solo P-03 abierta con mensajes."
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-006"
       ],
-      "procedimiento": [
-        "1. Finalizar la atención en P-03 (control disponible o evento CLEAR).",
-        "2. Abrir P-02 en una página nueva después y aceptar el consentimiento.",
-        "3. Revisar localStorage, sessionStorage e IndexedDB de ambas páginas."
-      ],
-      "resultados_esperados": [
-        "2.- El panel Conversación de P-02 muestra \"La conversación aparecerá aquí\".",
-        "3.- No hay texto de conversaciones previas en ningún almacenamiento del navegador."
-      ],
-      "ejecucion": "ui"
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "El botón \"Finalizar atención\" existe en P-03 y \"Limpiar Historial\" solo en P-02. Al pulsar \"Finalizar atención\" se vacían ambas caras y se registra un único evento fin_atencion (un segundo clic con la conversación vacía no registra otro). \"Limpiar Historial\" vacía ambas caras y el borrado se sincroniza desde una tercera página; una P-02 abierta después inicia vacía y no hay conversación en localStorage, sessionStorage, IndexedDB ni cookies.",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-006 verificado y cerrado. La suite de UI solo comprueba que el botón exista (UI 012-01); el vaciado y el evento fin_atencion se verificaron con una ejecución complementaria sobre el mismo entorno. No quedan comprobaciones manuales pendientes.",
+        "defectos_verificados": [
+          "DM-LSA-006"
+        ],
+        "pendiente_manual": [],
+        "comprobaciones_automatizadas": "UI 012-01 a 012-03 y ejecución complementaria de Finalizar atención"
+      }
     },
     {
       "id": "TC-LSA-013-01",
       "grupo": "013",
-      "cu": "N/A",
-      "rf": [
-        "RF-04.1",
-        "RF-06.1"
-      ],
-      "rnf": [
-        "RNF-03",
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar que no se persiste ninguna conversación: solo el texto de los mensajes reportados llega a disco.",
-      "categoria": "Seguridad",
-      "tipo": "Integridad",
-      "pantalla": "Backend / Privacidad (CU-11)",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Base SQLite temporal vacía."
-      ],
-      "procedimiento": [
-        "1. Generar 5 traducciones distintas con POST /process_sentence (por ejemplo \"dolor\", \"yo cabeza dolor\", \"respirar yo\", \"cabeza\", \"yo\").",
-        "2. Reportar solo una de ellas (\"Tengo dolor.\") con POST /report.",
-        "3. Leer todas las tablas y buscar en los bytes de los archivos de la base el texto de las otras cuatro oraciones.",
-        "4. Verificar tipos de columnas y listar los archivos nuevos en el directorio del proyecto."
-      ],
-      "resultados_esperados": [
-        "3.- reported_message contiene únicamente \"Tengo dolor.\"; las otras cuatro oraciones no aparecen en ninguna tabla ni en los archivos -wal/-shm.",
-        "4.- No existen columnas BLOB y no se crearon archivos de imagen, video ni audio."
-      ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-013-02",
-      "grupo": "013",
-      "cu": "N/A",
-      "rf": [
-        "RF-01.1"
-      ],
-      "rnf": [
-        "RNF-03",
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar que no se almacenan imágenes ni video del paciente: el flujo de predicción no deja archivos nuevos.",
-      "categoria": "Seguridad",
-      "tipo": "Integridad",
-      "pantalla": "Backend / Privacidad (CU-01)",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Listado previo del árbol del proyecto (hash de archivos y tamaños de dataset/, data/ y logs/)."
-      ],
-      "procedimiento": [
-        "1. Enviar 50 ventanas (muestras del dataset) por /ws/predict y 5 por POST /predict.",
-        "2. Listar los archivos nuevos o modificados bajo el directorio del proyecto, excluyendo la base SQLite y sus archivos WAL.",
-        "3. Buscar archivos con extensiones .png, .jpg, .webm, .mp4, .wav, .npy nuevos."
-      ],
-      "resultados_esperados": [
-        "2.- No hay archivos nuevos ni modificados fuera de la base SQLite.",
-        "3.- No existe ninguno de esos archivos; las muestras de dataset/ no cambiaron (solo CU-06 escribe .npy)."
-      ],
-      "ejecucion": "api"
-    },
-    {
-      "id": "TC-LSA-013-03",
-      "grupo": "013",
-      "cu": "N/A",
-      "rf": [
-        "RF-01.7",
-        "RF-02.1"
-      ],
-      "rnf": [
-        "RNF-03",
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar que la conversación vive solo en memoria del navegador: recargar una cara la pierde y no hay almacenamiento local.",
+      "modulo": "Transversal / RNF-03, RNF-T-06",
+      "objetivo": "Verificar la privacidad y la seguridad: sin persistencia de la conversación ni de imágenes y restricción de orígenes.",
       "categoria": "Seguridad",
       "tipo": "Funcional",
-      "pantalla": "P-03, P-02 / Privacidad (CU-04)",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "P-02 y P-03 abiertas con 3 mensajes."
+        "Backend con base SQLite de prueba y frontend en ejecución."
       ],
       "procedimiento": [
-        "1. Recargar P-03.",
-        "2. Revisar localStorage, sessionStorage, IndexedDB y cookies de P-02 y P-03.",
-        "3. Abrir una pestaña nueva de /recepcion con P-02 abierta."
+        "Generar oraciones y revisar el contenido de la base de datos.",
+        "Enviar ventanas de frames y verificar que no se crean archivos.",
+        "Recargar una pantalla y revisar almacenamiento local, de sesión, IndexedDB y cookies.",
+        "Realizar peticiones HTTP, preflight y WebSocket con un origen ajeno."
       ],
       "resultados_esperados": [
-        "1.- P-03 muestra \"No hay mensajes en la conversación.\" (CU-04 Temas abiertos: sin historial persistente).",
-        "2.- Ningún almacenamiento contiene texto de la conversación.",
-        "3.- La pestaña nueva comienza vacía (BroadcastChannel no entrega mensajes pasados)."
+        "1.- Solo el texto de los mensajes reportados llega a disco.",
+        "2.- No se almacenan imágenes ni video.",
+        "3.- La conversación vive solo en memoria del navegador.",
+        "4.- Los orígenes ajenos son rechazados."
       ],
-      "ejecucion": "ui"
-    },
-    {
-      "id": "TC-LSA-013-04",
-      "grupo": "013",
-      "cu": "N/A",
-      "rf": [],
-      "rnf": [
-        "RNF-T-06",
-        "RNF-03.1"
+      "resultado_obtenido": "Solo se persistió el texto del mensaje reportado; 55 ventanas procesadas no modificaron ningún archivo; tras recargar la conversación se pierde y el almacenamiento queda vacío. El backend respondió Access-Control-Allow-Origin = \"*\" a cualquier origen, concedió el preflight y aceptó el WebSocket de un origen ajeno.",
+      "observaciones": "No aprobado: la política de orígenes es abierta (DM-LSA-003). No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-013-01",
+        "TC-LSA-013-02",
+        "TC-LSA-013-03",
+        "TC-LSA-013-04"
       ],
-      "objetivo": "Verificar la restricción CORS: el backend solo debe admitir los orígenes configurados de la red local del sanatorio.",
-      "categoria": "Seguridad",
-      "tipo": "Funcional",
-      "pantalla": "Backend / Seguridad de red (CU-01)",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Origen permitido de referencia: http://localhost:3000."
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-003"
       ],
-      "procedimiento": [
-        "1. GET / con la cabecera Origin: http://localhost:3000.",
-        "2. GET / con Origin: http://evil.example.com.",
-        "3. OPTIONS /report con Origin: http://evil.example.com, Access-Control-Request-Method: POST y Access-Control-Request-Headers: content-type.",
-        "4. Abrir ws://localhost:8000/ws/predict con Origin: http://evil.example.com."
-      ],
-      "resultados_esperados": [
-        "1.- La respuesta incluye Access-Control-Allow-Origin: http://localhost:3000.",
-        "2.- La respuesta NO incluye Access-Control-Allow-Origin para el origen ajeno.",
-        "3.- El preflight no concede el origen ajeno.",
-        "4.- La conexión se rechaza o se cierra."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-06 (previo): app.py configura allow_origins=[\"*\"]; el origen ajeno recibe Access-Control-Allow-Origin: * y el preflight devuelve 200."
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Solo se persistió el texto del mensaje reportado (\"Tengo dolor.\"); 50 ventanas por /ws/predict y 5 por POST /predict no modificaron ningún archivo (312 antes y después); tras recargar la conversación se pierde y el almacenamiento del navegador queda sin conversación. Con un origen ajeno el backend no devuelve Access-Control-Allow-Origin, rechaza el preflight (400) y rechaza el WebSocket; el origen http://localhost:3000 se acepta.",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-003 verificado y cerrado. No quedan comprobaciones manuales pendientes.",
+        "defectos_verificados": [
+          "DM-LSA-003"
+        ],
+        "pendiente_manual": [],
+        "comprobaciones_automatizadas": "API 013-01, 013-02 y 013-04; UI 013-03"
+      }
     },
     {
       "id": "TC-LSA-014-01",
       "grupo": "014",
-      "cu": "N/A",
-      "rf": [
-        "RF-01.5",
-        "RF-01.6"
-      ],
-      "rnf": [
-        "RNF-01",
-        "RNF-01.1"
-      ],
-      "objetivo": "Verificar la latencia de la ruta con plantilla (backend): p50 <= 600 ms y p95 <= 1000 ms, incluyendo la síntesis de audio no cacheada.",
+      "modulo": "Backend, P-02 / RNF-01",
+      "objetivo": "Verificar los tiempos de respuesta: traducción con plantilla, inferencia por WebSocket, modelo de lenguaje, extremo a extremo y latencia percibida.",
       "categoria": "Rendimiento",
       "tipo": "Funcional",
-      "pantalla": "Backend / RNF-01.1 (CU-02)",
-      "prioridad": "Alta",
       "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Reiniciar el backend para vaciar las cachés; GPU/CPU de la estación de producción; Ollama no interviene."
+        "Backend y frontend en ejecución con el modelo de lenguaje precalentado."
       ],
       "procedimiento": [
-        "1. Enviar a POST /process_sentence las 15 combinaciones de plantilla del vocabulario entrenado, una por petición, sin repetir oraciones (audio no cacheado).",
-        "2. Registrar latency_ms de cada respuesta y el tiempo medido por el cliente.",
-        "3. Consultar GET /metrics y leer latency_ms.total_ms."
+        "Enviar combinaciones con plantilla a /process_sentence y calcular p50 y p95 de latency_ms.",
+        "Enviar 200 ventanas por el WebSocket y medir la ida y vuelta.",
+        "Enviar combinaciones sin plantilla (modelo de lenguaje) y calcular p50 y p95.",
+        "Medir e2e_ms desde el cierre de la oración hasta mostrar la burbuja.",
+        "Con una persona real, medir el tiempo desde que baja las manos hasta ver el texto y oír la voz."
       ],
       "resultados_esperados": [
-        "2.- p50 de latency_ms <= 600 ms y p95 <= 1000 ms.",
-        "3.- latency_ms.total_ms.p50 y p95 de /metrics coinciden (dentro de 5 %) con las mediciones del cliente."
+        "1.- Con plantilla: p50 <= 600 ms y p95 <= 1000 ms.",
+        "2.- Inferencia estable y sin desconexiones.",
+        "3.- Caso general: p95 <= 1000 ms.",
+        "4.- e2e_ms con p50 <= 600 ms.",
+        "5.- Latencia percibida aceptable."
       ],
-      "ejecucion": "api",
-      "datos_prueba": "Observado previamente (equipo de desarrollo, GPU): síntesis no cacheada entre 300 y 970 ms; con caché 0 ms. El resultado depende del hardware."
-    },
-    {
-      "id": "TC-LSA-014-02",
-      "grupo": "014",
-      "cu": "N/A",
-      "rf": [
-        "RF-01.2",
-        "RF-01.3"
+      "resultado_obtenido": "Con plantilla: p50 = 576 ms y p95 = 1356 ms. WebSocket: p50 = 32,4 ms y p95 = 42,8 ms, sin desconexiones. Con modelo de lenguaje: p50 = 2824 ms y p95 = 4297 ms. e2e_ms: p50 = 1526 ms y p95 = 2618 ms.",
+      "observaciones": "No aprobado: DM-LSA-010 (modelo de lenguaje) y DM-LSA-016 (plantilla y extremo a extremo; mediciones sujetas al equipo de prueba). Pendiente para el ciclo 2: la medición de la latencia percibida (paso 5).",
+      "consolida": [
+        "TC-LSA-014-01",
+        "TC-LSA-014-02",
+        "TC-LSA-014-03",
+        "TC-LSA-014-04",
+        "TC-LSA-014-05"
       ],
-      "rnf": [
-        "RNF-01",
-        "RNF-01.1"
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-010",
+        "DM-LSA-016"
       ],
-      "objetivo": "Verificar la latencia y estabilidad de la inferencia LSTM por WebSocket y registrar la línea base de lstm_ms.",
-      "categoria": "Rendimiento",
-      "tipo": "Funcional",
-      "pantalla": "Backend / RNF-01.1 (CU-01)",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5)."
-      ],
-      "procedimiento": [
-        "1. Enviar 200 ventanas reales de dataset/custom por /ws/predict, una a la vez, midiendo el tiempo de ida y vuelta.",
-        "2. Consultar GET /metrics y leer latency_ms.lstm_ms.",
-        "3. Comparar el p95 de las primeras 50 con el de las últimas 50 ventanas."
-      ],
-      "resultados_esperados": [
-        "1.- 0 errores y 0 desconexiones; p95 de ida y vuelta < 1000 ms (observado p50 aprox. 34 ms y p95 aprox. 42 ms).",
-        "2.- Se registra lstm_ms.p50/p95/max como línea base (observado p50 aprox. 4.7 ms y p95 aprox. 5.2 ms); en versiones siguientes el p95 no debe crecer más de 10 %.",
-        "3.- El p95 de las últimas 50 no supera 2 veces el de las primeras 50."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "RNF-01.1 exige comparar el p95 de lstm_ms entre versiones del modelo; este caso fija la línea base."
-    },
-    {
-      "id": "TC-LSA-014-03",
-      "grupo": "014",
-      "cu": "N/A",
-      "rf": [
-        "RF-01.5"
-      ],
-      "rnf": [
-        "RNF-01",
-        "RNF-01.1"
-      ],
-      "objetivo": "Verificar la latencia del caso general (ruta con modelo de lenguaje): p95 <= 1 s.",
-      "categoria": "Rendimiento",
-      "tipo": "Funcional",
-      "pantalla": "Backend / RNF-01.1 (CU-02)",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend iniciado (uvicorn app:app) con NEXORA_DB_PATH apuntando a una base SQLite temporal vacía; modelo LSTM cargado (GET / devuelve status ok y classes 5).",
-        "Ollama activo con qwen2:1.5b precargado (llamada de calentamiento previa)."
-      ],
-      "procedimiento": [
-        "1. Enviar 10 combinaciones sin plantilla distintas (por ejemplo \"yo dolor pecho\", \"yo dolor brazo\", \"fiebre tos\", \"yo mareo\") a POST /process_sentence.",
-        "2. Registrar latency_ms y calcular p50 y p95.",
-        "3. Consultar GET /metrics (total_ms, translation_ms)."
-      ],
-      "resultados_esperados": [
-        "2.- p95 de latency_ms <= 1000 ms (meta del caso general de RNF-01.1).",
-        "3.- /metrics reporta los mismos percentiles."
-      ],
-      "ejecucion": "api",
-      "datos_prueba": "Hallazgo D-15 (previo): con Ollama caliente la traducción tardó entre 2.3 y 4.7 s; con Ollama frío superó el límite de 8 s. Solo la ruta con plantilla alcanza la meta."
-    },
-    {
-      "id": "TC-LSA-014-04",
-      "grupo": "014",
-      "cu": "N/A",
-      "rf": [
-        "RF-01.4",
-        "RF-01.5",
-        "RF-01.6",
-        "RF-01.7"
-      ],
-      "rnf": [
-        "RNF-01",
-        "RNF-01.1",
-        "RNF-T-05"
-      ],
-      "objetivo": "Verificar la latencia percibida en la interfaz (e2e_ms: desde el cierre de la oración hasta mostrar la burbuja) para la ruta con plantilla, y la sincronización entre caras.",
-      "categoria": "Rendimiento",
-      "tipo": "Funcional",
-      "pantalla": "P-02, P-03 / RNF-01.1 (CU-01)",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Predicciones simuladas vía page.routeWebSocket; P-02 y P-03 abiertas; 10 combinaciones de plantilla distintas."
-      ],
-      "procedimiento": [
-        "1. Por cada combinación, simular las predicciones y esperar la burbuja; leer e2e_ms del POST /audit translation_displayed.",
-        "2. Medir el tiempo entre la aparición de la burbuja en P-02 y en P-03.",
-        "3. Consultar GET /metrics (latency_ms.e2e_ms)."
-      ],
-      "resultados_esperados": [
-        "1.- e2e_ms p50 <= 600 ms y p95 <= 1000 ms.",
-        "2.- La diferencia de aparición entre ambas caras es <= 200 ms en el 95 % de los casos (sin demora perceptible).",
-        "3.- /metrics refleja los 10 valores de e2e_ms."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "e2e_ms no incluye la quietud de 800 ms ni la ventana de exhibición de 1000 ms previa al audio (ver TC-LSA-014-05)."
-    },
-    {
-      "id": "TC-LSA-014-05",
-      "grupo": "014",
-      "cu": "N/A",
-      "rf": [
-        "RF-01"
-      ],
-      "rnf": [
-        "RNF-01"
-      ],
-      "objetivo": "Medir con una persona real la latencia percibida desde que baja las manos hasta que ve el texto y escucha la voz.",
-      "categoria": "Rendimiento",
-      "tipo": "Aceptación",
-      "pantalla": "P-02 / RNF-01 (CU-01)",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Estación completa; una persona que realiza las señas; cronómetro o grabación de pantalla con audio (sin almacenar video del paciente: usar una grabación de la pantalla)."
-      ],
-      "procedimiento": [
-        "1. Realizar 10 repeticiones de la secuencia yo cabeza dolor, marcando el instante en que baja las manos.",
-        "2. Registrar el instante en que aparece el texto y el instante en que comienza el audio."
-      ],
-      "resultados_esperados": [
-        "2.- El texto aparece en <= 1 s en al menos 9 de 10 repeticiones (criterio RNF-01: latencia percibida < 1 s en condiciones normales)."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "Tensión de diseño (D-15): el cierre de oración espera >= 800 ms de quietud y el audio inicia 1000 ms después del texto, de modo que la voz no puede comenzar antes de ~1.8 s desde que se bajan las manos."
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "Uso real (auditoría del 21/10/2026, 55 oraciones): e2e_ms p50 = 166 ms, p95 = 945 ms, máx. = 1590 ms; total_ms del servidor p50 = 0 ms (audio en caché) y p95 = 876 ms. Plantilla (3 corridas, n = 39 sin caché de audio): latency_ms p50 = 420 ms, p95 = 632 ms. Modelo de lenguaje (3 corridas, n = 30): p50 = 472 ms, p95 = 573 ms. WebSocket (200 ventanas): ida y vuelta p50 = 31,4 ms y p95 = 37,4 ms, sin desconexiones; lstm_ms p95 = 5,7 ms (8,6 ms en uso real, n = 1219). Cumple RNF-01.1: e2e de la ruta con plantilla p50 <= 600 ms (166 ms) y caso general p95 <= 1 s (945 ms). Sin regresión de lstm_ms entre versiones del modelo (21/10/2026, GPU con CUDA, mismas 100 ventanas): versión anterior (300 características, commit 41ae643) p50 = 0,60 ms y p95 = 0,71 ms; versión actual (384 características) p50 = 0,54 ms y p95 = 0,68 ms; variación del p95 de −4,9 % (límite +10 %).",
+        "aprobado": "No probado",
+        "observaciones": "DM-LSA-010 y DM-LSA-016 verificados y cerrados. La prueba de UI con predicciones simuladas midió e2e_ms p50 = 649 ms y 747 ms en dos corridas (p95 906 y 975 ms): se ejecuta con MediaPipe en CPU en un Chromium sin interfaz y sin GPU, por lo que no representa el uso real. Pendiente (lo ejecutará el equipo): medición de la latencia percibida con una persona real (paso 5).",
+        "defectos_verificados": [
+          "DM-LSA-010",
+          "DM-LSA-016"
+        ],
+        "pendiente_manual": [
+          "Paso 5: persona real, tiempo desde que baja las manos hasta ver el texto y oír la voz"
+        ],
+        "comprobaciones_automatizadas": "API 014-01 a 014-03; mediciones de uso real; UI 014-04 (no cumple p50 <= 600 ms en Chromium sin GPU)"
+      }
     },
     {
       "id": "TC-LSA-015-01",
       "grupo": "015",
-      "cu": "N/A",
-      "rf": [
-        "RF-T-05"
-      ],
-      "rnf": [
-        "RNF-02",
-        "RNF-02.1"
-      ],
-      "objetivo": "Verificar eval_model.py: reporta accuracy global, precisión/recall por clase, matriz de confusión y advierte cuando se evalúa sobre el conjunto de entrenamiento.",
+      "modulo": "Transversal / RNF-02, RNF-04 a RNF-07, RNF-T-02 a RNF-T-04",
+      "objetivo": "Verificar las restricciones y la calidad del sistema: exactitud del modelo, ejecución sin Internet, accesibilidad, estación fija, vocabulario, portabilidad y mantenibilidad.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "pantalla": "CLI eval_model.py / RNF-02.1 (CU-08)",
-      "prioridad": "Media",
       "prerrequisitos": [
-        "Modelo entrenado disponible (models/lstm.pth y custom_classes.json).",
-        "Directorio con muestras .npy agrupadas por etiqueta."
+        "Backend y frontend en ejecución; modelo entrenado y muestras del dataset.",
+        "Acceso a la estación fija, al código y a una sesión de grabación independiente."
       ],
       "procedimiento": [
-        "1. Ejecutar python eval_model.py dataset/custom.",
-        "2. Ejecutar python eval_model.py con un directorio inexistente y con uno vacío.",
-        "3. Ejecutar sin argumentos."
+        "Ejecutar eval_model.py sobre las muestras del dataset y sobre una sesión de grabación independiente.",
+        "Bloquear las peticiones a hosts externos y abrir P-02 con consentimiento.",
+        "Ejecutar el análisis de accesibilidad (axe-core) en las cuatro pantallas.",
+        "Inspeccionar el hardware de la estación y verificar Python 3.9+, Node 18+ y la separación de módulos.",
+        "Revisar la cobertura del vocabulario clínico y el acta de validación lingüística."
       ],
       "resultados_esperados": [
-        "1.- Imprime \"ADVERTENCIA: evaluando sobre dataset/custom, el mismo dataset usado para entrenar. La accuracy resultante no mide generalización real.\", \"Muestras evaluadas: 100 (MAX_FRAMES=45)\", \"Accuracy global: ...\" >= 90 %, tabla Clase/Precision/Recall/Support y la matriz de confusión.",
-        "2.- \"Directorio no encontrado: <ruta>\" y \"No se encontraron muestras .npy en <ruta>\".",
-        "3.- \"Uso: python eval_model.py <directorio_dataset>\"."
+        "1.- Informe de exactitud global y por clase, con matriz de confusión.",
+        "2.- Sin peticiones externas; la cámara se activa y se envían frames.",
+        "3.- Sin violaciones graves ni críticas.",
+        "4.- Hardware comercial estándar, versiones soportadas y módulos desacoplados.",
+        "5.- Vocabulario cubierto y acta de validación vigente."
       ],
-      "ejecucion": "api",
-      "datos_prueba": "Ejecución por línea de comandos. Observado: 100/100 muestras correctas, todas con confianza >= 70 % (conjunto de entrenamiento)."
-    },
-    {
-      "id": "TC-LSA-015-02",
-      "grupo": "015",
-      "cu": "N/A",
-      "rf": [
-        "RF-05",
-        "RF-01.3"
+      "resultado_obtenido": "eval_model.py: exactitud global del 100 % y 0/100 muestras bajo el umbral (muestras del conjunto de entrenamiento). Sin Internet: dos intentos a cdn.jsdelivr.net; \"Activando cámara...\" permanece visible y no se envían frames. Accesibilidad: contraste insuficiente (grave) en las pantallas, botón sin nombre accesible (crítico) en P-03 y campo sin etiqueta (crítico) en Modo Captura.",
+      "observaciones": "No aprobado: DM-LSA-009 (depende de Internet) y DM-LSA-011 (accesibilidad). Pendiente para el ciclo 2: precisión con sesión independiente, estación, vocabulario, acta de validación, portabilidad y mantenibilidad (pasos 1, 4 y 5).",
+      "consolida": [
+        "TC-LSA-015-01",
+        "TC-LSA-015-02",
+        "TC-LSA-015-03",
+        "TC-LSA-015-04",
+        "TC-LSA-015-05",
+        "TC-LSA-015-06",
+        "TC-LSA-015-07",
+        "TC-LSA-015-08",
+        "TC-LSA-015-09"
       ],
-      "rnf": [
-        "RNF-02",
-        "RNF-02.1"
+      "aprobado": "No",
+      "defectos": [
+        "DM-LSA-009",
+        "DM-LSA-011"
       ],
-      "objetivo": "Medir la precisión real del modelo con una sesión de grabación independiente del conjunto de entrenamiento (>= 90 % en entorno controlado, >= 85 % en operación real).",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "P-02 / RNF-02 (CU-01)",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Persona(s) distinta(s) de la que generó el dataset, con las 4 señas del vocabulario (cabeza, dolor, respirar, yo) y reposo.",
-        "Directorio de muestras independiente (no dataset/custom) grabado con Modo Captura."
-      ],
-      "procedimiento": [
-        "1. Grabar 20 muestras por clase en una sesión nueva con CU-06 en un directorio separado.",
-        "2. Ejecutar python eval_model.py <directorio_independiente>.",
-        "3. En operación real, repetir 50 señas con el sistema completo contando aciertos."
-      ],
-      "resultados_esperados": [
-        "2.- Accuracy global >= 90 % y recall por clase razonable (sin clase por debajo de 80 %).",
-        "3.- Al menos 85 % de las señas se reconoce correctamente y las que no superan el umbral no generan traducción incorrecta."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "Requiere datos nuevos grabados por personas; las muestras actuales corresponden al conjunto de entrenamiento y no miden generalización."
-    },
-    {
-      "id": "TC-LSA-015-03",
-      "grupo": "015",
-      "cu": "N/A",
-      "rf": [],
-      "rnf": [
-        "RNF-04",
-        "RNF-04.1",
-        "RNF-07",
-        "RNF-07.1"
-      ],
-      "objetivo": "Inspeccionar la estación fija: hardware comercial estándar, dos pantallas, cámara, micrófono y altavoces en las dos caras.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "Estación física / RNF-04, RNF-07 (CU-01)",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Estación instalada en el box o mostrador de guardia/triaje.",
-        "Lista de verificación de instalación (cámara, monitores, micrófono, parlantes)."
-      ],
-      "procedimiento": [
-        "1. Verificar que la cámara es una webcam comercial USB y que las pantallas son monitores comunes.",
-        "2. Abrir /paciente en el monitor del paciente y /recepcion en el monitor del personal.",
-        "3. Probar cámara, dictado por micrófono y audio por altavoces."
-      ],
-      "resultados_esperados": [
-        "1.- No se usa equipamiento médico especializado.",
-        "2.- Cada cara se visualiza en su monitor y se sincroniza con la otra.",
-        "3.- Cámara, micrófono y altavoces funcionan; el encuadre queda calibrado."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "El ensamblaje físico y la calibración se verifican durante la instalación (RNF-04.1); no es verificable por software."
-    },
-    {
-      "id": "TC-LSA-015-04",
-      "grupo": "015",
-      "cu": "N/A",
-      "rf": [
-        "RF-T-03"
-      ],
-      "rnf": [
-        "RNF-05",
-        "RNF-05.1"
-      ],
-      "objetivo": "Verificar la ampliación incremental del vocabulario y la cobertura del vocabulario clínico del dataset.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "P-04, CLI / RNF-05 (CU-06)",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Persona que realiza una seña nueva (por ejemplo \"fiebre\")."
-      ],
-      "procedimiento": [
-        "1. Comparar GET /classes con la lista objetivo de vocabulario clínico (síntomas, triaje, dolor, admisión/recepción/guardia).",
-        "2. Grabar 20 muestras de una etiqueta nueva con Modo Captura, reentrenar (CU-08) y reiniciar el backend.",
-        "3. Realizar la seña nueva y verificar que se reconoce."
-      ],
-      "resultados_esperados": [
-        "1.- El documento de cobertura lista las señas incluidas y las pendientes; se registra la brecha.",
-        "2.- La etiqueta nueva figura en /classes y /dataset_stats.",
-        "3.- La seña nueva se clasifica con la etiqueta correcta con confianza >= 70 %."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "Hallazgo D-20: el modelo actual reconoce 4 señas más idle (cabeza, dolor, respirar, yo); las plantillas para ayuda, doctor y revisar son inalcanzables. Es una limitación de alcance a informar al cliente."
-    },
-    {
-      "id": "TC-LSA-015-05",
-      "grupo": "015",
-      "cu": "N/A",
-      "rf": [],
-      "rnf": [
-        "RNF-06",
-        "RNF-06.1"
-      ],
-      "objetivo": "Verificar que existe el acta de validación lingüística del dataset por intérpretes de LSA para la version vigente del vocabulario.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "Documentación / RNF-06 (CU-08)",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Acceso a la documentación de proyecto y al registro de versiones del dataset."
-      ],
-      "procedimiento": [
-        "1. Solicitar el acta de validación firmada por los intérpretes para el dataset vigente.",
-        "2. Cotejar las señas del acta con las clases de GET /classes."
-      ],
-      "resultados_esperados": [
-        "1.- Existe un acta fechada y firmada por los intérpretes participantes antes de la incorporación al modelo en producción.",
-        "2.- Todas las clases del modelo están cubiertas por el acta."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "RNF-06.1 es un procedimiento operativo; no es verificable por software. Si el acta no existe, el requisito queda sin cumplir."
-    },
-    {
-      "id": "TC-LSA-015-06",
-      "grupo": "015",
-      "cu": "N/A",
-      "rf": [
-        "RF-01.1"
-      ],
-      "rnf": [
-        "RNF-T-02",
-        "RNF-03.1"
-      ],
-      "objetivo": "Verificar que el flujo crítico de P-02 opera sin Internet (solo servicios locales).",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "P-02 / RNF-T-02 (CU-01)",
-      "prioridad": "Alta",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "Sin acceso a Internet: abortar con page.route toda petición a hosts distintos de localhost/127.0.0.1."
-      ],
-      "procedimiento": [
-        "1. Abrir /paciente, aceptar el consentimiento y esperar 15 s.",
-        "2. Listar las peticiones externas intentadas.",
-        "3. Verificar que la cámara se activa y que la conexión /ws/predict se abre."
-      ],
-      "resultados_esperados": [
-        "2.- No se intenta ninguna petición a hosts externos.",
-        "3.- Se muestra \"EN VIVO · Visión por computadora\" sin quedar en \"Activando cámara...\" y los frames se envían."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Hallazgo D-08: el backend de landmarks por defecto (legacy) carga holistic.js, drawing_utils.js y los archivos wasm desde cdn.jsdelivr.net; sin Internet la cámara no termina de activarse. Con ?mp=tasks se usan los archivos locales de web/public/mediapipe."
-    },
-    {
-      "id": "TC-LSA-015-07",
-      "grupo": "015",
-      "cu": "N/A",
-      "rf": [],
-      "rnf": [
-        "RNF-T-04"
-      ],
-      "objetivo": "Verificar los requisitos de portabilidad declarados: Python 3.9+ en el backend y Node 18+ en el frontend, y navegadores soportados.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "Instalación / RNF-T-04 (CU-01)",
-      "prioridad": "Media",
-      "prerrequisitos": [
-        "Entornos limpios con Python 3.9 y Python 3.10+, Node 18+, Chrome y Firefox."
-      ],
-      "procedimiento": [
-        "1. Instalar dependencias y arrancar el backend con Python 3.9.",
-        "2. Arrancar el backend con Python 3.10 o superior.",
-        "3. Abrir /recepcion en Chrome y en Firefox."
-      ],
-      "resultados_esperados": [
-        "1.- El backend arranca con Python 3.9 (requisito declarado en la ERS).",
-        "2.- El backend arranca y responde GET /.",
-        "3.- Chrome habilita el dictado; Firefox muestra el aviso de reconocimiento de voz no soportado y permite escribir."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "Hallazgo D-18 (análisis de código, a confirmar): app.py y storage.py usan anotaciones del tipo str | None evaluadas en tiempo de definición, que requieren Python 3.10; con 3.9 la importación fallaría."
-    },
-    {
-      "id": "TC-LSA-015-08",
-      "grupo": "015",
-      "cu": "N/A",
-      "rf": [],
-      "rnf": [
-        "RNF-T-05"
-      ],
-      "objetivo": "Verificar la accesibilidad básica de las pantallas con una herramienta automática (axe-core): nombres accesibles y etiquetas de controles.",
-      "categoria": "Usabilidad",
-      "tipo": "Funcional",
-      "pantalla": "P-01, P-02, P-03, P-04 / RNF-T-05 (CU-01)",
-      "prioridad": "Baja",
-      "prerrequisitos": [
-        "Backend (puerto 8000) y frontend Next.js (puerto 3000) iniciados con base SQLite temporal; Chromium (Playwright) con --use-fake-device-for-media-stream y --use-fake-ui-for-media-stream; acceso a cdn.jsdelivr.net para MediaPipe Holistic (ver D-08).",
-        "axe-core inyectado en la página."
-      ],
-      "procedimiento": [
-        "1. Ejecutar axe sobre /, sobre /paciente (con el diálogo abierto y tras aceptar), sobre /recepcion y sobre el Modo Captura.",
-        "2. Listar las violaciones con impacto critical o serious."
-      ],
-      "resultados_esperados": [
-        "2.- 0 violaciones de impacto critical o serious (por ejemplo botones de icono sin nombre accesible y área de texto sin etiqueta)."
-      ],
-      "ejecucion": "ui",
-      "datos_prueba": "Análisis de código previo: el botón de micrófono y el área \"Escribir...\" no tienen etiqueta accesible; es una hipótesis a confirmar con la herramienta."
-    },
-    {
-      "id": "TC-LSA-015-09",
-      "grupo": "015",
-      "cu": "N/A",
-      "rf": [],
-      "rnf": [
-        "RNF-T-03"
-      ],
-      "objetivo": "Inspeccionar la mantenibilidad: separación frontend/backend, hooks independientes, modelo LSTM desacoplado y plantillas centralizadas.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "pantalla": "Código fuente / RNF-T-03 (CU-01)",
-      "prioridad": "Baja",
-      "prerrequisitos": [
-        "Acceso al repositorio en la version bajo prueba."
-      ],
-      "procedimiento": [
-        "1. Verificar que web/ (Next.js) y app.py (FastAPI) son independientes y se comunican solo por HTTP/WebSocket.",
-        "2. Verificar que existen hooks separados para cámara, WebSocket, construcción de oraciones, canal de chat y reconocimiento de voz (web/hooks).",
-        "3. Verificar que el modelo LSTM está en src/model/lstm.py y que las plantillas están en la estructura MEDICAL_TEMPLATES.",
-        "4. Agregar una plantilla nueva en MEDICAL_TEMPLATES y comprobar que POST /process_sentence la devuelve sin otros cambios."
-      ],
-      "resultados_esperados": [
-        "1.- El frontend no importa código del backend ni viceversa.",
-        "2.- Hay un hook por responsabilidad: useMediaPipe, useSignWebSocket, useSentenceBuilder, useChatChannel y useSpeechToText.",
-        "3.- El modelo y las plantillas están aislados en modulos/estructuras propios.",
-        "4.- La plantilla nueva se sirve con source = \"template\" tras reiniciar el backend, sin tocar otros archivos."
-      ],
-      "ejecucion": "manual",
-      "datos_prueba": "Inspección de código; el criterio de mantenibilidad no se mide con HTTP."
+      "manual": false,
+      "ciclo_2": {
+        "fecha": "2026-10-21",
+        "resultado_obtenido": "eval_model.py: exactitud global del 100 % y 0/150 muestras bajo el umbral del 70 % (muestras del conjunto de entrenamiento). Sin Internet: 0 peticiones a hosts externos, \"Activando cámara...\" deja de mostrarse, /ws/predict abierta y 6 mensajes de frames enviados. Accesibilidad (axe-core, críticas y graves): 0 violaciones en inicio, paciente, recepción y Modo Captura.",
+        "aprobado": "No probado",
+        "observaciones": "DM-LSA-009 y DM-LSA-011 verificados y cerrados; DM-LSA-025, hallado en el ciclo 2, corregido y cerrado. Pendiente (lo ejecutará el equipo): precisión con una sesión de grabación independiente, estación, vocabulario, acta de validación, portabilidad y mantenibilidad (pasos 1, 4 y 5).",
+        "defectos_verificados": [
+          "DM-LSA-009",
+          "DM-LSA-011",
+          "DM-LSA-025"
+        ],
+        "pendiente_manual": [
+          "Paso 1: precisión con una sesión de grabación independiente",
+          "Paso 4: hardware de la estación y versiones de Python y Node",
+          "Paso 5: vocabulario clínico, acta de validación y mantenibilidad"
+        ],
+        "comprobaciones_automatizadas": "API 015-01; UI 015-06 y 015-08"
+      }
     }
   ]
 }
