@@ -11,7 +11,7 @@
       "titulo": "La traducción agrega contenido clínico no señado e incluye fragmentos de instrucciones internas",
       "descripcion": "El backend no verifica la fidelidad clínica de la oración generada por el modelo de lenguaje: para 'yo brazo dolor' devolvió síntomas no señados y fragmentos de sus instrucciones internas, y el personal los recibe como si fueran del paciente.",
       "casos": [
-        "TC-LSA-002-02"
+        "TC-LSA-002-01"
       ],
       "cu": "CU-02",
       "tipo_defecto": {
@@ -40,7 +40,7 @@
       "titulo": "Una traducción no clara no se descarta y se muestra al personal como una oración",
       "descripcion": "Una traducción no clara no se descarta: una secuencia sin significado (solo 'idle') genera una burbuja con las palabras originales en el panel del personal.",
       "casos": [
-        "TC-LSA-002-02"
+        "TC-LSA-002-01"
       ],
       "cu": "CU-02",
       "tipo_defecto": {
@@ -130,7 +130,7 @@
       "titulo": "Al enviar una respuesta del personal no se registra el evento de auditoría",
       "descripcion": "Al enviar una respuesta del personal desde la pantalla de recepción no se emite el evento de auditoría exigido por CU-04 y CU-11.",
       "casos": [
-        "TC-LSA-011-02"
+        "TC-LSA-011-01"
       ],
       "cu": "CU-04 / CU-11",
       "tipo_defecto": {
@@ -424,7 +424,7 @@
       "titulo": "GET /metrics rechaza marcas de tiempo ISO 8601 con sufijo 'Z'",
       "descripcion": "GET /metrics rechaza con 400 las marcas de tiempo ISO 8601 con sufijo 'Z', por lo que un cliente web no puede usar el filtro since.",
       "casos": [
-        "TC-LSA-011-02"
+        "TC-LSA-011-01"
       ],
       "cu": "CU-11",
       "tipo_defecto": {
@@ -452,7 +452,7 @@
       "titulo": "La ruta con plantilla supera la meta de latencia en el entorno de prueba (dependiente del entorno)",
       "descripcion": "La ruta con plantilla y el tiempo de extremo a extremo superan las metas de latencia en el equipo de prueba, y el tiempo previo al audio y el desfasaje entre caras quedan en el límite. La medición debe repetirse en una estación dedicada.",
       "casos": [
-        "TC-LSA-001-02",
+        "TC-LSA-001-01",
         "TC-LSA-003-01",
         "TC-LSA-014-01"
       ],
@@ -483,7 +483,7 @@
       "titulo": "La validación de /report y /audit acepta tipos incorrectos por coerción previa de Pydantic",
       "descripcion": "La validación de /report y /audit acepta tipos incorrectos (booleanos y cadenas) por la conversión previa de Pydantic.",
       "casos": [
-        "TC-LSA-010-02"
+        "TC-LSA-010-01"
       ],
       "cu": "CU-10 / CU-11",
       "tipo_defecto": {
@@ -512,7 +512,7 @@
       "titulo": "El protocolo WebSocket binario v2 es inalcanzable",
       "descripcion": "El protocolo WebSocket binario v2 es inalcanzable: cualquier trama binaria responde con un error interno.",
       "casos": [
-        "TC-LSA-001-03"
+        "TC-LSA-001-01"
       ],
       "cu": "CU-01",
       "tipo_defecto": {

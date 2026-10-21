@@ -28,7 +28,7 @@
     agrega síntomas que el paciente no señó y fragmentos de sus instrucciones internas
     (\mbox{DM-LSA-001}), y una secuencia sin contenido (solo reposo) se muestra al personal como
     una oración (\mbox{DM-LSA-002}). En un entorno de salud es lo más grave del ciclo y debe
-    corregirse primero (\mbox{TC-LSA-002-02}).
+    corregirse primero (\mbox{TC-LSA-002-01}).
   \item Faltan funciones previstas en los casos de uso: la pantalla de recepción no tiene la acción
     ``Finalizar atención'' (\mbox{DM-LSA-006}), las respuestas del personal no generan el evento
     de auditoría (\mbox{DM-LSA-005}) y, si se deniega la cámara, el paciente no recibe ningún aviso
@@ -46,10 +46,12 @@
     sugiere repetir la medición en el equipo destino antes de optimizar. Además, la cámara depende
     de Internet para iniciar (\mbox{DM-LSA-009}) y la interfaz presenta problemas de accesibilidad
     (\mbox{DM-LSA-011}).
-  \item Ocho casos quedaron en estado No probado porque requieren a una persona realizando las
-    acciones frente a la estación (\mbox{TC-LSA-001-01}, \mbox{TC-LSA-005-02},
-    \mbox{TC-LSA-006-02}, \mbox{TC-LSA-010-03}, \mbox{TC-LSA-014-02}, \mbox{TC-LSA-015-02}, \mbox{TC-LSA-015-03} y \mbox{TC-LSA-015-04}).
-    Se sugiere ejecutarlos en el ciclo 2.
+  \item Las comprobaciones que requieren a una persona realizando las acciones frente a la
+    estación (señas reales, dictado, captura, latencia percibida, calidad de la voz y de la
+    traducción, y la inspección de la estación) no se ejecutaron en el ciclo 1. Quedan como
+    pasos de \mbox{TC-LSA-001-01}, \mbox{TC-LSA-002-01}, \mbox{TC-LSA-003-01},
+    \mbox{TC-LSA-005-01}, \mbox{TC-LSA-006-01}, \mbox{TC-LSA-010-01}, \mbox{TC-LSA-014-01} y
+    \mbox{TC-LSA-015-01}, y se sugiere ejecutarlas en el ciclo 2.
 \end{enumerate}
 
 \end{document}

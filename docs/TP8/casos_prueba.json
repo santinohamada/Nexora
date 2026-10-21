@@ -4,239 +4,143 @@
     "version_sistema": "f29917a",
     "ciclo": 1,
     "fecha": "2026-10-20",
-    "nota": "Casos consolidados a partir de los 83 casos originales; el campo 'consolida' conserva el mapeo."
+    "nota": "Un caso por grupo; el campo 'consolida' conserva el mapeo con los 83 casos originales."
   },
   "cases": [
     {
       "id": "TC-LSA-001-01",
-      "cu": "001",
-      "modulo": "P-02, P-03 / CU-01, CU-02, CU-03",
-      "objetivo": "Verificar de punta a punta, con una persona real que realiza las señas frente a la cámara, el reconocimiento, la traducción a oración natural y la voz sintetizada.",
-      "categoria": "Funcional",
-      "tipo": "Aceptación",
-      "consolida": [
-        "TC-LSA-001-01",
-        "TC-LSA-002-07",
-        "TC-LSA-003-05"
-      ],
-      "prerrequisitos": [
-        "Estación completa en ejecución (backend, frontend, modelo de lenguaje local y voz).",
-        "P-02 y P-03 abiertas en Google Chrome con el consentimiento de cámara otorgado.",
-        "Una persona que conoce las señas yo, cabeza y dolor."
-      ],
-      "procedimiento": [
-        "Realizar las señas yo, cabeza y dolor encadenadas frente a la cámara.",
-        "Observar el panel Top-3 y la oración en construcción.",
-        "Bajar las manos.",
-        "Observar la conversación en P-02 y P-03 y escuchar el audio.",
-        "Evaluar la naturalidad de la oración, el acento y la inteligibilidad de la voz."
-      ],
-      "resultados_esperados": [
-        "2.- El panel Top-3 se actualiza y las palabras con confianza >= 70 % se agregan a la oración.",
-        "3.- Al reconocerse el reposo (manos abajo) con confianza suficiente, la oración se cierra sin botón de confirmación.",
-        "4.- Aparece la burbuja PACIENTE \"Me duele la cabeza.\" en ambas caras y el audio se reproduce con voz en español rioplatense.",
-        "5.- La oración es natural y fiel a las señas; la voz es inteligible."
-      ],
-      "resultado_obtenido": "",
-      "observaciones": "Pendiente de ejecución manual: requiere una persona realizando las acciones frente a la estación.",
-      "manual": true,
-      "aprobado": "No probado",
-      "defectos": []
-    },
-    {
-      "id": "TC-LSA-001-02",
-      "cu": "001",
-      "modulo": "P-02, Backend / CU-01",
-      "objetivo": "Verificar el flujo principal de CU-01: envío de frames, clasificación, umbral de confianza, armado de la secuencia y cierre de la oración al reconocerse el reposo.",
+      "grupo": "001",
+      "modulo": "P-01, P-02, P-03, Backend / CU-01",
+      "objetivo": "Verificar el flujo de CU-01 (comunicarse mediante LSA): reconocimiento de señas, armado y cierre de la oración, y sus alternativas.",
       "categoria": "Funcional",
       "tipo": "Funcional",
+      "prerrequisitos": [
+        "Backend y frontend en ejecución; P-02 y P-03 abiertas en Google Chrome con el consentimiento de cámara otorgado.",
+        "Muestras del dataset y una persona que conoce las señas yo, cabeza y dolor."
+      ],
+      "procedimiento": [
+        "Una persona realiza las señas yo, cabeza y dolor frente a la cámara y luego baja las manos.",
+        "Enviar al WebSocket muestras reales y predicciones simuladas (confianza de 70 %, reposo y repeticiones) y observar la oración armada.",
+        "Verificar el cierre de la oración y la burbuja en ambas caras, sin botón de confirmación.",
+        "Cerrar el WebSocket y simular una respuesta NO_CLARO.",
+        "Enviar al WebSocket mensajes inválidos y una trama binaria v2 válida."
+      ],
+      "resultados_esperados": [
+        "1.- Se reconocen las señas y se muestra \"Me duele la cabeza.\" en ambas caras con voz.",
+        "2.- Solo se agregan palabras con confianza >= 70 %, sin idle ni repeticiones consecutivas.",
+        "3.- La oración se cierra al reconocerse el reposo y la diferencia entre caras es <= 500 ms.",
+        "4.- Reintento de conexión sin errores; con NO_CLARO no se genera burbuja.",
+        "5.- El protocolo v1 devuelve errores sin cerrar la conexión; la trama v2 válida devuelve la seña dolor."
+      ],
+      "resultado_obtenido": "Ventanas de 20 a 45 frames; clasificación yo 99,83 %, cabeza 99,84 %, dolor 99,4 %; traducción \"Me duele la cabeza.\"; umbral y repeticiones correctos; reposo 20/20 como idle. Burbuja en ambas caras con 511 ms de diferencia en la última medición (límite 500 ms). Reintento a los 2,5 s sin errores; NO_CLARO sin burbuja; P-01 correcta. Toda trama binaria v2, incluso la válida, respondió {\"error\": \"'text'\"}.",
+      "observaciones": "No aprobado: DM-LSA-016 (diferencia entre caras en el límite) y DM-LSA-018 (protocolo v2 inalcanzable). Pendiente para el ciclo 2: la prueba de punta a punta con una persona real que realiza las señas (paso 1).",
       "consolida": [
+        "TC-LSA-001-01",
         "TC-LSA-001-02",
         "TC-LSA-001-03",
         "TC-LSA-001-04",
         "TC-LSA-001-05",
-        "TC-LSA-001-08"
-      ],
-      "prerrequisitos": [
-        "Backend y frontend en ejecución.",
-        "P-02 y P-03 abiertas; muestras reales del dataset disponibles."
-      ],
-      "procedimiento": [
-        "Abrir P-02 y verificar el envío periódico de ventanas de frames al WebSocket.",
-        "Enviar muestras de yo, cabeza y dolor al WebSocket y la secuencia a /process_sentence.",
-        "Simular predicciones con confianza de 70 %, de reposo (idle) y repetidas consecutivas.",
-        "Simular una predicción de reposo (idle) con confianza alta tras la última seña y observar la oración en ambas caras.",
-        "Enviar muestras de reposo y una ventana degradada."
-      ],
-      "resultados_esperados": [
-        "1.- Ventanas de entre 20 y 45 frames, con landmarks completos.",
-        "2.- Clasificación correcta con confianza alta y traducción \"Me duele la cabeza.\".",
-        "3.- Solo se agregan palabras con confianza >= 70 % (umbral inclusivo), sin idle ni repeticiones consecutivas.",
-        "4.- La oración se cierra al reconocerse el reposo y aparece la burbuja en ambas caras (diferencia <= 500 ms) sin botón de confirmación.",
-        "5.- El reposo se clasifica como idle y la ventana degradada produce baja confianza."
-      ],
-      "resultado_obtenido": "Ventanas de 20, 28, 36, 44 y 45 frames. Clasificación: yo 99,83 %, cabeza 99,84 %, dolor 99,4 %; traducción \"Me duele la cabeza.\" por plantilla. Umbral inclusivo en 70 % y sin repeticiones consecutivas. Reposo: 20/20 muestras como idle; ventana degradada con confianza de 27,89 %. Burbuja publicada en ambas caras, pero con una diferencia de 511 ms entre ellas en la última medición (máximo 500 ms).",
-      "observaciones": "No aprobado por la diferencia entre caras, que ronda el límite (DM-LSA-016). Las muestras provienen del conjunto de entrenamiento y las predicciones de la interfaz están simuladas.",
-      "manual": false,
-      "aprobado": "No",
-      "defectos": [
-        "DM-LSA-016"
-      ]
-    },
-    {
-      "id": "TC-LSA-001-03",
-      "cu": "001",
-      "modulo": "P-01, P-02, Backend / CU-01",
-      "objetivo": "Verificar los flujos alternativos de CU-01: pantalla de inicio, reconexión del WebSocket, traducción no clara y protocolo del canal de predicción.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "consolida": [
         "TC-LSA-001-06",
         "TC-LSA-001-07",
+        "TC-LSA-001-08",
         "TC-LSA-001-09",
         "TC-LSA-001-10"
       ],
-      "prerrequisitos": [
-        "Backend y frontend en ejecución.",
-        "P-02 con consentimiento de cámara otorgado."
-      ],
-      "procedimiento": [
-        "Abrir P-01 y verificar el título y la navegación a cada estación.",
-        "Cerrar la conexión del WebSocket y observar el reintento y la interfaz.",
-        "Simular una respuesta NO_CLARO al cerrar una oración.",
-        "Enviar al WebSocket un texto no JSON, un JSON sin frames, uno con pocos frames y una trama binaria v2 válida."
-      ],
-      "resultados_esperados": [
-        "1.- P-01 muestra las tarjetas Estación del Paciente y Estación de Recepción.",
-        "2.- Reintento de conexión cada 2 s, video activo y sin mensajes de error.",
-        "3.- No se genera burbuja y la ventana de oración desaparece.",
-        "4.- El protocolo v1 responde con mensajes de error sin cerrar la conexión; la trama v2 válida devuelve la seña dolor con confianza >= 70 %."
-      ],
-      "resultado_obtenido": "P-01 correcta. Reintento de conexión a los 2,5 s sin mensajes de error y con el video activo. NO_CLARO: sin burbuja. Protocolo v1: errores esperados y conexión abierta. Protocolo v2: toda trama binaria, incluso la válida, respondió {\"error\": \"'text'\"}.",
-      "observaciones": "No aprobado: el protocolo binario v2 es inalcanzable (DM-LSA-018).",
-      "manual": false,
       "aprobado": "No",
       "defectos": [
+        "DM-LSA-016",
         "DM-LSA-018"
-      ]
+      ],
+      "manual": false
     },
     {
       "id": "TC-LSA-002-01",
-      "cu": "002",
+      "grupo": "002",
       "modulo": "Backend / CU-02",
-      "objetivo": "Verificar la traducción de una secuencia de señas a una oración natural mediante plantillas médicas y la normalización de la secuencia.",
+      "objetivo": "Verificar la traducción de la secuencia de señas a una oración natural: plantillas, normalización, modelo de lenguaje, degradación y traducciones no claras.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-002-01",
-        "TC-LSA-002-02"
-      ],
-      "prerrequisitos": [
-        "Backend en ejecución."
-      ],
-      "procedimiento": [
-        "Enviar POST /process_sentence con \"yo cabeza dolor\".",
-        "Enviar otras combinaciones con plantilla (por ejemplo \"dolor\" y \"cabeza dolor respirar yo\").",
-        "Enviar la misma secuencia en otro orden, en mayúsculas, con repeticiones y con la palabra idle.",
-        "Enviar una secuencia vacía."
-      ],
-      "resultados_esperados": [
-        "1.- Oración \"Me duele la cabeza.\" con source = template.",
-        "2.- Cada combinación devuelve su oración de plantilla.",
-        "3.- La secuencia se normaliza y devuelve la misma oración.",
-        "4.- Respuesta 400."
-      ],
-      "resultado_obtenido": "\"yo cabeza dolor\" -> \"Me duele la cabeza.\" (plantilla); \"dolor\" -> \"Tengo dolor.\"; \"cabeza dolor respirar yo\" -> \"Me duele la cabeza, no puedo respirar bien.\". El orden, las mayúsculas, las repeticiones y idle se normalizan a la misma oración. Secuencia vacía -> 400.",
-      "observaciones": "",
-      "manual": false,
-      "aprobado": "Si",
-      "defectos": []
-    },
-    {
-      "id": "TC-LSA-002-02",
-      "cu": "002",
-      "modulo": "Backend / CU-02",
-      "objetivo": "Verificar la traducción con el modelo de lenguaje local: fidelidad clínica, reutilización desde caché, degradación sin el modelo y descarte de traducciones no claras.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-002-03",
-        "TC-LSA-002-04",
-        "TC-LSA-002-05",
-        "TC-LSA-002-06"
-      ],
       "prerrequisitos": [
         "Backend en ejecución con el modelo de lenguaje local activo."
       ],
       "procedimiento": [
-        "Enviar \"yo dolor pecho\" (sin plantilla) y repetir la consulta.",
-        "Enviar \"yo brazo dolor\" y \"fiebre tos\" y revisar la oración devuelta.",
+        "Enviar a /process_sentence combinaciones con plantilla, en otro orden, en mayúsculas, con repeticiones e idle, y una secuencia vacía.",
+        "Enviar combinaciones sin plantilla y repetir una consulta.",
+        "Enviar \"yo brazo dolor\" y \"fiebre tos\" y revisar la fidelidad de la oración.",
         "Con el modelo de lenguaje detenido o sin responder, enviar una secuencia sin plantilla.",
         "Enviar \"idle idle\" e \"idle\"."
       ],
       "resultados_esperados": [
-        "1.- Oración generada por el modelo (source = ollama) y reutilizada desde la caché en la repetición.",
-        "2.- Una única oración fiel a las señas, sin términos ausentes ni fragmentos de instrucciones internas.",
-        "3.- Se devuelven las palabras originales con respuesta 200.",
-        "4.- La traducción se descarta (NO_CLARO o vacía)."
+        "1.- Oración de plantilla (source = template), normalizada; 400 para la secuencia vacía.",
+        "2.- Oración del modelo (source = ollama) y reutilización desde la caché.",
+        "3.- Una única oración fiel, sin términos ausentes ni fragmentos de instrucciones internas.",
+        "4.- Se devuelven las palabras originales con respuesta 200.",
+        "5.- La traducción se descarta (NO_CLARO o vacía)."
       ],
-      "resultado_obtenido": "Reutilización desde caché y degradación a las palabras originales correctas. \"yo brazo dolor\" devolvió \"Me duele el brazo. (NO agregues fiebre, ni cansancio, ni nada extra.)\"; para \"yo dolor pecho\" el modelo devolvió en una ocasión un fragmento de sus instrucciones internas. \"idle idle\" e \"idle\" devolvieron la oración \"idle idle\" e \"idle\" en lugar de descartarse.",
-      "observaciones": "No aprobado: DM-LSA-001 (fidelidad clínica) y DM-LSA-002 (traducción no clara).",
-      "manual": false,
+      "resultado_obtenido": "Plantillas y normalización correctas (\"yo cabeza dolor\" -> \"Me duele la cabeza.\"); caché y degradación a las palabras originales correctas. \"yo brazo dolor\" devolvió \"Me duele el brazo. (NO agregues fiebre, ni cansancio, ni nada extra.)\" y, para \"yo dolor pecho\", el modelo devolvió en una ocasión un fragmento de sus instrucciones internas. \"idle idle\" e \"idle\" devolvieron esas mismas palabras como oración.",
+      "observaciones": "No aprobado: DM-LSA-001 (fidelidad clínica) y DM-LSA-002 (traducción no clara). Pendiente para el ciclo 2: evaluación humana de la calidad lingüística de las traducciones.",
+      "consolida": [
+        "TC-LSA-002-01",
+        "TC-LSA-002-02",
+        "TC-LSA-002-03",
+        "TC-LSA-002-04",
+        "TC-LSA-002-05",
+        "TC-LSA-002-06",
+        "TC-LSA-002-07"
+      ],
       "aprobado": "No",
       "defectos": [
         "DM-LSA-001",
         "DM-LSA-002"
-      ]
+      ],
+      "manual": false
     },
     {
       "id": "TC-LSA-003-01",
-      "cu": "003",
+      "grupo": "003",
       "modulo": "Backend, P-02 / CU-03",
-      "objetivo": "Verificar la síntesis de voz de la oración: audio válido, reutilización desde caché, degradación sin el motor de voz y tiempo de exhibición del texto antes del audio.",
+      "objetivo": "Verificar la síntesis de voz de la oración: audio válido, caché, degradación sin el motor de voz y exhibición del texto antes del audio.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-003-01",
-        "TC-LSA-003-02",
-        "TC-LSA-003-03",
-        "TC-LSA-003-04"
-      ],
       "prerrequisitos": [
         "Backend y frontend en ejecución con la voz Piper instalada."
       ],
       "procedimiento": [
-        "Enviar POST /process_sentence con \"dolor\" y validar el audio devuelto.",
+        "Enviar \"dolor\" a /process_sentence y validar el audio devuelto.",
         "Repetir la misma oración y comparar la latencia.",
         "Retirar la voz y repetir la consulta.",
-        "En P-02, medir el tiempo entre que se muestra la burbuja y se reproduce el audio."
+        "En P-02, medir el tiempo entre mostrar la burbuja y reproducir el audio.",
+        "Escuchar el audio y evaluar acento, inteligibilidad y volumen."
       ],
       "resultados_esperados": [
-        "1.- Audio WAV válido codificado en base64.",
-        "2.- La repetición reutiliza el audio de la caché.",
+        "1.- Audio WAV válido en base64.",
+        "2.- La repetición reutiliza la caché.",
         "3.- Respuesta 200 con audio vacío; el mensaje se entrega sin audio.",
-        "4.- El texto se muestra al menos 900 ms antes del audio."
+        "4.- El texto se muestra al menos 900 ms antes del audio.",
+        "5.- Voz con acento argentino, inteligible y con volumen adecuado."
       ],
-      "resultado_obtenido": "WAV mono de 16 bits y 22 050 Hz. Síntesis inicial de 1564 ms y repetición de 0 ms. Sin la voz: respuesta 200, audio vacío y oración entregada. Reproducción entre 838 y 919 ms después de mostrarse la burbuja (mínimo esperado: 900 ms).",
-      "observaciones": "No aprobado: el tiempo de exhibición del texto no alcanza el mínimo en la mayoría de las mediciones (DM-LSA-016).",
-      "manual": false,
+      "resultado_obtenido": "WAV mono de 16 bits y 22 050 Hz; síntesis de 1564 ms y repetición de 0 ms; sin la voz, respuesta 200 con audio vacío. Reproducción entre 838 y 919 ms después de la burbuja (mínimo 900 ms).",
+      "observaciones": "No aprobado: el tiempo de exhibición del texto no alcanza el mínimo en la mayoría de las mediciones (DM-LSA-016). Pendiente para el ciclo 2: evaluación humana de la calidad de la voz (paso 5).",
+      "consolida": [
+        "TC-LSA-003-01",
+        "TC-LSA-003-02",
+        "TC-LSA-003-03",
+        "TC-LSA-003-04",
+        "TC-LSA-003-05"
+      ],
       "aprobado": "No",
       "defectos": [
         "DM-LSA-016"
-      ]
+      ],
+      "manual": false
     },
     {
       "id": "TC-LSA-004-01",
-      "cu": "004",
+      "grupo": "004",
       "modulo": "P-03, P-02 / CU-04",
-      "objetivo": "Verificar que el personal puede responder al paciente por texto y que la respuesta se sincroniza en ambas caras.",
+      "objetivo": "Verificar que el personal responde al paciente por texto y que la respuesta se sincroniza en ambas caras.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-004-01",
-        "TC-LSA-004-02",
-        "TC-LSA-004-03"
-      ],
       "prerrequisitos": [
         "Frontend en ejecución con P-02 y P-03 abiertas en el mismo navegador."
       ],
@@ -250,86 +154,85 @@
         "1.- \"Enviar\" deshabilitado.",
         "2.- La burbuja contiene \"Pase a la sala 2\" y el área queda vacía.",
         "3.- La burbuja RECEPCIONISTA aparece en ambas caras, sin botón de reporte.",
-        "4.- El contenido se muestra como texto plano y la interfaz no se rompe."
+        "4.- Se muestra como texto plano y la interfaz no se rompe."
       ],
-      "resultado_obtenido": "Estado inicial y botón deshabilitado correctos. La burbuja con \"Pase a la sala 2\" aparece en ambas caras con 1 ms de diferencia. Las etiquetas HTML se muestran literalmente y el texto de 1000 caracteres se conserva íntegro, sin desborde.",
-      "observaciones": "",
-      "manual": false,
+      "resultado_obtenido": "Estado inicial y botón deshabilitado correctos; la burbuja aparece en ambas caras con 1 ms de diferencia; las etiquetas HTML se muestran literalmente y el texto de 1000 caracteres se conserva sin desborde.",
+      "observaciones": "Sin observaciones. No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-004-01",
+        "TC-LSA-004-02",
+        "TC-LSA-004-03"
+      ],
       "aprobado": "Si",
-      "defectos": []
+      "defectos": [],
+      "manual": false
     },
     {
       "id": "TC-LSA-005-01",
-      "cu": "005",
+      "grupo": "005",
       "modulo": "P-03 / CU-05",
-      "objetivo": "Verificar el dictado de la respuesta por voz: acumulación del texto, varios segmentos, detención del micrófono y caminos de excepción.",
+      "objetivo": "Verificar el dictado de la respuesta por voz: acumulación del texto, varios segmentos, detención y caminos de excepción.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-005-01",
-        "TC-LSA-005-02",
-        "TC-LSA-005-03"
-      ],
       "prerrequisitos": [
-        "P-03 abierta con el reconocimiento de voz simulado."
+        "P-03 abierta en Google Chrome; reconocimiento de voz simulado para las pruebas automáticas y micrófono operativo para la prueba real."
       ],
       "procedimiento": [
         "Escribir \"Buenos días\", activar el micrófono y dictar \"pase\".",
         "Dictar dos segmentos finales consecutivos.",
         "Pulsar nuevamente el micrófono para detener el dictado.",
-        "Repetir en un navegador sin soporte de voz y con un error de micrófono."
+        "Repetir en un navegador sin soporte de voz y con un error de micrófono.",
+        "Realizar un dictado real con micrófono y reconocimiento en español de Argentina."
       ],
       "resultados_esperados": [
         "1.- El área contiene \"Buenos días pase\".",
-        "2.- El área conserva ambos segmentos.",
+        "2.- Se conservan ambos segmentos.",
         "3.- La sesión de reconocimiento se detiene.",
-        "4.- Se informa el problema con un único aviso y la respuesta escrita sigue funcionando."
+        "4.- Un único aviso y la respuesta escrita sigue funcionando.",
+        "5.- El texto dictado se transcribe correctamente."
       ],
-      "resultado_obtenido": "El área mostró \"pase\" (se esperaba \"Buenos días pase\") y, con dos segmentos finales, solo \"y su credencial\". Tras pulsar el micrófono la sesión iniciada siguió activa. Sin soporte de voz: aviso, micrófono deshabilitado y respuesta escrita funcional, pero con dos avisos distintos; el error not-allowed se informa correctamente.",
-      "observaciones": "No aprobado: DM-LSA-013, DM-LSA-014 y DM-LSA-019.",
-      "manual": false,
+      "resultado_obtenido": "Con el dictado simulado el área mostró \"pase\" (se esperaba \"Buenos días pase\") y, con dos segmentos, solo \"y su credencial\"; la sesión iniciada siguió activa tras detener. Sin soporte de voz: micrófono deshabilitado y respuesta escrita funcional, con dos avisos distintos; el error not-allowed se informa correctamente.",
+      "observaciones": "No aprobado: DM-LSA-013, DM-LSA-014 y DM-LSA-019. Pendiente para el ciclo 2: el dictado real en Chrome (paso 5).",
+      "consolida": [
+        "TC-LSA-005-01",
+        "TC-LSA-005-02",
+        "TC-LSA-005-03",
+        "TC-LSA-005-04"
+      ],
       "aprobado": "No",
       "defectos": [
         "DM-LSA-013",
         "DM-LSA-014",
         "DM-LSA-019"
-      ]
-    },
-    {
-      "id": "TC-LSA-005-02",
-      "cu": "005",
-      "modulo": "P-03 / CU-05",
-      "objetivo": "Verificar el dictado real en Google Chrome con micrófono y reconocimiento en español de Argentina.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-005-04"
       ],
-      "prerrequisitos": [
-        "P-03 abierta en Google Chrome con micrófono operativo y permiso concedido."
-      ],
-      "procedimiento": [
-        "Escribir una palabra en el área de respuesta.",
-        "Activar el micrófono y dictar una frase corta.",
-        "Dictar una segunda frase y detener el dictado."
-      ],
-      "resultados_esperados": [
-        "2.- El texto dictado se suma al ya escrito.",
-        "3.- Se conservan ambas frases y el dictado se detiene."
-      ],
-      "resultado_obtenido": "",
-      "observaciones": "Pendiente de ejecución manual: requiere una persona realizando las acciones frente a la estación.",
-      "manual": true,
-      "aprobado": "No probado",
-      "defectos": []
+      "manual": false
     },
     {
       "id": "TC-LSA-006-01",
-      "cu": "006",
+      "grupo": "006",
       "modulo": "P-04, Backend / CU-06",
-      "objetivo": "Verificar la captura de muestras de señas: grabación con repeticiones, creación de etiquetas, detención anticipada y validación de los datos recibidos por /capture.",
+      "objetivo": "Verificar la captura de muestras de señas: grabación, repeticiones, etiquetas nuevas, detención anticipada y validación de los datos de /capture.",
       "categoria": "Funcional",
       "tipo": "Funcional",
+      "prerrequisitos": [
+        "Backend y frontend en ejecución; Modo Captura (P-04) abierto con el consentimiento de cámara otorgado."
+      ],
+      "procedimiento": [
+        "Grabar una muestra con una etiqueta existente y otra nueva (cuenta regresiva de 3 s, 45 frames).",
+        "Grabar tres repeticiones y probar el campo Repeticiones con 0, vacío y -2.",
+        "Pulsar Detener durante la cuenta regresiva y durante la grabación.",
+        "Enviar a /capture muestras con pocos frames, valores NaN y formas inválidas.",
+        "Grabar una seña con una persona real y revisar que la muestra contenga manos detectadas."
+      ],
+      "resultados_esperados": [
+        "1.- Archivo .npy de forma (45, 75, 4); la carpeta de una etiqueta nueva se crea al guardar.",
+        "2.- Se guardan tres muestras; \"¡Guardado!\" solo aparece si se guardó algo.",
+        "3.- Detener cancela la grabación sin guardar.",
+        "4.- Los datos inválidos se rechazan con 400, sin errores 500 ni archivos corruptos.",
+        "5.- La muestra contiene landmarks de manos."
+      ],
+      "resultado_obtenido": "Grabación simple y de tres repeticiones correctas, con archivos de forma (45, 75, 4) y carpeta creada al guardar. Con Repeticiones = -2 se mostró \"¡Guardado!\" sin guardar nada. \"Detener\" no canceló la secuencia: se guardó una muestra. /capture rechazó con 400 pocos frames, NaN y blendshapes faltantes, pero aceptó una forma (5, 2, 2) y respondió 500 ante formas irregulares.",
+      "observaciones": "No aprobado: DM-LSA-004, DM-LSA-008 y DM-LSA-012. Pendiente para el ciclo 2: la grabación con una persona real (paso 5).",
       "consolida": [
         "TC-LSA-006-01",
         "TC-LSA-006-02",
@@ -337,111 +240,60 @@
         "TC-LSA-006-04",
         "TC-LSA-006-05",
         "TC-LSA-006-06",
-        "TC-LSA-006-07"
+        "TC-LSA-006-07",
+        "TC-LSA-006-08"
       ],
-      "prerrequisitos": [
-        "Backend y frontend en ejecución.",
-        "Modo Captura (P-04) abierto con el consentimiento de cámara otorgado."
-      ],
-      "procedimiento": [
-        "Grabar una muestra con una etiqueta existente y otra nueva (cuenta regresiva de 3 s, 45 frames).",
-        "Grabar tres repeticiones y probar el campo Repeticiones con 0, vacío y -2.",
-        "Pulsar Detener durante la cuenta regresiva y durante la grabación.",
-        "Enviar a /capture muestras con pocos frames, valores NaN y formas inválidas."
-      ],
-      "resultados_esperados": [
-        "1.- Archivo .npy de forma (45, 75, 4); la carpeta de una etiqueta nueva se crea al guardar.",
-        "2.- Se guardan tres muestras; \"¡Guardado!\" solo aparece si se guardó algo.",
-        "3.- Detener cancela la grabación sin guardar.",
-        "4.- Los datos inválidos se rechazan con 400, sin errores 500 ni archivos corruptos."
-      ],
-      "resultado_obtenido": "Grabación simple y de tres repeticiones correctas, con archivos de forma (45, 75, 4) y carpeta creada al guardar. Con Repeticiones = -2 se mostró \"¡Guardado!\" sin guardar nada. \"Detener\" no canceló la secuencia: se guardó una muestra. /capture rechazó con 400 los casos de pocos frames, NaN y blendshapes faltantes, pero aceptó una forma (5, 2, 2) y respondió 500 ante formas irregulares.",
-      "observaciones": "No aprobado: DM-LSA-004, DM-LSA-008 y DM-LSA-012.",
-      "manual": false,
       "aprobado": "No",
       "defectos": [
         "DM-LSA-004",
         "DM-LSA-008",
         "DM-LSA-012"
-      ]
-    },
-    {
-      "id": "TC-LSA-006-02",
-      "cu": "006",
-      "modulo": "P-04 / CU-06",
-      "objetivo": "Verificar con una persona real que la muestra grabada en Modo Captura contiene manos detectadas y representa la seña.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-006-08"
       ],
-      "prerrequisitos": [
-        "Modo Captura abierto con cámara real y consentimiento otorgado.",
-        "Una persona que conoce las señas del vocabulario."
-      ],
-      "procedimiento": [
-        "Seleccionar la etiqueta dolor.",
-        "Grabar una muestra realizando la seña durante la captura.",
-        "Revisar que la muestra guardada contenga manos detectadas."
-      ],
-      "resultados_esperados": [
-        "2.- La captura transcurre con la cuenta regresiva y se guarda la muestra.",
-        "3.- La muestra contiene landmarks de manos en los frames de la seña."
-      ],
-      "resultado_obtenido": "",
-      "observaciones": "Pendiente de ejecución manual: requiere una persona realizando las acciones frente a la estación.",
-      "manual": true,
-      "aprobado": "No probado",
-      "defectos": []
+      "manual": false
     },
     {
       "id": "TC-LSA-007-01",
-      "cu": "007",
+      "grupo": "007",
       "modulo": "P-04, Backend / CU-07",
-      "objetivo": "Verificar la gestión del vocabulario: consulta de clases y estadísticas, lista de etiquetas, creación de etiquetas nuevas y validación de su formato.",
+      "objetivo": "Verificar la gestión del vocabulario: consulta de clases y estadísticas, lista de etiquetas, etiquetas nuevas y validación de su formato.",
       "categoria": "Funcional",
       "tipo": "Funcional",
+      "prerrequisitos": [
+        "Backend y frontend en ejecución; Modo Captura abierto."
+      ],
+      "procedimiento": [
+        "Consultar GET /classes y GET /dataset_stats.",
+        "Verificar la lista de etiquetas, el filtro de búsqueda y la creación de \"ZZ_UI_Nueva\".",
+        "Agregar las etiquetas \"fiebre alta\", \"dolor!\" y una de 33 caracteres.",
+        "Enviar a /capture etiquetas en los límites de longitud y con caracteres no permitidos."
+      ],
+      "resultados_esperados": [
+        "1.- Clases y cantidad de muestras coherentes.",
+        "2.- Lista combinada sin idle; la etiqueta nueva se crea en minúsculas.",
+        "3.- Las etiquetas inválidas se rechazan con un mensaje de formato.",
+        "4.- Solo se aceptan de 1 a 32 caracteres (minúsculas, dígitos y guion bajo)."
+      ],
+      "resultado_obtenido": "Consultas, lista combinada, búsqueda y normalización correctas. Las tres etiquetas inválidas se agregaron sin mensaje de formato y, al grabar, el backend respondió 400 y la interfaz mostró \"¡Guardado!\". Los límites de /capture se validan correctamente.",
+      "observaciones": "No aprobado: la interfaz no valida el formato de la etiqueta (DM-LSA-008). No quedan comprobaciones manuales pendientes.",
       "consolida": [
         "TC-LSA-007-01",
         "TC-LSA-007-02",
         "TC-LSA-007-03",
         "TC-LSA-007-04"
       ],
-      "prerrequisitos": [
-        "Backend y frontend en ejecución.",
-        "Modo Captura abierto."
-      ],
-      "procedimiento": [
-        "Consultar GET /classes y GET /dataset_stats.",
-        "Verificar la lista de etiquetas, el filtro de búsqueda y la creación de la etiqueta \"ZZ_UI_Nueva\".",
-        "Agregar las etiquetas \"fiebre alta\", \"dolor!\" y una de 33 caracteres.",
-        "Enviar a /capture etiquetas en los límites de longitud y con caracteres no permitidos."
-      ],
-      "resultados_esperados": [
-        "1.- Clases y cantidad de muestras por etiqueta coherentes.",
-        "2.- Lista combinada sin idle; la etiqueta nueva se crea en minúsculas.",
-        "3.- Las etiquetas inválidas se rechazan con un mensaje de formato.",
-        "4.- Solo se aceptan de 1 a 32 caracteres (minúsculas, dígitos y guion bajo)."
-      ],
-      "resultado_obtenido": "Consultas, lista combinada, búsqueda y normalización a minúsculas correctas. Las tres etiquetas inválidas se agregaron como chip sin mensaje de formato y, al grabar, el backend respondió 400 y la interfaz mostró \"¡Guardado!\". Los límites de /capture se validan correctamente.",
-      "observaciones": "No aprobado: la interfaz no valida el formato de la etiqueta (DM-LSA-008).",
-      "manual": false,
       "aprobado": "No",
       "defectos": [
         "DM-LSA-008"
-      ]
+      ],
+      "manual": false
     },
     {
       "id": "TC-LSA-008-01",
-      "cu": "008",
+      "grupo": "008",
       "modulo": "Entrenamiento / CU-08",
-      "objetivo": "Verificar el reentrenamiento del modelo desde la línea de comandos con las muestras capturadas y el comportamiento sin datos de entrenamiento.",
+      "objetivo": "Verificar el reentrenamiento del modelo desde la línea de comandos y el comportamiento sin datos de entrenamiento.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-008-01",
-        "TC-LSA-008-02"
-      ],
       "prerrequisitos": [
         "Dataset con muestras por etiqueta en dataset/custom."
       ],
@@ -457,229 +309,143 @@
         "3.- Cada muestra se clasifica con su clase.",
         "4.- Mensaje \"graba algunos datos primero\" y modelos sin cambios."
       ],
-      "resultado_obtenido": "Entrenamiento de 17 s, 50 épocas, mejor exactitud de validación del 100 %. Modelo cargado con 5 clases y ventanas de 45 frames; cada clase se clasificó correctamente. Sin dataset y con la carpeta vacía: mensaje \"Por favor graba algunos datos primero.\" y el directorio models/ sin cambios.",
-      "observaciones": "La exactitud corresponde a muestras del conjunto de entrenamiento.",
-      "manual": false,
+      "resultado_obtenido": "Entrenamiento de 17 s, 50 épocas, mejor exactitud de validación del 100 %; modelo cargado con 5 clases y ventanas de 45 frames; cada clase se clasificó correctamente. Sin dataset y con la carpeta vacía: mensaje \"Por favor graba algunos datos primero.\" y models/ sin cambios.",
+      "observaciones": "La exactitud corresponde a muestras del conjunto de entrenamiento. No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-008-01",
+        "TC-LSA-008-02"
+      ],
       "aprobado": "Si",
-      "defectos": []
+      "defectos": [],
+      "manual": false
     },
     {
       "id": "TC-LSA-009-01",
-      "cu": "009",
+      "grupo": "009",
       "modulo": "P-02 / CU-09",
       "objetivo": "Verificar el consentimiento explícito de cámara: aceptación, rechazo, permiso denegado por el navegador y ausencia de persistencia.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-009-01",
-        "TC-LSA-009-02",
-        "TC-LSA-009-03",
-        "TC-LSA-009-04"
-      ],
       "prerrequisitos": [
         "Frontend en ejecución."
       ],
       "procedimiento": [
         "Abrir /paciente y verificar el diálogo de consentimiento.",
         "Pulsar \"Acepto y continúo\".",
-        "Recargar y pulsar \"No acepto\", luego \"Reconsiderar\".",
+        "Recargar, pulsar \"No acepto\" y luego \"Reconsiderar\".",
         "Aceptar y denegar el permiso de cámara en el navegador.",
         "Recargar la página."
       ],
       "resultados_esperados": [
-        "1.- Diálogo modal que bloquea la pantalla; la cámara permanece inactiva.",
+        "1.- Diálogo modal que bloquea la pantalla; cámara inactiva.",
         "2.- Se activa la cámara y se registra el consentimiento.",
         "3.- Mensaje informativo, cámara inactiva y opción de reconsiderar.",
         "4.- Se informa al paciente que no hay acceso a la cámara.",
         "5.- El diálogo vuelve a mostrarse; no se almacena el consentimiento."
       ],
-      "resultado_obtenido": "Diálogo modal con foco y contenido inerte; la cámara se solicitó solo tras aceptar. \"No acepto\" muestra el mensaje y \"Reconsiderar\"; el rechazo y la aceptación se registran. Tras recargar vuelve el diálogo y no existe ninguna clave de consentimiento almacenada. Con el permiso denegado por el navegador no se muestra ningún mensaje y el indicador \"EN VIVO\" sigue visible.",
-      "observaciones": "No aprobado: no se informa la cámara denegada (DM-LSA-007).",
-      "manual": false,
+      "resultado_obtenido": "Diálogo modal con foco y contenido inerte; la cámara se solicitó solo tras aceptar. \"No acepto\" muestra el mensaje y \"Reconsiderar\"; aceptación y rechazo se registran. Tras recargar vuelve el diálogo sin ninguna clave de consentimiento almacenada. Con el permiso denegado por el navegador no se muestra ningún mensaje y el indicador \"EN VIVO\" sigue visible.",
+      "observaciones": "No aprobado: no se informa la cámara denegada (DM-LSA-007). No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-009-01",
+        "TC-LSA-009-02",
+        "TC-LSA-009-03",
+        "TC-LSA-009-04"
+      ],
       "aprobado": "No",
       "defectos": [
         "DM-LSA-007"
-      ]
+      ],
+      "manual": false
     },
     {
       "id": "TC-LSA-010-01",
-      "cu": "010",
-      "modulo": "P-02, P-03 / CU-10",
-      "objetivo": "Verificar que se puede reportar una traducción incorrecta desde ambas pantallas, el fallo de envío y la protección contra doble clic.",
+      "grupo": "010",
+      "modulo": "P-02, P-03, Backend / CU-10",
+      "objetivo": "Verificar el reporte de traducciones incorrectas: desde ambas pantallas, fallo de envío, persistencia, validación de /report y resumen.",
       "categoria": "Funcional",
       "tipo": "Funcional",
+      "prerrequisitos": [
+        "Backend con base SQLite de prueba y frontend en ejecución; mensaje del paciente visible en P-02 y P-03."
+      ],
+      "procedimiento": [
+        "Pulsar \"Reportar traducción\" en P-02 y repetir desde P-03; verificar que los mensajes del personal no tienen el botón.",
+        "Cortar la conexión, reportar y pulsar el botón dos veces seguidas.",
+        "Enviar a /report un reporte válido y valores límite o inválidos de text, station, words y message_id.",
+        "Consultar GET /reports/summary con distintos valores de limit.",
+        "Pedir a usuarios reales que reporten una traducción y comenten si el aviso es claro."
+      ],
+      "resultados_esperados": [
+        "1.- El mensaje queda marcado en ambas caras y solo los del paciente tienen el botón.",
+        "2.- Error con opción de reintentar; se envía un único reporte.",
+        "3.- Reportes persistidos; se rechazan los valores fuera de rango y de tipo incorrecto.",
+        "4.- Estructura correcta, con limit entre 1 y 100.",
+        "5.- El aviso es comprensible."
+      ],
+      "resultado_obtenido": "Reporte marcado en ambas caras y guardado en SQLite; con la conexión cortada se muestra \"No se pudo enviar el reporte. Probá de nuevo.\" y con doble clic hay una única petición. Límites de text, station y words y el resumen correctos; message_id = true y message_id = \"12\" se aceptaron con 200 en lugar de rechazarse.",
+      "observaciones": "No aprobado: la validación acepta tipos incorrectos (DM-LSA-017). Pendiente para el ciclo 2: la evaluación del aviso con usuarios reales (paso 5).",
       "consolida": [
         "TC-LSA-010-01",
         "TC-LSA-010-02",
-        "TC-LSA-010-03"
-      ],
-      "prerrequisitos": [
-        "Backend y frontend en ejecución.",
-        "Mensaje del paciente visible en P-02 y P-03."
-      ],
-      "procedimiento": [
-        "En P-02, pulsar \"Reportar traducción\" en la burbuja del paciente.",
-        "Repetir desde P-03 y verificar que los mensajes del personal no tienen el botón.",
-        "Cortar la conexión y reportar.",
-        "Pulsar el botón dos veces seguidas."
-      ],
-      "resultados_esperados": [
-        "1.- El mensaje queda marcado como reportado en ambas caras.",
-        "2.- Solo los mensajes del paciente muestran el botón.",
-        "3.- Mensaje de error y botón disponible para reintentar.",
-        "4.- Se envía un único reporte."
-      ],
-      "resultado_obtenido": "Mensaje tachado con insignia \"Traducción reportada\" en ambas caras y reporte guardado en SQLite con sus palabras. Solo los mensajes del paciente tienen el botón. Con la conexión cortada: \"No se pudo enviar el reporte. Probá de nuevo.\". Con doble clic: una sola petición y una sola fila.",
-      "observaciones": "",
-      "manual": false,
-      "aprobado": "Si",
-      "defectos": []
-    },
-    {
-      "id": "TC-LSA-010-02",
-      "cu": "010",
-      "modulo": "Backend / CU-10",
-      "objetivo": "Verificar el registro de reportes por POST /report: persistencia, límites y valores inválidos de los campos y resumen de GET /reports/summary.",
-      "categoria": "Integridad de datos",
-      "tipo": "Funcional",
-      "consolida": [
+        "TC-LSA-010-03",
         "TC-LSA-010-04",
         "TC-LSA-010-05",
         "TC-LSA-010-06",
-        "TC-LSA-010-07"
+        "TC-LSA-010-07",
+        "TC-LSA-010-08"
       ],
-      "prerrequisitos": [
-        "Backend en ejecución con una base SQLite de prueba."
-      ],
-      "procedimiento": [
-        "Enviar un reporte válido y repetirlo; consultar la base de datos.",
-        "Enviar text vacío, de 1, 500 y 501 caracteres, y de tipo numérico.",
-        "Enviar words con 20 y 21 palabras y message_id con valores límite y de tipo incorrecto.",
-        "Consultar GET /reports/summary con distintos valores de limit."
-      ],
-      "resultados_esperados": [
-        "1.- Reportes persistidos con sus palabras reconocidas.",
-        "2.- Se rechazan los textos vacíos o demasiado largos.",
-        "3.- Se rechazan los valores fuera de rango y de tipo incorrecto.",
-        "4.- Estructura y orden correctos, con limit acotado entre 1 y 100."
-      ],
-      "resultado_obtenido": "Persistencia, límites de text, station y words, y el resumen funcionan según lo esperado. message_id = true y message_id = \"12\" se aceptaron con 200 en lugar de rechazarse.",
-      "observaciones": "No aprobado: la validación acepta tipos incorrectos (DM-LSA-017).",
-      "manual": false,
       "aprobado": "No",
       "defectos": [
         "DM-LSA-017"
-      ]
-    },
-    {
-      "id": "TC-LSA-010-03",
-      "cu": "010",
-      "modulo": "P-02, P-03 / CU-10",
-      "objetivo": "Evaluar con usuarios reales si el aviso de traducción reportada es comprensible y orienta la acción correcta.",
-      "categoria": "Usabilidad",
-      "tipo": "Aceptación",
-      "consolida": [
-        "TC-LSA-010-08"
       ],
-      "prerrequisitos": [
-        "Estación completa en ejecución.",
-        "Al menos dos personas del personal que no participaron del desarrollo."
-      ],
-      "procedimiento": [
-        "Mostrar una traducción incorrecta y pedir que la reporten.",
-        "Observar el aviso que aparece en ambas pantallas.",
-        "Preguntar qué entendieron y qué harían a continuación."
-      ],
-      "resultados_esperados": [
-        "2.- El aviso se distingue claramente del resto de la conversación.",
-        "3.- Las personas entienden que no deben tomar la traducción como válida y que el paciente repetirá la seña."
-      ],
-      "resultado_obtenido": "",
-      "observaciones": "Pendiente de ejecución manual: requiere una persona realizando las acciones frente a la estación.",
-      "manual": true,
-      "aprobado": "No probado",
-      "defectos": []
+      "manual": false
     },
     {
       "id": "TC-LSA-011-01",
-      "cu": "011",
-      "modulo": "Backend, P-02 / CU-11",
-      "objetivo": "Verificar el registro de eventos de auditoría: consentimiento, eventos del backend, validación de los datos recibidos y anonimato.",
-      "categoria": "Seguridad",
+      "grupo": "011",
+      "modulo": "Backend, P-02, P-03 / CU-11",
+      "objetivo": "Verificar el registro de auditoría: eventos de consentimiento, del backend y de la respuesta del personal, anonimato, validación y métricas.",
+      "categoria": "Funcional",
       "tipo": "Funcional",
+      "prerrequisitos": [
+        "Backend con base SQLite de prueba y frontend en ejecución."
+      ],
+      "procedimiento": [
+        "Enviar a POST /audit eventos de consentimiento y valores inválidos de tipo, estación y consentimiento.",
+        "Generar una predicción, una oración y un reporte, y enviar una respuesta del personal desde P-03; contar los eventos.",
+        "Enviar campos adicionales y simular un fallo de escritura de la base.",
+        "Consultar GET /metrics, con y sin filtro since (futuro, de ayer y con sufijo Z)."
+      ],
+      "resultados_esperados": [
+        "1.- Eventos registrados; los inválidos se rechazan con 400 o 422.",
+        "2.- Se registran los eventos del backend y el de la respuesta del personal, sin texto de la conversación.",
+        "3.- Los campos adicionales se ignoran; el fallo de escritura no interrumpe el resto.",
+        "4.- Conteos y percentiles correctos; el filtro acepta cualquier fecha ISO 8601."
+      ],
+      "resultado_obtenido": "Eventos de consentimiento, prediction, sentence y report registrados y agregados, con validación y anonimato correctos; con la base bloqueada /process_sentence respondió 200 y /audit respondió 500. Al enviar la respuesta del personal no se emitió ningún POST /audit. El filtro since con sufijo Z respondió 400 \"Invalid since timestamp\".",
+      "observaciones": "No aprobado: DM-LSA-005 (evento de la respuesta del personal) y DM-LSA-015 (filtro since). No quedan comprobaciones manuales pendientes.",
       "consolida": [
         "TC-LSA-011-01",
         "TC-LSA-011-02",
         "TC-LSA-011-03",
+        "TC-LSA-011-04",
+        "TC-LSA-011-05",
         "TC-LSA-011-06",
         "TC-LSA-011-07"
       ],
-      "prerrequisitos": [
-        "Backend en ejecución con una base SQLite de prueba."
-      ],
-      "procedimiento": [
-        "Enviar eventos de consentimiento aceptado y rechazado a POST /audit.",
-        "Enviar tipos, estaciones y valores inválidos.",
-        "Generar una predicción, una oración y un reporte, y revisar los eventos registrados.",
-        "Enviar campos adicionales y simular un fallo de escritura de la base."
-      ],
-      "resultados_esperados": [
-        "1.- Eventos registrados y agregados en /metrics.",
-        "2.- Se rechazan con 400 o 422.",
-        "3.- Eventos con sus campos de latencia y sin texto de la conversación.",
-        "4.- Los campos adicionales se ignoran; el fallo de escritura no interrumpe el resto de las operaciones."
-      ],
-      "resultado_obtenido": "Eventos de consentimiento registrados y agregados en /metrics. Entradas inválidas rechazadas con 400 o 422. Eventos prediction, sentence y report con sus latencias, sin datos de la conversación; los campos adicionales se ignoran. Con la base bloqueada, /process_sentence respondió 200 y /audit respondió 500; ambos volvieron a 200 al liberarla.",
-      "observaciones": "",
-      "manual": false,
-      "aprobado": "Si",
-      "defectos": []
-    },
-    {
-      "id": "TC-LSA-011-02",
-      "cu": "011",
-      "modulo": "P-03, Backend / CU-11",
-      "objetivo": "Verificar el registro de la respuesta del personal (incluido por CU-04) y la consulta de métricas con filtro de fecha.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-011-04",
-        "TC-LSA-011-05"
-      ],
-      "prerrequisitos": [
-        "Backend y frontend en ejecución con P-03 abierta."
-      ],
-      "procedimiento": [
-        "Enviar una respuesta del personal desde P-03 y contar las peticiones POST /audit.",
-        "Consultar GET /metrics y verificar conteos y percentiles.",
-        "Consultar GET /metrics con since futuro, de ayer y con sufijo Z."
-      ],
-      "resultados_esperados": [
-        "1.- Se emite al menos un POST /audit y el total de eventos aumenta.",
-        "2.- Estructura y percentiles p50/p95/máximo correctos.",
-        "3.- El filtro se aplica con cualquier fecha ISO 8601 válida."
-      ],
-      "resultado_obtenido": "Al enviar la respuesta no se emitió ningún POST /audit y el total de eventos no varió. Las métricas devolvieron conteos y percentiles correctos. El filtro since con sufijo Z respondió 400 \"Invalid since timestamp\".",
-      "observaciones": "No aprobado: DM-LSA-005 (evento no registrado) y DM-LSA-015 (filtro since).",
-      "manual": false,
       "aprobado": "No",
       "defectos": [
         "DM-LSA-005",
         "DM-LSA-015"
-      ]
+      ],
+      "manual": false
     },
     {
       "id": "TC-LSA-012-01",
-      "cu": "012",
+      "grupo": "012",
       "modulo": "P-03, P-02 / CU-12",
-      "objetivo": "Verificar que el personal puede finalizar la atención, vaciando la conversación en ambas caras para el próximo paciente.",
+      "objetivo": "Verificar que el personal finaliza la atención y la conversación se vacía en ambas caras para el próximo paciente.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-012-01",
-        "TC-LSA-012-02",
-        "TC-LSA-012-03"
-      ],
       "prerrequisitos": [
         "Frontend en ejecución con una conversación en curso en P-02 y P-03."
       ],
@@ -691,33 +457,32 @@
       ],
       "resultados_esperados": [
         "1.- Existe el botón \"Finalizar atención\".",
-        "2.- La conversación se vacía en ambas caras y se registra el evento fin_atencion.",
+        "2.- La conversación se vacía en ambas caras y se registra fin_atencion.",
         "3.- El borrado se sincroniza en ambas caras.",
-        "4.- P-02 inicia con la conversación vacía."
+        "4.- P-02 inicia vacía."
       ],
-      "resultado_obtenido": "No existe el botón \"Finalizar atención\" en P-03 y el evento fin_atencion no se registra. \"Limpiar Historial\" de P-02 vacía ambas caras y el borrado también se sincroniza desde una tercera página. Una P-02 abierta después inicia vacía y no hay conversación en el almacenamiento del navegador.",
-      "observaciones": "No aprobado: DM-LSA-006.",
-      "manual": false,
+      "resultado_obtenido": "No existe el botón \"Finalizar atención\" en P-03 y no se registra fin_atencion. \"Limpiar Historial\" de P-02 vacía ambas caras y el borrado se sincroniza desde otra página; una P-02 abierta después inicia vacía y no hay conversación en el almacenamiento del navegador.",
+      "observaciones": "No aprobado: DM-LSA-006. No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-012-01",
+        "TC-LSA-012-02",
+        "TC-LSA-012-03"
+      ],
       "aprobado": "No",
       "defectos": [
         "DM-LSA-006"
-      ]
+      ],
+      "manual": false
     },
     {
       "id": "TC-LSA-013-01",
-      "cu": "013",
+      "grupo": "013",
       "modulo": "Transversal / RNF-03, RNF-T-06",
-      "objetivo": "Verificar la privacidad y la seguridad del sistema: ausencia de persistencia de la conversación y de imágenes, y restricción de orígenes.",
+      "objetivo": "Verificar la privacidad y la seguridad: sin persistencia de la conversación ni de imágenes y restricción de orígenes.",
       "categoria": "Seguridad",
       "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-013-01",
-        "TC-LSA-013-02",
-        "TC-LSA-013-03",
-        "TC-LSA-013-04"
-      ],
       "prerrequisitos": [
-        "Backend y frontend en ejecución con una base SQLite de prueba."
+        "Backend con base SQLite de prueba y frontend en ejecución."
       ],
       "procedimiento": [
         "Generar oraciones y revisar el contenido de la base de datos.",
@@ -731,27 +496,27 @@
         "3.- La conversación vive solo en memoria del navegador.",
         "4.- Los orígenes ajenos son rechazados."
       ],
-      "resultado_obtenido": "Solo se persistió el texto del mensaje reportado; el procesamiento de 55 ventanas no modificó ningún archivo; tras recargar la conversación se pierde y el almacenamiento del navegador queda vacío. El backend respondió Access-Control-Allow-Origin = \"*\" a cualquier origen, concedió el preflight y aceptó el WebSocket de un origen ajeno.",
-      "observaciones": "No aprobado: la política de orígenes es abierta (DM-LSA-003).",
-      "manual": false,
+      "resultado_obtenido": "Solo se persistió el texto del mensaje reportado; 55 ventanas procesadas no modificaron ningún archivo; tras recargar la conversación se pierde y el almacenamiento queda vacío. El backend respondió Access-Control-Allow-Origin = \"*\" a cualquier origen, concedió el preflight y aceptó el WebSocket de un origen ajeno.",
+      "observaciones": "No aprobado: la política de orígenes es abierta (DM-LSA-003). No quedan comprobaciones manuales pendientes.",
+      "consolida": [
+        "TC-LSA-013-01",
+        "TC-LSA-013-02",
+        "TC-LSA-013-03",
+        "TC-LSA-013-04"
+      ],
       "aprobado": "No",
       "defectos": [
         "DM-LSA-003"
-      ]
+      ],
+      "manual": false
     },
     {
       "id": "TC-LSA-014-01",
-      "cu": "014",
-      "modulo": "Backend, P-02 / RNF-01.1",
-      "objetivo": "Verificar los tiempos de respuesta: traducción con plantilla, inferencia por WebSocket, traducción con modelo de lenguaje y latencia de extremo a extremo.",
+      "grupo": "014",
+      "modulo": "Backend, P-02 / RNF-01",
+      "objetivo": "Verificar los tiempos de respuesta: traducción con plantilla, inferencia por WebSocket, modelo de lenguaje, extremo a extremo y latencia percibida.",
       "categoria": "Rendimiento",
       "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-014-01",
-        "TC-LSA-014-02",
-        "TC-LSA-014-03",
-        "TC-LSA-014-04"
-      ],
       "prerrequisitos": [
         "Backend y frontend en ejecución con el modelo de lenguaje precalentado."
       ],
@@ -759,179 +524,76 @@
         "Enviar combinaciones con plantilla a /process_sentence y calcular p50 y p95 de latency_ms.",
         "Enviar 200 ventanas por el WebSocket y medir la ida y vuelta.",
         "Enviar combinaciones sin plantilla (modelo de lenguaje) y calcular p50 y p95.",
-        "Medir e2e_ms desde el cierre de la oración hasta mostrar la burbuja."
+        "Medir e2e_ms desde el cierre de la oración hasta mostrar la burbuja.",
+        "Con una persona real, medir el tiempo desde que baja las manos hasta ver el texto y oír la voz."
       ],
       "resultados_esperados": [
         "1.- Con plantilla: p50 <= 600 ms y p95 <= 1000 ms.",
         "2.- Inferencia estable y sin desconexiones.",
         "3.- Caso general: p95 <= 1000 ms.",
-        "4.- e2e_ms con p50 <= 600 ms."
+        "4.- e2e_ms con p50 <= 600 ms.",
+        "5.- Latencia percibida aceptable."
       ],
       "resultado_obtenido": "Con plantilla: p50 = 576 ms y p95 = 1356 ms. WebSocket: p50 = 32,4 ms y p95 = 42,8 ms, sin desconexiones. Con modelo de lenguaje: p50 = 2824 ms y p95 = 4297 ms. e2e_ms: p50 = 1526 ms y p95 = 2618 ms.",
-      "observaciones": "No aprobado: DM-LSA-010 (modelo de lenguaje) y DM-LSA-016 (plantilla y extremo a extremo; mediciones sujetas al equipo de prueba).",
-      "manual": false,
+      "observaciones": "No aprobado: DM-LSA-010 (modelo de lenguaje) y DM-LSA-016 (plantilla y extremo a extremo; mediciones sujetas al equipo de prueba). Pendiente para el ciclo 2: la medición de la latencia percibida (paso 5).",
+      "consolida": [
+        "TC-LSA-014-01",
+        "TC-LSA-014-02",
+        "TC-LSA-014-03",
+        "TC-LSA-014-04",
+        "TC-LSA-014-05"
+      ],
       "aprobado": "No",
       "defectos": [
         "DM-LSA-010",
         "DM-LSA-016"
-      ]
-    },
-    {
-      "id": "TC-LSA-014-02",
-      "cu": "014",
-      "modulo": "P-02, P-03 / RNF-01",
-      "objetivo": "Medir con una persona real la latencia percibida desde que baja las manos hasta que ve el texto y escucha la voz.",
-      "categoria": "Rendimiento",
-      "tipo": "Aceptación",
-      "consolida": [
-        "TC-LSA-014-05"
       ],
-      "prerrequisitos": [
-        "Estación completa en ejecución con cámara real.",
-        "Una persona que conoce las señas yo, cabeza y dolor."
-      ],
-      "procedimiento": [
-        "Realizar las señas y bajar las manos.",
-        "Medir con cronómetro el tiempo hasta que aparece el texto en P-03.",
-        "Medir el tiempo hasta que se escucha la voz.",
-        "Repetir cinco veces."
-      ],
-      "resultados_esperados": [
-        "2.- El texto aparece en pocos segundos.",
-        "3.- La voz comienza poco después del texto.",
-        "4.- Los tiempos se mantienen estables."
-      ],
-      "resultado_obtenido": "",
-      "observaciones": "Pendiente de ejecución manual: requiere una persona realizando las acciones frente a la estación.",
-      "manual": true,
-      "aprobado": "No probado",
-      "defectos": []
+      "manual": false
     },
     {
       "id": "TC-LSA-015-01",
-      "cu": "015",
-      "modulo": "Transversal / RNF-02, RNF-05, RNF-T-02",
-      "objetivo": "Verificar restricciones del sistema: exactitud del modelo medida con eval_model.py, funcionamiento sin Internet y accesibilidad de las pantallas.",
+      "grupo": "015",
+      "modulo": "Transversal / RNF-02, RNF-04 a RNF-07, RNF-T-02 a RNF-T-04",
+      "objetivo": "Verificar las restricciones y la calidad del sistema: exactitud del modelo, ejecución sin Internet, accesibilidad, estación fija, vocabulario, portabilidad y mantenibilidad.",
       "categoria": "Funcional",
       "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-015-01",
-        "TC-LSA-015-06",
-        "TC-LSA-015-08"
-      ],
       "prerrequisitos": [
-        "Backend y frontend en ejecución.",
-        "Modelo entrenado y muestras del dataset disponibles."
+        "Backend y frontend en ejecución; modelo entrenado y muestras del dataset.",
+        "Acceso a la estación fija, al código y a una sesión de grabación independiente."
       ],
       "procedimiento": [
-        "Ejecutar eval_model.py sobre las muestras del dataset.",
+        "Ejecutar eval_model.py sobre las muestras del dataset y sobre una sesión de grabación independiente.",
         "Bloquear las peticiones a hosts externos y abrir P-02 con consentimiento.",
-        "Ejecutar el análisis automático de accesibilidad (axe-core) en las cuatro pantallas."
+        "Ejecutar el análisis de accesibilidad (axe-core) en las cuatro pantallas.",
+        "Inspeccionar el hardware de la estación y verificar Python 3.9+, Node 18+ y la separación de módulos.",
+        "Revisar la cobertura del vocabulario clínico y el acta de validación lingüística."
       ],
       "resultados_esperados": [
         "1.- Informe de exactitud global y por clase, con matriz de confusión.",
-        "2.- No hay peticiones externas; la cámara se activa y se envían frames.",
-        "3.- Sin violaciones graves ni críticas."
+        "2.- Sin peticiones externas; la cámara se activa y se envían frames.",
+        "3.- Sin violaciones graves ni críticas.",
+        "4.- Hardware comercial estándar, versiones soportadas y módulos desacoplados.",
+        "5.- Vocabulario cubierto y acta de validación vigente."
       ],
-      "resultado_obtenido": "eval_model.py: exactitud global del 100 % y 0/100 muestras bajo el umbral de confianza (muestras del conjunto de entrenamiento). Sin Internet: dos intentos a cdn.jsdelivr.net; \"Activando cámara...\" permanece visible y no se envían frames. Accesibilidad: contraste insuficiente (grave) en las pantallas, botón sin nombre accesible (crítico) en P-03 y campo sin etiqueta (crítico) en Modo Captura.",
-      "observaciones": "No aprobado: DM-LSA-009 (depende de Internet) y DM-LSA-011 (accesibilidad).",
-      "manual": false,
+      "resultado_obtenido": "eval_model.py: exactitud global del 100 % y 0/100 muestras bajo el umbral (muestras del conjunto de entrenamiento). Sin Internet: dos intentos a cdn.jsdelivr.net; \"Activando cámara...\" permanece visible y no se envían frames. Accesibilidad: contraste insuficiente (grave) en las pantallas, botón sin nombre accesible (crítico) en P-03 y campo sin etiqueta (crítico) en Modo Captura.",
+      "observaciones": "No aprobado: DM-LSA-009 (depende de Internet) y DM-LSA-011 (accesibilidad). Pendiente para el ciclo 2: precisión con sesión independiente, estación, vocabulario, acta de validación, portabilidad y mantenibilidad (pasos 1, 4 y 5).",
+      "consolida": [
+        "TC-LSA-015-01",
+        "TC-LSA-015-02",
+        "TC-LSA-015-03",
+        "TC-LSA-015-04",
+        "TC-LSA-015-05",
+        "TC-LSA-015-06",
+        "TC-LSA-015-07",
+        "TC-LSA-015-08",
+        "TC-LSA-015-09"
+      ],
       "aprobado": "No",
       "defectos": [
         "DM-LSA-009",
         "DM-LSA-011"
-      ]
-    },
-    {
-      "id": "TC-LSA-015-02",
-      "cu": "015",
-      "modulo": "Transversal / RNF-02",
-      "objetivo": "Verificar la precisión real del modelo de reconocimiento con una sesión de grabación independiente del conjunto de entrenamiento.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-015-02"
       ],
-      "prerrequisitos": [
-        "Una sesión de grabación independiente del conjunto de entrenamiento.",
-        "Modelo entrenado y eval_model.py disponibles."
-      ],
-      "procedimiento": [
-        "Grabar muestras nuevas de cada seña en una sesión independiente.",
-        "Ejecutar eval_model.py sobre esas muestras.",
-        "Revisar la exactitud global, por clase y la matriz de confusión."
-      ],
-      "resultados_esperados": [
-        "2.- El informe se genera sin errores.",
-        "3.- La exactitud cumple el objetivo del requisito."
-      ],
-      "resultado_obtenido": "",
-      "observaciones": "Pendiente de ejecución manual: requiere una persona realizando las acciones frente a la estación.",
-      "manual": true,
-      "aprobado": "No probado",
-      "defectos": []
-    },
-    {
-      "id": "TC-LSA-015-03",
-      "cu": "015",
-      "modulo": "Transversal / RNF-04, RNF-06, RNF-07, RNF-T-04",
-      "objetivo": "Verificar por inspección la estación fija, la portabilidad y la mantenibilidad del sistema.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-015-03",
-        "TC-LSA-015-07",
-        "TC-LSA-015-09"
-      ],
-      "prerrequisitos": [
-        "Acceso a la estación fija instalada y al código del sistema."
-      ],
-      "procedimiento": [
-        "Inspeccionar el hardware de la estación (pantallas, cámara, micrófono y altavoces).",
-        "Verificar las versiones de Python 3.9+ y Node 18+.",
-        "Revisar la separación entre backend y frontend y el desacople del modelo."
-      ],
-      "resultados_esperados": [
-        "1.- Hardware comercial estándar con las dos pantallas.",
-        "2.- Versiones soportadas.",
-        "3.- Módulos desacoplados."
-      ],
-      "resultado_obtenido": "",
-      "observaciones": "Pendiente de ejecución manual: requiere una persona realizando las acciones frente a la estación.",
-      "manual": true,
-      "aprobado": "No probado",
-      "defectos": []
-    },
-    {
-      "id": "TC-LSA-015-04",
-      "cu": "015",
-      "modulo": "Transversal / RNF-T-03",
-      "objetivo": "Verificar la ampliación incremental del vocabulario y la validación lingüística del dataset por intérpretes de LSA.",
-      "categoria": "Funcional",
-      "tipo": "Funcional",
-      "consolida": [
-        "TC-LSA-015-04",
-        "TC-LSA-015-05"
-      ],
-      "prerrequisitos": [
-        "Acceso al dataset vigente y a la documentación del proyecto.",
-        "Contacto con intérpretes de LSA."
-      ],
-      "procedimiento": [
-        "Revisar la cobertura del vocabulario clínico del dataset.",
-        "Incorporar una etiqueta nueva y verificar que se reentrena sin afectar las existentes.",
-        "Verificar que existe el acta de validación lingüística para la versión vigente."
-      ],
-      "resultados_esperados": [
-        "1.- El vocabulario cubre los términos clínicos previstos.",
-        "2.- La ampliación es incremental.",
-        "3.- El acta de validación existe y corresponde a la versión vigente."
-      ],
-      "resultado_obtenido": "",
-      "observaciones": "Pendiente de ejecución manual: requiere una persona realizando las acciones frente a la estación.",
-      "manual": true,
-      "aprobado": "No probado",
-      "defectos": []
+      "manual": false
     }
   ]
 }
