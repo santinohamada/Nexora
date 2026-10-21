@@ -233,7 +233,7 @@ se muestra en la Vista Física (Entregable 06, Arquitectura).
     \item \textbf{Ejecución local obligatoria:} ningún dato de la conversación sale de la máquina; el único tráfico de red es hacia procesos locales (Ollama en \texttt{localhost:11434}).
     \item \textbf{Dependencia de Ollama:} el servicio debe estar corriendo localmente para la reconstrucción gramatical por LLM; si no está disponible, se degrada a texto sin reconstruir (RF-01.5, extensión 3a.2a).
     \item \textbf{Navegador:} Google Chrome es necesario para Web Speech API (dictado) y para un soporte confiable de MediaPipe.
-    \item \textbf{Vocabulario clínico:} el modelo reconoce el vocabulario LSA clínico del dataset del proyecto (dataset ampliado desde LSA64, adaptado a síntomas, triaje, dolor y admisión/recepción/guardia, con señas obtenidas de fuentes de intérpretes de LSA --- RNF-05/RNF-06), con señas como \texttt{cabeza}, \texttt{dolor}, \texttt{respirar} o \texttt{yo} como ejemplos; el vocabulario se amplía de forma continua mediante el Modo Captura y el reentrenamiento (CU-06, CU-07, CU-08).
+    \item \textbf{Vocabulario clínico:} el modelo reconoce el vocabulario LSA clínico del dataset del proyecto (dataset ampliado desde LSA64, adaptado a síntomas, triaje, dolor y admisión/recepción/guardia, con señas obtenidas de un diccionario de referencia de LSA --- RNF-05/RNF-06), con señas como \texttt{cabeza}, \texttt{dolor}, \texttt{respirar} o \texttt{yo} como ejemplos; el vocabulario se amplía de forma continua mediante el Modo Captura y el reentrenamiento (CU-06, CU-07, CU-08).
     \item \textbf{Sin persistencia de conversaciones:} todo el historial de chat es volátil (memoria del navegador + BroadcastChannel).
     \item \textbf{Lenguajes:} Python 3.9+ en el backend; TypeScript/React en el frontend.
     \item \textbf{Hardware mínimo:} PC con cámara web; GPU opcional para acelerar la extracción de landmarks en el navegador y la inferencia del LSTM (ambas funcionan sobre CPU).
@@ -738,7 +738,7 @@ RNF-T-06) son requisitos técnicos definidos por el equipo, sin RNF base.
 \subsubsection{Especialización y fuente lingüística del dataset (RNF-05.1 / RNF-06.1, sub-requisitos de RNF-05 y RNF-06)}
 \begin{itemize}
     \item El Modo Captura y el árbol de captura del dataset (\texttt{dataset/custom}) permiten ampliar de forma continua el vocabulario clínico LSA (síntomas, triaje, dolor, admisión/recepción/guardia) a partir de un conjunto inicial de referencia (RNF-05.1).
-    \item Las señas del dataset se obtienen de fuentes de intérpretes de LSA, y se documenta la fuente de cada seña antes de incorporarla al vocabulario del modelo en producción (RNF-06.1).
+    \item Las señas del dataset se obtienen de un diccionario de referencia de LSA, y se documenta la fuente de cada seña antes de incorporarla al vocabulario del modelo en producción (RNF-06.1). Las señas \texttt{yo}, \texttt{cabeza}, \texttt{dolor} y \texttt{respirar} provienen del diccionario Spreadthesign, edición de Argentina (\url{https://spreadthesign.com/es.ar/search/}); \texttt{idle} corresponde a la posición de reposo y no es una seña.
 \end{itemize}
 
 \subsubsection{RNF-T-01: Fiabilidad (requisito técnico del equipo)}
