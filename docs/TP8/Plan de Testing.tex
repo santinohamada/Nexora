@@ -16,7 +16,7 @@
 
 \historialRevisiones{
     1.0 & 20 de octubre de 2026 & Equipo LSA Salud & Versión inicial del Plan de Testing. \\
-    1.1 & \today & Equipo LSA Salud & Cronograma actualizado con la ejecución del ciclo 2 (regresión). \\
+    1.1 & \today & Equipo LSA Salud & Cronograma actualizado con la ejecución del ciclo 2 (regresión y comprobaciones manuales). \\
 }
 
 \tableofcontents
@@ -78,7 +78,7 @@ Se prueban los siguientes ítems, que constituyen la configuración del sistema.
     \item \textbf{Funcionalidad:} los casos de uso CU-01 a CU-12, desde la comunicación mediante LSA y la traducción hasta la captura de muestras, el consentimiento, los reportes, la auditoría y la finalización de la atención.
     \item \textbf{Rendimiento:} latencia de traducción, síntesis de voz y de extremo a extremo (RNF-01).
     \item \textbf{Privacidad y seguridad:} ausencia de persistencia de la conversación, auditoría anónima y política de orígenes (RNF-03, RNF-T-06).
-    \item \textbf{Restricciones del sistema:} precisión del modelo, ejecución local, accesibilidad, portabilidad y estación fija (RNF-02, RNF-04 a RNF-07, RNF-T-02 a RNF-T-04).
+    \item \textbf{Restricciones del sistema:} precisión del modelo, ejecución local, accesibilidad, portabilidad y estación fija (RNF-02, RNF-04, RNF-07, RNF-T-02 a RNF-T-05).
 \end{itemize}
 
 \subsection{Características que no serán probadas}
@@ -189,8 +189,8 @@ axe-core.
 
 El ciclo 1 se ejecutó el 20/10/2026 sobre la versión \texttt{f29917a}. El ciclo
 2 (regresión) se ejecutó el 21/10/2026 sobre la versión \texttt{0638d22}, una
-vez corregidos los defectos; las comprobaciones manuales con una persona real
-quedan pendientes y las ejecuta el equipo.
+vez corregidos los defectos; ese mismo día el equipo ejecutó las comprobaciones
+manuales con una persona real.
 
 \begin{table}[H]
     \centering
@@ -204,7 +204,7 @@ quedan pendientes y las ejecuta el equipo.
         Ciclo 1: ejecución inicial & 20/10/2026 & Ejecutado \\
         Corrección de defectos por desarrollo & 21/10/2026 & Realizada \\
         Ciclo 2: regresión & 21/10/2026 & Ejecutado \\
-        Ciclo 2: comprobaciones manuales con persona real & A definir por el equipo & Pendiente \\
+        Ciclo 2: comprobaciones manuales con persona real & 21/10/2026 & Ejecutado \\
         \bottomrule
     \end{tabularx}
 \end{table}

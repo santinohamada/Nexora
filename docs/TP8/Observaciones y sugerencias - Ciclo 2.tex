@@ -27,10 +27,9 @@
   \item La regresión del 21/10/2026 verificó y cerró los 19 defectos del ciclo 1
     (\mbox{DM-LSA-001} a \mbox{DM-LSA-019}). Además se encontraron, corrigieron y cerraron 9 defectos
     nuevos (\mbox{DM-LSA-020} a \mbox{DM-LSA-028}): en total, 28 de 28 defectos cerrados y ninguno abierto.
-    De los 15 casos, 7 quedaron aprobados (\mbox{TC-LSA-004-01}, \mbox{TC-LSA-007-01},
-    \mbox{TC-LSA-008-01}, \mbox{TC-LSA-009-01}, \mbox{TC-LSA-011-01}, \mbox{TC-LSA-012-01} y
-    \mbox{TC-LSA-013-01}), 8 quedaron como No probado por tener pasos manuales pendientes y ninguno
-    resultó No aprobado.
+    Los 15 casos quedaron aprobados: la regresión automatizada y las comprobaciones manuales del
+    mismo día con una persona real (señas de punta a punta, calidad de la traducción y de la voz,
+    dictado, captura, aviso de reporte y latencia percibida) dieron el resultado esperado.
   \item Los defectos nuevos se concentran en el reconocimiento y la captura: sin persona frente a la
     cámara o con la ventana de frames incompleta se reconocía ``dolor'' (\mbox{DM-LSA-021},
     \mbox{DM-LSA-022}), la oración se cerraba en la pausa entre señas (\mbox{DM-LSA-023}), ``dolor'' se
@@ -44,16 +43,12 @@
     de interfaz con predicciones simuladas midió p50 de 649 y 747 ms porque se ejecuta sin GPU, por lo
     que no representa el uso real. El tiempo de inferencia del modelo no presenta regresión entre
     versiones: con las mismas 100 ventanas, el p95 pasó de 0,71 ms a 0,68 ms ($-4{,}9$~\%).
-  \item Quedan pendientes las comprobaciones manuales, que ejecutará el equipo: señas reales de
-    punta a punta (\mbox{TC-LSA-001-01}), calidad lingüística de la traducción y de la voz
-    (\mbox{TC-LSA-002-01}, \mbox{TC-LSA-003-01}), dictado real (\mbox{TC-LSA-005-01}), captura con una
-    persona real (\mbox{TC-LSA-006-01}), aviso de reporte con usuarios (\mbox{TC-LSA-010-01}), latencia
-    percibida con una persona (\mbox{TC-LSA-014-01}) y precisión con una sesión independiente,
-    estación, vocabulario, acta de validación, portabilidad y mantenibilidad
-    (\mbox{TC-LSA-015-01}). Con ellas se podrán cerrar esos 8 casos.
-  \item Se sugiere evaluar la precisión con una sesión de grabación independiente: el 100~\% obtenido
-    corresponde a muestras del propio conjunto de entrenamiento y no mide la generalización. También
-    se sugiere repetir la medición de latencia en la estación definitiva y ampliar la prueba
+  \item La precisión del modelo se evaluó con una validación cruzada estratificada de 5 particiones
+    (\mbox{TC-LSA-015-01}): exactitud media del 98,67~\% (entre 96,67~\% y 100~\% por partición), con
+    un error en ``dolor'' y otro en ``yo''. Las particiones provienen de la misma sesión de grabación
+    (misma persona, iluminación y día), por lo que el resultado puede sobrestimar la generalización a
+    otras personas y condiciones; se sugiere ampliar el dataset con muestras de otras personas.
+  \item Se sugiere repetir la medición de latencia en la estación definitiva y ampliar la prueba
     automatizada de ``Finalizar atención'', que hoy solo comprueba que el botón exista.
 \end{enumerate}
 

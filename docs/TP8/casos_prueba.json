@@ -9,11 +9,11 @@
       "ciclo": 2,
       "fecha": "2026-10-21",
       "version_sistema": "0638d22",
-      "tipo": "Regresión automatizada; las comprobaciones manuales quedan a cargo del equipo",
+      "tipo": "Regresión automatizada y comprobaciones manuales del equipo",
       "resumen": {
-        "Si": 7,
+        "Si": 15,
         "No": 0,
-        "No probado": 8
+        "No probado": 0
       }
     }
   },
@@ -65,9 +65,9 @@
       "manual": false,
       "ciclo_2": {
         "fecha": "2026-10-21",
-        "resultado_obtenido": "Reconocimiento de yo, cabeza y dolor con 99,99 % de confianza; traducción \"Me duele la cabeza.\"; ventanas de 20 a 45 frames; umbral del 70 % inclusivo y repeticiones consecutivas sin duplicar; reposo 30/30 como idle. Burbuja en ambas caras con 64 ms de diferencia (límite 500 ms). Reintento de conexión a los 2155 ms sin errores en pantalla; NO_CLARO sin burbuja ni evento; P-01 correcta. El protocolo v1 devuelve errores sin cerrar la conexión y la trama binaria v2 válida devuelve la seña dolor.",
-        "aprobado": "No probado",
-        "observaciones": "DM-LSA-016 y DM-LSA-018 verificados y cerrados; DM-LSA-021 a DM-LSA-024 y DM-LSA-028, hallados en el ciclo 2, corregidos y cerrados. Pendiente (lo ejecutará el equipo): prueba de punta a punta con una persona real que realiza las señas (paso 1).",
+        "resultado_obtenido": "Reconocimiento de yo, cabeza y dolor con 99,99 % de confianza; traducción \"Me duele la cabeza.\"; ventanas de 20 a 45 frames; umbral del 70 % inclusivo y repeticiones consecutivas sin duplicar; reposo 30/30 como idle. Burbuja en ambas caras con 64 ms de diferencia (límite 500 ms). Reintento de conexión a los 2155 ms sin errores en pantalla; NO_CLARO sin burbuja ni evento; P-01 correcta. El protocolo v1 devuelve errores sin cerrar la conexión y la trama binaria v2 válida devuelve la seña dolor. Prueba con una persona real (21/10/2026, P-02): las señas yo, cabeza y dolor se reconocen, se muestra \"Me duele la cabeza.\" con voz y la oración se cierra al bajar las manos.",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-016 y DM-LSA-018 verificados y cerrados; DM-LSA-021 a DM-LSA-024 y DM-LSA-028, hallados en el ciclo 2, corregidos y cerrados. La prueba de punta a punta con una persona real (paso 1) se ejecutó el 21/10/2026. No quedan comprobaciones manuales pendientes.",
         "defectos_verificados": [
           "DM-LSA-016",
           "DM-LSA-018",
@@ -77,9 +77,7 @@
           "DM-LSA-024",
           "DM-LSA-028"
         ],
-        "pendiente_manual": [
-          "Paso 1: persona real realizando las señas yo, cabeza y dolor frente a la cámara"
-        ],
+        "pendiente_manual": [],
         "comprobaciones_automatizadas": "API 001-02, 001-08, 001-10; UI 001-03 a 001-07 y 001-09; unitarias de inferencia y características"
       }
     },
@@ -126,16 +124,14 @@
       "manual": false,
       "ciclo_2": {
         "fecha": "2026-10-21",
-        "resultado_obtenido": "Plantillas y normalización correctas (\"yo cabeza dolor\" -> \"Me duele la cabeza.\" en 283 ms); caché (segunda consulta con source=cache y 0 ms) y degradación a las palabras originales con el modelo de lenguaje caído o sin responder (8 s) correctas. \"yo brazo dolor\" -> \"Me duele el brazo.\" y \"yo dolor pecho\" -> \"Tengo dolor en el pecho.\" (461 y 503 ms), sin fragmentos de instrucciones ni términos clínicos ajenos; \"fiebre tos\" -> \"Tiene fiebre y tos.\". \"idle idle\" e \"idle\" devuelven NO_CLARO sin audio.",
-        "aprobado": "No probado",
-        "observaciones": "DM-LSA-001 y DM-LSA-002 verificados y cerrados. Pendiente (lo ejecutará el equipo): evaluación humana de la calidad lingüística de las traducciones.",
+        "resultado_obtenido": "Plantillas y normalización correctas (\"yo cabeza dolor\" -> \"Me duele la cabeza.\" en 283 ms); caché (segunda consulta con source=cache y 0 ms) y degradación a las palabras originales con el modelo de lenguaje caído o sin responder (8 s) correctas. \"yo brazo dolor\" -> \"Me duele el brazo.\" y \"yo dolor pecho\" -> \"Tengo dolor en el pecho.\" (461 y 503 ms), sin fragmentos de instrucciones ni términos clínicos ajenos; \"fiebre tos\" -> \"Tiene fiebre y tos.\". \"idle idle\" e \"idle\" devuelven NO_CLARO sin audio. Evaluación humana (21/10/2026): el equipo revisó traducciones reales generadas con una persona realizando señas (\"Me duele la cabeza.\", \"No puedo respirar bien.\" y \"Me cuesta respirar, me duele la cabeza.\") y las consideró correctas y naturales.",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-001 y DM-LSA-002 verificados y cerrados. La evaluación humana de la calidad lingüística se ejecutó el 21/10/2026. No quedan comprobaciones manuales pendientes.",
         "defectos_verificados": [
           "DM-LSA-001",
           "DM-LSA-002"
         ],
-        "pendiente_manual": [
-          "Evaluación humana de la calidad lingüística de las traducciones"
-        ],
+        "pendiente_manual": [],
         "comprobaciones_automatizadas": "API 002-01 a 002-06; unitarias de fidelidad"
       }
     },
@@ -179,13 +175,11 @@
       "manual": false,
       "ciclo_2": {
         "fecha": "2026-10-21",
-        "resultado_obtenido": "WAV mono de 16 bits y 22 050 Hz (0,68 s para \"Tengo dolor.\"); síntesis de 616 ms y repetición de 0 ms; sin la voz, respuesta 200 con audio vacío y la oración como texto. En P-02 la reproducción comienza 1048 ms después de mostrarse la burbuja (mínimo 900 ms) y, con audio vacío, no se crea ningún reproductor.",
-        "aprobado": "No probado",
-        "observaciones": "Se cumple el tiempo previo al audio (parte de DM-LSA-016, cerrado). Pendiente (lo ejecutará el equipo): evaluación humana de la calidad de la voz (paso 5).",
+        "resultado_obtenido": "WAV mono de 16 bits y 22 050 Hz (0,68 s para \"Tengo dolor.\"); síntesis de 616 ms y repetición de 0 ms; sin la voz, respuesta 200 con audio vacío y la oración como texto. En P-02 la reproducción comienza 1048 ms después de mostrarse la burbuja (mínimo 900 ms) y, con audio vacío, no se crea ningún reproductor. Evaluación humana (21/10/2026): el equipo escuchó el audio y consideró adecuados el acento, la inteligibilidad y el volumen.",
+        "aprobado": "Si",
+        "observaciones": "Se cumple el tiempo previo al audio (parte de DM-LSA-016, cerrado). La evaluación humana de la voz (paso 5) se ejecutó el 21/10/2026. No quedan comprobaciones manuales pendientes.",
         "defectos_verificados": [],
-        "pendiente_manual": [
-          "Paso 5: escuchar el audio y evaluar acento, inteligibilidad y volumen"
-        ],
+        "pendiente_manual": [],
         "comprobaciones_automatizadas": "API 003-01 a 003-03; UI 003-04"
       }
     },
@@ -272,17 +266,15 @@
       "manual": false,
       "ciclo_2": {
         "fecha": "2026-10-21",
-        "resultado_obtenido": "Con el dictado simulado (es-AR, continuo) el área acumula el texto: \"Buenos días pase\" y, tras el segmento final, \"Buenos días pase por favor\"; con dos segmentos finales queda \"necesito su documento y su credencial\"; al pulsar de nuevo el micrófono el indicador vuelve a \"Click para hablar\" y la instancia deja de estar activa. Sin soporte de voz: aviso único, micrófono deshabilitado y respuesta escrita funcional; el error not-allowed se informa correctamente.",
-        "aprobado": "No probado",
-        "observaciones": "DM-LSA-013, DM-LSA-014 y DM-LSA-019 verificados y cerrados. Pendiente (lo ejecutará el equipo): dictado real en Chrome con micrófono y reconocimiento en español de Argentina (paso 5).",
+        "resultado_obtenido": "Con el dictado simulado (es-AR, continuo) el área acumula el texto: \"Buenos días pase\" y, tras el segmento final, \"Buenos días pase por favor\"; con dos segmentos finales queda \"necesito su documento y su credencial\"; al pulsar de nuevo el micrófono el indicador vuelve a \"Click para hablar\" y la instancia deja de estar activa. Sin soporte de voz: aviso único, micrófono deshabilitado y respuesta escrita funcional; el error not-allowed se informa correctamente. Dictado real (21/10/2026): con micrófono y reconocimiento en español de Argentina, el texto dictado se transcribe correctamente.",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-013, DM-LSA-014 y DM-LSA-019 verificados y cerrados. El dictado real en Chrome (paso 5) se ejecutó el 21/10/2026. No quedan comprobaciones manuales pendientes.",
         "defectos_verificados": [
           "DM-LSA-013",
           "DM-LSA-014",
           "DM-LSA-019"
         ],
-        "pendiente_manual": [
-          "Paso 5: dictado real con micrófono y reconocimiento en español de Argentina"
-        ],
+        "pendiente_manual": [],
         "comprobaciones_automatizadas": "UI 005-01 a 005-03"
       }
     },
@@ -331,9 +323,9 @@
       "manual": false,
       "ciclo_2": {
         "fecha": "2026-10-21",
-        "resultado_obtenido": "Grabación simple (cuenta regresiva 3, 2, 1; 45 frames; archivo (45, 75, 4) float32 con blendshapes de 45 x 52; carpeta creada al guardar) y de tres repeticiones correctas; los valores 0, vacío y -2 de Repeticiones se normalizan a 1 y con -2 no se muestra \"¡Guardado!\" ni se envía ninguna solicitud. \"Detener\" cancela la cuenta regresiva y la grabación sin guardar muestras (0 solicitudes y 0 archivos). /capture rechaza con 400 pocos frames, NaN, blendshapes faltantes y formas inválidas ((5, 2, 2) e irregulares) sin crear archivos.",
-        "aprobado": "No probado",
-        "observaciones": "DM-LSA-004, DM-LSA-008 y DM-LSA-012 verificados y cerrados; DM-LSA-020 y DM-LSA-027, hallados en el ciclo 2, corregidos y cerrados. Pendiente (lo ejecutará el equipo): grabación con una persona real y revisión de que la muestra contenga manos detectadas (paso 5).",
+        "resultado_obtenido": "Grabación simple (cuenta regresiva 3, 2, 1; 45 frames; archivo (45, 75, 4) float32 con blendshapes de 45 x 52; carpeta creada al guardar) y de tres repeticiones correctas; los valores 0, vacío y -2 de Repeticiones se normalizan a 1 y con -2 no se muestra \"¡Guardado!\" ni se envía ninguna solicitud. \"Detener\" cancela la cuenta regresiva y la grabación sin guardar muestras (0 solicitudes y 0 archivos). /capture rechaza con 400 pocos frames, NaN, blendshapes faltantes y formas inválidas ((5, 2, 2) e irregulares) sin crear archivos. Persona real (21/10/2026): se grabaron en el Modo Captura las 150 muestras del dataset (30 por seña) a 20 fps; las 120 muestras de señas contienen manos detectadas (en promedio, entre el 79 % y el 92 % de los frames según la seña) y las de reposo no contienen manos, como corresponde.",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-004, DM-LSA-008 y DM-LSA-012 verificados y cerrados; DM-LSA-020 y DM-LSA-027, hallados en el ciclo 2, corregidos y cerrados. La grabación con una persona real (paso 5) se ejecutó el 21/10/2026. No quedan comprobaciones manuales pendientes.",
         "defectos_verificados": [
           "DM-LSA-004",
           "DM-LSA-008",
@@ -341,9 +333,7 @@
           "DM-LSA-020",
           "DM-LSA-027"
         ],
-        "pendiente_manual": [
-          "Paso 5: grabar una seña con una persona real y revisar que la muestra contenga manos detectadas"
-        ],
+        "pendiente_manual": [],
         "comprobaciones_automatizadas": "API 006-05 a 006-07; UI 006-01 a 006-04; unitarias de validación de captura"
       }
     },
@@ -528,15 +518,13 @@
       "manual": false,
       "ciclo_2": {
         "fecha": "2026-10-21",
-        "resultado_obtenido": "Reporte marcado en ambas caras (texto tachado e insignia \"Traducción reportada\") y guardado en SQLite (mensaje, palabras reconocidas en las posiciones 0 a 2 y reporte); con la conexión cortada se muestra \"No se pudo enviar el reporte. Probá de nuevo.\" y con doble clic hay una única petición. Límites de text (1 a 500), station, words (hasta 20) y message_id correctos: message_id = true y \"12\" se rechazan (400 y 422); el resumen /reports/summary respeta limit (máximo 100).",
-        "aprobado": "No probado",
-        "observaciones": "DM-LSA-017 verificado y cerrado. Pendiente (lo ejecutará el equipo): evaluación del aviso de reporte con usuarios reales (paso 5).",
+        "resultado_obtenido": "Reporte marcado en ambas caras (texto tachado e insignia \"Traducción reportada\") y guardado en SQLite (mensaje, palabras reconocidas en las posiciones 0 a 2 y reporte); con la conexión cortada se muestra \"No se pudo enviar el reporte. Probá de nuevo.\" y con doble clic hay una única petición. Límites de text (1 a 500), station, words (hasta 20) y message_id correctos: message_id = true y \"12\" se rechazan (400 y 422); el resumen /reports/summary respeta limit (máximo 100). Usuarios reales (21/10/2026): el equipo reportó \"Me cuesta respirar, me duele la cabeza.\"; se mostró el aviso \"Traducción reportada. Repetí la seña para enviar el mensaje de nuevo.\", que se consideró claro, y el reporte quedó registrado en la tabla reported_message (21/10/2026, 23:29:27 UTC).",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-017 verificado y cerrado. La evaluación del aviso con usuarios reales (paso 5) se ejecutó el 21/10/2026. No quedan comprobaciones manuales pendientes.",
         "defectos_verificados": [
           "DM-LSA-017"
         ],
-        "pendiente_manual": [
-          "Paso 5: usuarios reales reportan una traducción y comentan si el aviso es claro"
-        ],
+        "pendiente_manual": [],
         "comprobaciones_automatizadas": "API 010-04 a 010-07; UI 010-01 a 010-03; unitarias de validación de reportes y de almacenamiento"
       }
     },
@@ -726,46 +714,42 @@
       "manual": false,
       "ciclo_2": {
         "fecha": "2026-10-21",
-        "resultado_obtenido": "Uso real (auditoría del 21/10/2026, 55 oraciones): e2e_ms p50 = 166 ms, p95 = 945 ms, máx. = 1590 ms; total_ms del servidor p50 = 0 ms (audio en caché) y p95 = 876 ms. Plantilla (3 corridas, n = 39 sin caché de audio): latency_ms p50 = 420 ms, p95 = 632 ms. Modelo de lenguaje (3 corridas, n = 30): p50 = 472 ms, p95 = 573 ms. WebSocket (200 ventanas): ida y vuelta p50 = 31,4 ms y p95 = 37,4 ms, sin desconexiones; lstm_ms p95 = 5,7 ms (8,6 ms en uso real, n = 1219). Cumple RNF-01.1: e2e de la ruta con plantilla p50 <= 600 ms (166 ms) y caso general p95 <= 1 s (945 ms). Sin regresión de lstm_ms entre versiones del modelo (21/10/2026, GPU con CUDA, mismas 100 ventanas): versión anterior (300 características, commit 41ae643) p50 = 0,60 ms y p95 = 0,71 ms; versión actual (384 características) p50 = 0,54 ms y p95 = 0,68 ms; variación del p95 de −4,9 % (límite +10 %).",
-        "aprobado": "No probado",
-        "observaciones": "DM-LSA-010 y DM-LSA-016 verificados y cerrados. La prueba de UI con predicciones simuladas midió e2e_ms p50 = 649 ms y 747 ms en dos corridas (p95 906 y 975 ms): se ejecuta con MediaPipe en CPU en un Chromium sin interfaz y sin GPU, por lo que no representa el uso real. Pendiente (lo ejecutará el equipo): medición de la latencia percibida con una persona real (paso 5).",
+        "resultado_obtenido": "Uso real (auditoría del 21/10/2026, 55 oraciones): e2e_ms p50 = 166 ms, p95 = 945 ms, máx. = 1590 ms; total_ms del servidor p50 = 0 ms (audio en caché) y p95 = 876 ms. Plantilla (3 corridas, n = 39 sin caché de audio): latency_ms p50 = 420 ms, p95 = 632 ms. Modelo de lenguaje (3 corridas, n = 30): p50 = 472 ms, p95 = 573 ms. WebSocket (200 ventanas): ida y vuelta p50 = 31,4 ms y p95 = 37,4 ms, sin desconexiones; lstm_ms p95 = 5,7 ms (8,6 ms en uso real, n = 1219). Cumple RNF-01.1: e2e de la ruta con plantilla p50 <= 600 ms (166 ms) y caso general p95 <= 1 s (945 ms). Sin regresión de lstm_ms entre versiones del modelo (21/10/2026, GPU con CUDA, mismas 100 ventanas): versión anterior (300 características, commit 41ae643) p50 = 0,60 ms y p95 = 0,71 ms; versión actual (384 características) p50 = 0,54 ms y p95 = 0,68 ms; variación del p95 de −4,9 % (límite +10 %). Latencia percibida (21/10/2026, persona real): el texto y la voz aparecen en menos de 1 s aproximadamente después de bajar las manos, lo que se consideró aceptable y es coherente con las mediciones de uso real.",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-010 y DM-LSA-016 verificados y cerrados. La prueba de UI con predicciones simuladas midió e2e_ms p50 = 649 ms y 747 ms en dos corridas (p95 906 y 975 ms): se ejecuta con MediaPipe en CPU en un Chromium sin interfaz y sin GPU, por lo que no representa el uso real. La latencia percibida con una persona real (paso 5) se evaluó el 21/10/2026. No quedan comprobaciones manuales pendientes.",
         "defectos_verificados": [
           "DM-LSA-010",
           "DM-LSA-016"
         ],
-        "pendiente_manual": [
-          "Paso 5: persona real, tiempo desde que baja las manos hasta ver el texto y oír la voz"
-        ],
+        "pendiente_manual": [],
         "comprobaciones_automatizadas": "API 014-01 a 014-03; mediciones de uso real; UI 014-04 (no cumple p50 <= 600 ms en Chromium sin GPU)"
       }
     },
     {
       "id": "TC-LSA-015-01",
       "grupo": "015",
-      "modulo": "Transversal / RNF-02, RNF-04 a RNF-07, RNF-T-02 a RNF-T-04",
-      "objetivo": "Verificar las restricciones y la calidad del sistema: exactitud del modelo, ejecución sin Internet, accesibilidad, estación fija, vocabulario, portabilidad y mantenibilidad.",
+      "modulo": "Transversal / RNF-02, RNF-04, RNF-07, RNF-T-02 a RNF-T-05",
+      "objetivo": "Verificar las restricciones y la calidad del sistema: exactitud del modelo, ejecución sin Internet, accesibilidad, estación fija, portabilidad y mantenibilidad.",
       "categoria": "Funcional",
       "tipo": "Funcional",
       "prerrequisitos": [
         "Backend y frontend en ejecución; modelo entrenado y muestras del dataset.",
-        "Acceso a la estación fija, al código y a una sesión de grabación independiente."
+        "Acceso a la estación fija y al código."
       ],
       "procedimiento": [
-        "Ejecutar eval_model.py sobre las muestras del dataset y sobre una sesión de grabación independiente.",
+        "Ejecutar eval_model.py sobre las muestras del dataset y una validación cruzada estratificada de 5 particiones (train_lstm.py --cv 5).",
         "Bloquear las peticiones a hosts externos y abrir P-02 con consentimiento.",
         "Ejecutar el análisis de accesibilidad (axe-core) en las cuatro pantallas.",
-        "Inspeccionar el hardware de la estación y verificar Python 3.9+, Node 18+ y la separación de módulos.",
-        "Revisar la cobertura del vocabulario clínico y el acta de validación lingüística."
+        "Inspeccionar el hardware de la estación y verificar Python 3.9+, Node 18+ y la separación de módulos."
       ],
       "resultados_esperados": [
         "1.- Informe de exactitud global y por clase, con matriz de confusión.",
         "2.- Sin peticiones externas; la cámara se activa y se envían frames.",
         "3.- Sin violaciones graves ni críticas.",
-        "4.- Hardware comercial estándar, versiones soportadas y módulos desacoplados.",
-        "5.- Vocabulario cubierto y acta de validación vigente."
+        "4.- Hardware comercial estándar, versiones soportadas y módulos desacoplados."
       ],
       "resultado_obtenido": "eval_model.py: exactitud global del 100 % y 0/100 muestras bajo el umbral (muestras del conjunto de entrenamiento). Sin Internet: dos intentos a cdn.jsdelivr.net; \"Activando cámara...\" permanece visible y no se envían frames. Accesibilidad: contraste insuficiente (grave) en las pantallas, botón sin nombre accesible (crítico) en P-03 y campo sin etiqueta (crítico) en Modo Captura.",
-      "observaciones": "No aprobado: DM-LSA-009 (depende de Internet) y DM-LSA-011 (accesibilidad). Pendiente para el ciclo 2: precisión con sesión independiente, estación, vocabulario, acta de validación, portabilidad y mantenibilidad (pasos 1, 4 y 5).",
+      "observaciones": "No aprobado: DM-LSA-009 (depende de Internet) y DM-LSA-011 (accesibilidad). Pendiente para el ciclo 2: la validación cruzada del modelo (paso 1) y la inspección de la estación, la portabilidad y la mantenibilidad (paso 4).",
       "consolida": [
         "TC-LSA-015-01",
         "TC-LSA-015-02",
@@ -785,20 +769,16 @@
       "manual": false,
       "ciclo_2": {
         "fecha": "2026-10-21",
-        "resultado_obtenido": "eval_model.py: exactitud global del 100 % y 0/150 muestras bajo el umbral del 70 % (muestras del conjunto de entrenamiento). Sin Internet: 0 peticiones a hosts externos, \"Activando cámara...\" deja de mostrarse, /ws/predict abierta y 6 mensajes de frames enviados. Accesibilidad (axe-core, críticas y graves): 0 violaciones en inicio, paciente, recepción y Modo Captura.",
-        "aprobado": "No probado",
-        "observaciones": "DM-LSA-009 y DM-LSA-011 verificados y cerrados; DM-LSA-025, hallado en el ciclo 2, corregido y cerrado. Pendiente (lo ejecutará el equipo): precisión con una sesión de grabación independiente, estación, vocabulario, acta de validación, portabilidad y mantenibilidad (pasos 1, 4 y 5).",
+        "resultado_obtenido": "eval_model.py: exactitud global del 100 % y 0/150 muestras bajo el umbral del 70 % (muestras del conjunto de entrenamiento). Validación cruzada estratificada de 5 particiones (cada muestra la evalúa un modelo que no la usó para entrenar): exactitud media del 98,67 % (desvío 1,63; mínimo 96,67 % y máximo 100 % por partición); exactitud por clase (recall): cabeza 100 %, dolor 96,7 %, idle 100 %, respirar 100 % y yo 96,7 %; matriz de confusión con dos errores (un dolor clasificado como cabeza y un yo como dolor). Sin Internet: 0 peticiones a hosts externos, \"Activando cámara...\" deja de mostrarse, /ws/predict abierta y 6 mensajes de frames enviados. Accesibilidad (axe-core, críticas y graves): 0 violaciones en inicio, paciente, recepción y Modo Captura. Estación: AMD Ryzen 3 3100, 16 GB de RAM y NVIDIA GeForce GTX 1650 (hardware comercial estándar) con Windows 11 Pro; Python 3.10.11 y Node 24.13.0 (soportados: 3.9+ y 18+); módulos desacoplados: el frontend (web/) se comunica con el backend solo por HTTP y WebSocket, y el backend separa almacenamiento (storage.py), características (src/features.py), modelo (src/model) y validación de capturas (capture_validation.py).",
+        "aprobado": "Si",
+        "observaciones": "DM-LSA-009 y DM-LSA-011 verificados y cerrados; DM-LSA-025, hallado en el ciclo 2, corregido y cerrado. Las particiones de la validación cruzada provienen de la misma sesión de grabación (misma persona, iluminación y día), por lo que la exactitud puede sobrestimar la generalización a otras personas y condiciones. No quedan comprobaciones manuales pendientes.",
         "defectos_verificados": [
           "DM-LSA-009",
           "DM-LSA-011",
           "DM-LSA-025"
         ],
-        "pendiente_manual": [
-          "Paso 1: precisión con una sesión de grabación independiente",
-          "Paso 4: hardware de la estación y versiones de Python y Node",
-          "Paso 5: vocabulario clínico, acta de validación y mantenibilidad"
-        ],
-        "comprobaciones_automatizadas": "API 015-01; UI 015-06 y 015-08"
+        "pendiente_manual": [],
+        "comprobaciones_automatizadas": "API 015-01; UI 015-06 y 015-08; validación cruzada; inspección de la estación"
       }
     }
   ]

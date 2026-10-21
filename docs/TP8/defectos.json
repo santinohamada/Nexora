@@ -419,7 +419,7 @@
       "casos": [
         "TC-LSA-015-01"
       ],
-      "cu": "RNF-05",
+      "cu": "RNF-T-05",
       "tipo_defecto": {
         "codigo": 7,
         "nombre": "GUI"
