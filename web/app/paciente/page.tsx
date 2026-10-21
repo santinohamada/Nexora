@@ -6,7 +6,6 @@ import { Header } from "../../components/layout/Header";
 import { TopPredictions } from "../../components/camera/TopPredictions";
 import { ChatBubble } from "../../components/chat/ChatBubble";
 import { CaptureMode } from "../../components/capture/CaptureMode";
-import { useMediaPipe } from "../../hooks/useMediaPipe";
 import { useMediaPipeTasks } from "../../hooks/useMediaPipeTasks";
 import { useSignWebSocket } from "../../hooks/useSignWebSocket";
 import { useSentenceBuilder } from "../../hooks/useSentenceBuilder";
@@ -37,21 +36,6 @@ const PREDICT_STRIDE_FRAMES = readIntEnv(
   8
 );
 
-type MediaPipeBackend = "legacy" | "tasks";
-
-function resolveBackend(): MediaPipeBackend {
-  if (typeof window === "undefined") return "legacy";
-  try {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("mp") === "tasks" ? "tasks" : "legacy";
-  } catch (e) {
-    return "legacy";
-  }
-}
-
-const MEDIAPIPE_BACKEND = resolveBackend();
-const useLandmarks = MEDIAPIPE_BACKEND === "legacy" ? useMediaPipe : useMediaPipeTasks;
-
 export default function PacientePage() {
   console.log("[Render] PacientePage");
   const [mode, setMode] = useState<"predict" | "capture">("predict");
@@ -67,6 +51,13 @@ export default function PacientePage() {
   }, [consentState]);
 
   const { chatHistory, sendMessage, markReported, clearHistory } = useChatChannel();
+
+  // Keep the latest message in view once the chat overflows its fixed-height panel
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chatHistory.length]);
 
   const recordedFrames = useRef<Frame[]>([]);
   const framesSinceLastPredictRef = useRef(0);
@@ -86,7 +77,6 @@ export default function PacientePage() {
     isProcessingSentence,
     addWord,
     processSentence,
-    onFrameTick,
   } = useSentenceBuilder(handleNewPatientMessage);
 
   const handleNewPrediction = useCallback(
@@ -102,7 +92,10 @@ export default function PacientePage() {
         });
       }
 
-      if (data.sign !== "idle") {
+      if (data.sign === "idle") {
+        // Hands down (or nobody in frame) ends the sentence; pauses between signs keep the hands up.
+        if (data.confidence >= CONFIDENCE_THRESHOLD) processSentence();
+      } else {
         const idleDominant = (data.top3 ?? []).some(
           (item) => item.sign === "idle" && item.confidence > 50
         );
@@ -111,7 +104,7 @@ export default function PacientePage() {
         }
       }
     },
-    [addWord]
+    [addWord, processSentence]
   );
 
   // --- WebSocket for sign predictions ---
@@ -140,13 +133,11 @@ export default function PacientePage() {
         sendFrames([...recordedFrames.current]);
         framesSinceLastPredictRef.current = 0;
       }
-
-      onFrameTick(frameData);
     },
-    [sendFrames, onFrameTick]
+    [sendFrames]
   );
 
-  const { videoRef, canvasRef, status, setStatus, error: cameraError } = useLandmarks({
+  const { videoRef, canvasRef, status, setStatus, error: cameraError } = useMediaPipeTasks({
     onFrame: handleFrame,
     drawLandmarksOnCanvas: true,
     enabled: consentState === "accepted",
@@ -226,7 +217,6 @@ export default function PacientePage() {
           setStatus={setStatus}
           setMode={setMode}
           captureHandlerRef={captureHandlerRef}
-          backend={MEDIAPIPE_BACKEND}
         />
       ) : (
         <main className="min-h-screen bg-slate-50 flex flex-col" inert={consentState !== "accepted"}>
@@ -243,7 +233,8 @@ export default function PacientePage() {
             </p>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-6 h-full min-h-[600px]">
+          {/* Fixed height on desktop: a growing chat scrolls inside its panel instead of stretching the camera */}
+          <div className="flex flex-col lg:flex-row gap-6 min-h-[600px] lg:h-[600px]">
             {/* Camera panel */}
             <div className="flex-1 bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 flex-col flex">
               <div className="flex items-center gap-3 mb-6">
@@ -325,7 +316,7 @@ export default function PacientePage() {
                   </div>
                 </div>
 
-                <div className="flex-1 bg-slate-100/50 border border-slate-200 rounded-3xl p-6 overflow-y-auto flex flex-col gap-6">
+                <div ref={chatScrollRef} className="flex-1 bg-slate-100/50 border border-slate-200 rounded-3xl p-6 overflow-y-auto flex flex-col gap-6">
                   {chatHistory.length === 0 ? (
                     <div className="m-auto text-slate-600 flex flex-col items-center">
                       <p>La conversación aparecerá aquí</p>

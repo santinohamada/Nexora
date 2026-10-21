@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, StrictBool, StrictFloat, StrictInt
 
+from src.features import FEATURE_SIZE, add_hand_local_features, hand_present
 from src.model.lstm import SignLanguageLSTM
 import storage
 from capture_validation import (
@@ -143,22 +144,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 LSTM_MAX_FRAMES = int(os.environ.get("LSTM_MAX_FRAMES", "45"))
 WS_RECEIVE_TIMEOUT_MS = int(os.environ.get("WS_RECEIVE_TIMEOUT_MS", "5000"))
-LSTM_VERSIONED_MODEL_PATH = (
-    "models/lstm_v2_24frames.pth"
-    if LSTM_MAX_FRAMES == 24
-    else f"models/lstm_v1_{LSTM_MAX_FRAMES}frames.pth"
-)
-LEGACY_MODEL_PATH = "models/lstm.pth"
+LSTM_MODEL_PATH = "models/lstm.pth"
 LSTM_CLASSES_PATH = "models/custom_classes.json"
 
-if os.path.exists(LSTM_VERSIONED_MODEL_PATH):
-    LSTM_MODEL_PATH = LSTM_VERSIONED_MODEL_PATH
-elif os.path.exists(LEGACY_MODEL_PATH):
-    LSTM_MODEL_PATH = LEGACY_MODEL_PATH
-else:
-    LSTM_MODEL_PATH = ""
-
-if not LSTM_MODEL_PATH or not os.path.exists(LSTM_CLASSES_PATH):
+if not os.path.exists(LSTM_MODEL_PATH) or not os.path.exists(LSTM_CLASSES_PATH):
     print("[Nexora] ATENCIÓN: No se encontraron los archivos del modelo LSTM. Por favor graba datos y entrena el modelo.")
     CLASSES = []
     model = None
@@ -167,7 +156,7 @@ else:
     with open(LSTM_CLASSES_PATH, "r", encoding="utf-8") as f:
         CLASSES = json.load(f)
 
-    model = SignLanguageLSTM(num_classes=len(CLASSES)).to(device)
+    model = SignLanguageLSTM(num_classes=len(CLASSES), input_size=FEATURE_SIZE).to(device)
     model.load_state_dict(torch.load(LSTM_MODEL_PATH, map_location=device, weights_only=False))
     model.eval()
     MAX_FRAMES = LSTM_MAX_FRAMES
@@ -345,7 +334,6 @@ class SkeletonPayload(BaseModel):
 
 class CapturePayload(BaseModel):
     label: str
-    mode: str = "legacy"
     frames: list[list[list[float]]]
     blendshapes: list[list[float]] | None = None
 
@@ -364,10 +352,38 @@ def _prepare_input(data: np.ndarray) -> np.ndarray:
     if T > MAX_FRAMES:
         data = data[-MAX_FRAMES:]
     elif T < MAX_FRAMES:
-        pad_len = MAX_FRAMES - T
-        pad_arr = np.zeros((pad_len, 75, 4), dtype=data.dtype)
-        data = np.concatenate((data, pad_arr), axis=0)
-    return data.reshape(MAX_FRAMES, -1)
+        # Short windows (e.g. right after the camera starts) are front-padded with the oldest frame,
+        # as if the person stood still before it. Zero padding is unseen in training: an idle window
+        # padded with zeros scored ~96% dolor.
+        data = np.concatenate((np.repeat(data[:1], MAX_FRAMES - T, axis=0), data), axis=0)
+    return add_hand_local_features(data, hand_present(data))
+
+
+def _infer(data: np.ndarray) -> tuple[dict, float]:
+    """(T, 75, 4) validated frames -> ({sign, confidence, top3}, lstm_ms). Shared by /predict and the WS."""
+    lstm_t0 = time.perf_counter()
+    # Nobody in front of the camera is idle by definition: the model never saw empty scenes and
+    # would guess a sign (an all-zero window scores ~80% dolor).
+    if (data[:, 11:23, 3].max(axis=1) > 0).mean() < 0.5:
+        top3 = [{"sign": "idle", "confidence": 100.0}]
+        return {"sign": "idle", "confidence": 100.0, "top3": top3}, (time.perf_counter() - lstm_t0) * 1000.0
+
+    input_tensor = torch.tensor(_prepare_input(data), dtype=torch.float32).unsqueeze(0).to(device)
+    with torch.no_grad():
+        probs = F.softmax(model(input_tensor), dim=1)
+        confidence, predicted_idx = torch.max(probs, 1)
+
+    top3_probs, top3_idx = torch.topk(probs, 3, dim=1)
+    top3 = [
+        {"sign": CLASSES[i.item()], "confidence": round(p.item() * 100, 2)}
+        for p, i in zip(top3_probs[0], top3_idx[0])
+    ]
+    result = {
+        "sign": CLASSES[predicted_idx.item()],
+        "confidence": round(confidence.item() * 100, 2),
+        "top3": top3,
+    }
+    return result, (time.perf_counter() - lstm_t0) * 1000.0
 
 
 # ---------------------------------------------------------------------------
@@ -411,9 +427,9 @@ def get_classes():
 
 
 @app.get("/dataset_stats")
-def dataset_stats(mode: str = "legacy"):
+def dataset_stats():
     stats = {}
-    base_dir = os.path.join("dataset", "custom" if mode == "legacy" else "custom_tasks")
+    base_dir = os.path.join("dataset", "custom")
     if os.path.exists(base_dir):
         for label in os.listdir(base_dir):
             label_dir = os.path.join(base_dir, label)
@@ -432,27 +448,23 @@ def capture(payload: CapturePayload):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    mode = payload.mode if payload.mode in ("legacy", "tasks") else "legacy"
     T = len(payload.frames)
 
     try:
         data = validate_frames(payload.frames)
-        blendshapes_arr = validate_capture_blendshapes(mode, T, payload.blendshapes)
+        blendshapes_arr = validate_capture_blendshapes(T, payload.blendshapes)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     timestamp = int(time.time() * 1000)
-    landmarks_root = "dataset/custom" if mode == "legacy" else "dataset/custom_tasks"
-    label_dir = os.path.join(landmarks_root, payload.label)
+    label_dir = os.path.join("dataset", "custom", payload.label)
     os.makedirs(label_dir, exist_ok=True)
     filename = os.path.join(label_dir, f"{timestamp}.npy")
     np.save(filename, data)
 
-    if mode == "tasks":
-        blendshapes_dir = os.path.join("dataset", "custom_blendshapes", payload.label)
-        os.makedirs(blendshapes_dir, exist_ok=True)
-        blendshapes_filename = os.path.join(blendshapes_dir, f"{timestamp}.npy")
-        np.save(blendshapes_filename, blendshapes_arr)
+    blendshapes_dir = os.path.join("dataset", "custom_blendshapes", payload.label)
+    os.makedirs(blendshapes_dir, exist_ok=True)
+    np.save(os.path.join(blendshapes_dir, f"{timestamp}.npy"), blendshapes_arr)
 
     count = len(os.listdir(label_dir))
     return {"status": "ok", "saved_to": filename, "samples_for_label": count}
@@ -550,27 +562,8 @@ def predict(payload: SkeletonPayload):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # LSTM Preprocessing
-    data = _prepare_input(data)
-    input_tensor = torch.tensor(data, dtype=torch.float32).unsqueeze(0).to(device)
-
-    lstm_t0 = time.perf_counter()
-
-    with torch.no_grad():
-        outputs = model(input_tensor)
-        probs = F.softmax(outputs, dim=1)
-        confidence, predicted_idx = torch.max(probs, 1)
-
-    # Top-3 for debugging
-    top3_probs, top3_idx = torch.topk(probs, 3, dim=1)
-    top3 = [
-        {"sign": CLASSES[i.item()], "confidence": round(p.item() * 100, 2)}
-        for p, i in zip(top3_probs[0], top3_idx[0])
-    ]
-
-    lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
-    confidence_pct = round(confidence.item() * 100, 2)
-    _log_audit("prediction", lstm_ms=round(lstm_ms, 2), confidence=confidence_pct)
+    result, lstm_ms = _infer(data)
+    _log_audit("prediction", lstm_ms=round(lstm_ms, 2), confidence=result["confidence"])
 
     if TIMING_MODE != "off":
         cycle_id = _timing_next_cycle_id()
@@ -578,15 +571,11 @@ def predict(payload: SkeletonPayload):
             "cycle_id": cycle_id,
             "lstm_ms": round(lstm_ms, 2),
             "total_ms": round(lstm_ms, 2),
-            "top3_count": len(top3),
+            "top3_count": len(result["top3"]),
             "source": "predict",
         })
 
-    return {
-        "sign": CLASSES[predicted_idx.item()],
-        "confidence": confidence_pct,
-        "top3": top3,
-    }
+    return result
 
 @app.websocket("/ws/predict")
 async def websocket_predict(websocket: WebSocket):
@@ -651,32 +640,9 @@ async def websocket_predict(websocket: WebSocket):
                         continue
                     data_np = frames  # validate_frames converts and reports ragged input
 
-                data_np = _prepare_input(validate_frames(data_np))
-                input_tensor = torch.tensor(data_np, dtype=torch.float32).unsqueeze(0).to(device)
-
-                lstm_t0 = time.perf_counter()
-
-                with torch.no_grad():
-                    outputs = model(input_tensor)
-                    probs = F.softmax(outputs, dim=1)
-                    confidence, predicted_idx = torch.max(probs, 1)
-
-                top3_probs, top3_idx = torch.topk(probs, 3, dim=1)
-                top3 = [
-                    {"sign": CLASSES[i.item()], "confidence": round(p.item() * 100, 2)}
-                    for p, i in zip(top3_probs[0], top3_idx[0])
-                ]
-
-                confidence_pct = round(confidence.item() * 100, 2)
-                result = {
-                    "sign": CLASSES[predicted_idx.item()],
-                    "confidence": confidence_pct,
-                    "top3": top3,
-                }
+                result, lstm_ms = _infer(validate_frames(data_np))
                 await websocket.send_json(result)
-
-                lstm_ms = (time.perf_counter() - lstm_t0) * 1000.0
-                await asyncio.to_thread(_log_audit, "prediction", lstm_ms=round(lstm_ms, 2), confidence=confidence_pct)
+                await asyncio.to_thread(_log_audit, "prediction", lstm_ms=round(lstm_ms, 2), confidence=result["confidence"])
 
                 if TIMING_MODE != "off":
                     cycle_id = _timing_next_cycle_id()
@@ -684,7 +650,7 @@ async def websocket_predict(websocket: WebSocket):
                         "cycle_id": cycle_id,
                         "lstm_ms": round(lstm_ms, 2),
                         "total_ms": round(lstm_ms, 2),
-                        "top3_count": len(top3),
+                        "top3_count": len(result["top3"]),
                         "source": "ws_predict",
                     })
             except WebSocketDisconnect:

@@ -89,7 +89,7 @@ test("TC-LSA-001-04 umbral de confianza, idle y repeticiones consecutivas (predi
   obs("Predicciones simuladas por WebSocket. Pasos 1-3: barras actualizadas y ventana de oración ausente; paso 4 (70.0): 'dolor' agregada (umbral inclusivo); paso 5: secuencia 'dolor cabeza dolor' sin duplicar la repetición consecutiva. Se probó sin consentimiento de cámara para que la oración no se cierre por quietud.");
 });
 
-test("TC-LSA-001-05 cierre de oración por quietud y burbuja automática en ambas caras", async ({ context }) => {
+test("TC-LSA-001-05 cierre de oración por idle y burbuja automática en ambas caras", async ({ context }) => {
   const { page: p2, ws } = await openPatient(context);
   const p3 = await openReception(context);
   const calls: { t: number; body: string | null }[] = [];
@@ -99,16 +99,20 @@ test("TC-LSA-001-05 cierre de oración por quietud y burbuja automática en amba
     await route.continue();
   });
   await ws.ready();
-  let lastT = 0;
   for (const s of ["yo", "cabeza", "dolor"]) {
     ws.send(pred(s, 90));
-    lastT = Date.now();
     await sleep(100);
   }
   await expect(sentenceWindow(p2)).toHaveText("yo cabeza dolor");
+  await sleep(2000); // a pause between signs must not close the sentence
+  expect(calls.length).toBe(0);
+  ws.send(pred("idle", 69)); // below the confidence threshold: still open
+  await sleep(300);
+  expect(calls.length).toBe(0);
+  const lastT = Date.now();
+  ws.send(pred("idle", 95));
   await expect.poll(() => calls.length, { timeout: 10_000 }).toBe(1);
   const gap = calls[0].t - lastT;
-  expect(gap).toBeGreaterThanOrEqual(780); // 800 ms idle; 20 ms of measurement tolerance between Node and page clocks
   expect(JSON.parse(calls[0].body!)).toEqual({ words: "yo cabeza dolor" });
   await expect(p2.getByText("Generando respuesta de IA...")).toBeVisible();
   const buttons = await p2.getByRole("button").allTextContents();

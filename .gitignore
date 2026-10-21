@@ -60,10 +60,6 @@ docs/referencias/*
 openspec/
 nexora_analisis_completo.md
 
-# Local dataset captures
-dataset/custom_blendshapes/
-dataset/custom_tasks/
-
 # Migrated legacy logs
 logs/*.migrated
 

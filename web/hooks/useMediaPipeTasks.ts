@@ -45,7 +45,7 @@ export function useMediaPipeTasks({
   const visionRef = useRef<TasksVisionModule | null>(null);
   const drawLandmarksRef = useRef(drawLandmarksOnCanvas);
   // Detectors get a downscaled canvas copy of the frame: passing the live <video> element directly
-  // made every detector return empty results (see parity page, which also feeds a canvas).
+  // made every detector return empty results.
   const inputCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isSendingRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
