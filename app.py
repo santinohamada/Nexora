@@ -25,6 +25,8 @@ from src.features import FEATURE_SIZE, add_hand_local_features, hand_present
 from src.model.lstm import SignLanguageLSTM
 import storage
 from capture_validation import (
+    DATASET_DIR,
+    validate_recorder,
     validate_audit_payload,
     validate_capture_blendshapes,
     validate_capture_label,
@@ -389,9 +391,18 @@ def _infer(data: np.ndarray) -> tuple[dict, float]:
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
-os.makedirs("dataset/custom", exist_ok=True)
+RECORDER = validate_recorder(os.environ.get("NEXORA_RECORDER"))  # fails fast at startup
+os.makedirs(os.path.join(DATASET_DIR, "custom"), exist_ok=True)
 DB_PATH = storage.DEFAULT_DB_PATH
 storage.init_db(DB_PATH)
+
+
+def _save_npy(path: str, arr: np.ndarray) -> None:
+    """Write then rename, so a synced folder (Drive) never exposes a half-written .npy."""
+    tmp = path + ".part"
+    with open(tmp, "wb") as f:
+        np.save(f, arr)
+    os.replace(tmp, path)
 
 
 def _log_audit(event_type: str, **fields) -> None:
@@ -429,7 +440,7 @@ def get_classes():
 @app.get("/dataset_stats")
 def dataset_stats():
     stats = {}
-    base_dir = os.path.join("dataset", "custom")
+    base_dir = os.path.join(DATASET_DIR, "custom")
     if os.path.exists(base_dir):
         for label in os.listdir(base_dir):
             label_dir = os.path.join(base_dir, label)
@@ -457,16 +468,17 @@ def capture(payload: CapturePayload):
         raise HTTPException(status_code=400, detail=str(e))
 
     timestamp = int(time.time() * 1000)
-    label_dir = os.path.join("dataset", "custom", payload.label)
+    name = f"{timestamp}_{RECORDER}.npy" if RECORDER else f"{timestamp}.npy"
+    label_dir = os.path.join(DATASET_DIR, "custom", payload.label)
     os.makedirs(label_dir, exist_ok=True)
-    filename = os.path.join(label_dir, f"{timestamp}.npy")
-    np.save(filename, data)
+    filename = os.path.join(label_dir, name)
+    _save_npy(filename, data)
 
-    blendshapes_dir = os.path.join("dataset", "custom_blendshapes", payload.label)
+    blendshapes_dir = os.path.join(DATASET_DIR, "custom_blendshapes", payload.label)
     os.makedirs(blendshapes_dir, exist_ok=True)
-    np.save(os.path.join(blendshapes_dir, f"{timestamp}.npy"), blendshapes_arr)
+    _save_npy(os.path.join(blendshapes_dir, name), blendshapes_arr)
 
-    count = len(os.listdir(label_dir))
+    count = len([f for f in os.listdir(label_dir) if f.endswith(".npy")])
     return {"status": "ok", "saved_to": filename, "samples_for_label": count}
 
 
