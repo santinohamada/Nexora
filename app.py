@@ -23,7 +23,7 @@ from pydantic import BaseModel, StrictBool, StrictFloat, StrictInt
 
 from src.features import FEATURE_SIZE, add_hand_local_features, hand_present
 from src.model.lstm import SignLanguageLSTM
-import storage
+# Imported before storage: it loads .env, and storage reads NEXORA_DB_PATH at import time.
 from capture_validation import (
     DATASET_DIR,
     validate_recorder,
@@ -33,6 +33,7 @@ from capture_validation import (
     validate_frames,
     validate_report_payload,
 )
+import storage
 
 # ---------------------------------------------------------------------------
 # App setup
