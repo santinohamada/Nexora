@@ -119,13 +119,13 @@ Si necesitás enseñar palabras nuevas a la red neuronal:
 Cada integrante graba en su propia PC con su propio backend y las muestras se sincronizan por una carpeta compartida de Google Drive para escritorio:
 
 1. Creá (o sincronizá) la carpeta compartida con Drive para escritorio, por ejemplo `G:\Mi unidad\Nexora\dataset` o la ruta de una unidad compartida.
-2. Antes de iniciar el backend, definí las variables en la misma consola:
-   ```powershell
-   $env:NEXORA_DATASET_DIR="G:\Mi unidad\Nexora\dataset"   # contiene custom/ y custom_blendshapes/
-   $env:NEXORA_RECORDER="santi"                              # tu nombre: solo letras, números y guiones (máx. 32)
-   python -m uvicorn app:app --reload
+2. Copiá `.env.example` a `.env` en la raíz del repo y completá las dos variables (el `.env` no se versiona):
+   ```ini
+   NEXORA_DATASET_DIR=G:\Mi unidad\Nexora\dataset
+   NEXORA_RECORDER=santino
    ```
+   `NEXORA_DATASET_DIR` contiene `custom/` y `custom_blendshapes/`; `NEXORA_RECORDER` es tu nombre (solo letras, números y guiones, máx. 32). El backend, `train_lstm.py` y `eval_model.py` leen el `.env` al iniciar; una variable ya definida en la consola tiene prioridad.
    Las muestras se guardan como `<timestamp>_<nombre>.npy`, así no chocan con las de los demás. Sin `NEXORA_RECORDER` el nombre es `<timestamp>.npy`, y sin `NEXORA_DATASET_DIR` se usa `dataset/`.
-3. Esperá a que Drive termine de sincronizar y entrená con `python train_lstm.py`, que toma `NEXORA_DATASET_DIR` por defecto (con la variable definida en esa consola).
+3. Esperá a que Drive termine de sincronizar y entrená con `python train_lstm.py`, que toma `NEXORA_DATASET_DIR` del `.env` por defecto.
 
 > Los borrados también se sincronizan para todos (la papelera de Drive conserva los archivos 30 días). No entrenes mientras Drive todavía está sincronizando, o el modelo usará un dataset incompleto.
