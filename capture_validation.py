@@ -1,4 +1,5 @@
 import math
+import os
 import re
 
 import numpy as np
@@ -7,6 +8,10 @@ BLENDSHAPE_COUNT = 52
 FRAME_LANDMARKS = 75
 FRAME_VALUES = 4  # x, y, z, visibility
 LABEL_PATTERN = re.compile(r"[a-z0-9_]{1,32}")
+# Shared dataset root (e.g. a Google Drive for desktop synced folder); landmarks live in <root>/custom, blendshapes in <root>/custom_blendshapes.
+DATASET_DIR = os.environ.get("NEXORA_DATASET_DIR") or "dataset"
+# No "_" so the "<timestamp>_<recorder>.npy" suffix stays unambiguous; no separators or dots (it goes into a file path).
+RECORDER_PATTERN = re.compile(r"[a-z0-9-]{1,32}")
 
 REPORT_TEXT_MAX_LEN = 500
 REPORT_MESSAGE_ID_MAX = 2**53 - 1  # JS Number.MAX_SAFE_INTEGER; Date.now() ids are far below
@@ -23,6 +28,16 @@ AUDIT_E2E_MS_MAX = 60000
 def validate_capture_label(label: str) -> None:
     if not LABEL_PATTERN.fullmatch(label):
         raise ValueError("Invalid label")
+
+
+def validate_recorder(recorder):
+    """Return the lowercased recorder name, or None when unset/empty; raise ValueError if it is not [A-Za-z0-9-]{1,32}."""
+    if not recorder:
+        return None
+    recorder = recorder.lower()
+    if not RECORDER_PATTERN.fullmatch(recorder):
+        raise ValueError(f"Invalid NEXORA_RECORDER {recorder!r}: use only letters, digits and '-' (1-32 chars)")
+    return recorder
 
 
 def validate_frames(frames) -> np.ndarray:

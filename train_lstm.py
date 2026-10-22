@@ -6,11 +6,12 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
+from capture_validation import DATASET_DIR
 from src.features import add_hand_local_features, hand_present
 from src.model.lstm import SignLanguageLSTM
 
 # Configurations
-DATASET_PATH = "dataset/custom"
+DATASET_PATH = f"{DATASET_DIR}/custom"
 MODELS_DIR = "models"
 MODEL_PATH = os.path.join(MODELS_DIR, "lstm.pth")
 CLASSES_PATH = os.path.join(MODELS_DIR, "custom_classes.json")

@@ -43,7 +43,8 @@ export default defineConfig({
       command: `"${python}" -m uvicorn app:app --port 8000`,
       cwd: runtime,
       url: "http://localhost:8000/metrics",
-      env: { NEXORA_DB_PATH: testDb },
+      // Never inherit a shared (Drive) dataset dir or recorder from the developer console.
+      env: { NEXORA_DB_PATH: testDb, NEXORA_DATASET_DIR: "dataset", NEXORA_RECORDER: "" },
       reuseExistingServer: false,
       timeout: 180_000,
     },

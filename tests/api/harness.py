@@ -97,7 +97,7 @@ def make_tree(dest):
 def server(tree, db, env=None, timeout=180):
     """Start uvicorn (cwd=tree, NEXORA_DB_PATH=db) on a free port; yield Base; stop."""
     port = free_port()
-    e = {**os.environ, "NEXORA_DB_PATH": str(db), "PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8", **(env or {})}
+    e = {**os.environ, "NEXORA_DATASET_DIR": "dataset", "NEXORA_RECORDER": "", "NEXORA_DB_PATH": str(db), "PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8", **(env or {})}
     logpath = Path(db).parent / f"uvicorn-{port}.log"
     log = open(logpath, "w", encoding="utf-8")
     p = subprocess.Popen([sys.executable, "-m", "uvicorn", "app:app", "--port", str(port)],
@@ -220,7 +220,7 @@ def pct(values, p):
 
 def run_cli(base, *args, timeout=900):
     """Run `python <args>` with cwd = the isolated tree. Returns (returncode, combined output)."""
-    e = {**os.environ, "NEXORA_DB_PATH": base.db, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"}
+    e = {**os.environ, "NEXORA_DATASET_DIR": "dataset", "NEXORA_RECORDER": "", "NEXORA_DB_PATH": base.db, "PYTHONIOENCODING": "utf-8", "PYTHONUNBUFFERED": "1"}
     r = subprocess.run([sys.executable, *args], cwd=str(base.tree), env=e, capture_output=True,
                        timeout=timeout, encoding="utf-8", errors="replace")
     return r.returncode, (r.stdout + r.stderr)

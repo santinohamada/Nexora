@@ -5,10 +5,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from capture_validation import DATASET_DIR
 from app import CLASSES, MAX_FRAMES, device, model, _prepare_input
 
 CONFIDENCE_THRESHOLD = 70.0
-LEAKY_DIR = os.path.normpath("dataset/custom")
+LEAKY_DIR = os.path.normcase(os.path.abspath(os.path.join(DATASET_DIR, "custom")))
 
 
 def _load_samples(data_dir: str) -> list[tuple[str, str]]:
@@ -28,9 +29,9 @@ def evaluate(data_dir: str) -> None:
         print("No hay modelo entrenado (models/lstm*.pth no encontrado).")
         return
 
-    if os.path.normpath(data_dir) == LEAKY_DIR:
+    if os.path.normcase(os.path.abspath(data_dir)) == LEAKY_DIR:
         print(
-            "ADVERTENCIA: evaluando sobre dataset/custom, el mismo dataset usado "
+            f"ADVERTENCIA: evaluando sobre {data_dir}, el mismo dataset usado "
             "para entrenar. La accuracy resultante no mide generalización real."
         )
 
