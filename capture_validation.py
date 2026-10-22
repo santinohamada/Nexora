@@ -3,6 +3,10 @@ import os
 import re
 
 import numpy as np
+from dotenv import load_dotenv
+
+# Local settings from .env (see .env.example); variables already set in the environment win.
+load_dotenv()
 
 BLENDSHAPE_COUNT = 52
 FRAME_LANDMARKS = 75
