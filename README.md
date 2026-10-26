@@ -14,8 +14,7 @@ Son dos pantallas del navegador que se sincronizan entre sí:
 
 - [Cómo funciona](#cómo-funciona)
 - [Requisitos](#requisitos)
-- [Instalación](#instalación)
-- [Ejecución](#ejecución)
+- [Instalación y ejecución](#instalación-y-ejecución)
 - [Uso](#uso)
 - [Dataset compartido (Google Drive)](#dataset-compartido-google-drive)
 - [Tests](#tests)
@@ -51,90 +50,57 @@ Cámara
 
 Probado en Windows 11.
 
-| Componente | Versión / detalle |
-|------------|-------------------|
-| Python | 3.10 (el `venv` del proyecto usa 3.10.11) |
-| Node.js | Compatible con Next.js 16. Para los tests de UI se exige >= 22.5 |
-| Navegador | Google Chrome (soporte de voz y MediaPipe) |
-| Ollama | Con el modelo `qwen2:1.5b` (es el que usa `app.py`) |
-| Voz Piper | `voices/es_AR-daniela-high.onnx` y su `.json`. **No está versionada** (`voices/` está en `.gitignore`) |
-| GPU NVIDIA | Opcional. El backend usa CUDA si `torch` la detecta; si no, CPU |
+| Para usar Nexora | Para desarrollar o entrenar |
+|----------------|----------------------------|
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) (o Docker Engine + Compose) | Python 3.10, Node.js (>= 22.5 para tests de UI) |
+| Google Chrome (cámara, voz, MediaPipe) | Ollama con `qwen2:1.5b` si corrés el backend a mano |
 
-Los pesos del LSTM (`models/lstm.pth`) y las clases (`models/custom_classes.json`) sí están en el repositorio.
+Los pesos del LSTM (`models/lstm.pth`) y las clases (`models/custom_classes.json`) están en el repo.
 
-## Instalación
+## Instalación y ejecución
+
+### Con Docker (recomendado)
+
+Cloná el repo, entrá a la raíz y levantá el stack. El puerto **3000** del host tiene que estar libre.
 
 ```powershell
-# 1. Clonar y entrar a la raíz del repo
 git clone https://github.com/santinohamada/Nexora.git
 cd Nexora
-
-# 2. Entorno virtual y dependencias de Python
-python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-
-# 3. Dependencias del frontend
-cd web
-npm install
-cd ..
-
-# 4. Modelo de lenguaje local
-ollama pull qwen2:1.5b
-```
-
-**Voz Piper.** Descargar `es_AR-daniela-high.onnx` y `es_AR-daniela-high.onnx.json` desde
-<https://huggingface.co/rhasspy/piper-voices/tree/main/es/es_AR/daniela/high> y dejarlos en `voices/` (crear la carpeta). Sin la voz el backend arranca igual, pero no genera audio.
-
-**Archivos de MediaPipe.** `npm run dev` y `npm run build` ejecutan antes `web/scripts/fetch-mediapipe-assets.mjs`, que descarga los modelos `.task` (verifica SHA-256) y copia los `wasm` a `web/public/`. Requiere internet la primera vez.
-
-**Configuración local (opcional).** Copiar `.env.example` a `.env` en la raíz (el `.env` no se versiona). Las variables que reconoce el backend:
-
-| Variable | Efecto | Por defecto |
-|----------|--------|-------------|
-| `NEXORA_DATASET_DIR` | Carpeta del dataset (contiene `custom/` y `custom_blendshapes/`) | `dataset` |
-| `NEXORA_RECORDER` | Nombre de quien graba, se agrega al nombre de cada muestra | vacío |
-| `NEXORA_ALLOWED_ORIGINS` | Orígenes CORS permitidos, separados por comas | `http://localhost:3000,http://127.0.0.1:3000` |
-| `NEXORA_DB_PATH` | Ruta de la base SQLite | `data/lsa_salud.db` |
-| `LSTM_MAX_FRAMES` | Largo de la ventana del LSTM | `45` |
-| `LATENCY_V2_TIMING` | Telemetría por etapa: `off`, `stdout` o `jsonl` | `off` |
-
-Una variable ya definida en la consola tiene prioridad sobre el `.env`. El frontend acepta, también opcionales, `NEXT_PUBLIC_API_URL` y `NEXT_PUBLIC_WS_URL` (por defecto `http://localhost:8000` y `ws://localhost:8000`) y `NEXT_PUBLIC_MIN_SAMPLE_FPS` (ver [Modo Captura](#modo-captura)); se definen en `web/.env.local`.
-
-## Ejecución
-
-### Docker Compose (recomendado)
-
-Requiere [Docker Desktop](https://www.docker.com/products/docker-desktop/) (o Docker Engine + Compose). El puerto **3000** del host debe estar libre (detené `npm run dev` si lo tenías corriendo). El API no se publica en el 8000: el navegador entra solo por el proxy en el 3000, así no choca con otros servicios que usen ese puerto.
-
-Opcional: en `.env` de la raíz, `NEXORA_DATASET_DIR` y `NEXORA_RECORDER` (igual que en [Dataset compartido](#dataset-compartido-google-drive)); Compose monta esa carpeta en el contenedor del API.
-
-```powershell
 docker compose up --build
 ```
 
-Abrí `http://localhost:3000`. La primera vez descarga dependencias de las imágenes, los modelos de MediaPipe (build del frontend), la voz Piper y el modelo `qwen2:1.5b` de Ollama; puede tardar varios minutos. Todo corre en CPU. Para entrenar el LSTM (`train_lstm.py`) seguí usando el venv en el host.
+Abrí **http://localhost:3000**. La primera vez puede tardar varios minutos: construye las imágenes, baja MediaPipe, la voz Piper, Ollama y el modelo `qwen2:1.5b`. Todo corre en CPU. El navegador solo habla con el puerto 3000 (proxy Caddy → frontend y API); no hace falta instalar Python, Node ni Ollama en el host.
 
-### Manual (tres terminales)
-
-Tres procesos, cada uno en su terminal.
+Opcional: copiá `.env.example` a `.env` y definí `NEXORA_DATASET_DIR` y `NEXORA_RECORDER` si grabás en una carpeta compartida (ver [Dataset compartido](#dataset-compartido-google-drive)). Compose monta esa ruta en el contenedor del API.
 
 ```powershell
-# Terminal 1: Ollama (omitir si ya corre como servicio en :11434)
-ollama serve
-
-# Terminal 2: backend, SIEMPRE desde la raíz del repo y con el venv activado
-.\venv\Scripts\activate
-python -m uvicorn app:app --port 8000
-
-# Terminal 3: frontend
-cd web
-npm run dev
+docker compose down          # apagar
+docker compose logs -f api   # logs del backend
 ```
 
-Verificación rápida: `http://127.0.0.1:8000/` devuelve `{"status":"ok","device":...,"classes":...}` y `http://localhost:3000` muestra el inicio.
+Para **entrenar** el LSTM (`train_lstm.py`) seguí usando un venv en el host; después reiniciá el contenedor `api` para que cargue el modelo nuevo.
 
-> El backend solo acepta pedidos desde los orígenes de `NEXORA_ALLOWED_ORIGINS`. Si abrís el frontend desde otra dirección (por ejemplo, la IP de la red local), agregala a esa variable.
+### Sin Docker (desarrollo)
+
+```powershell
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+cd web && npm install && cd ..
+ollama pull qwen2:1.5b
+```
+
+Voz Piper: descargar `es_AR-daniela-high.onnx` y su `.json` desde [Hugging Face](https://huggingface.co/rhasspy/piper-voices/tree/main/es/es_AR/daniela/high) a `voices/`. MediaPipe: `npm run dev` / `npm run build` en `web/` lo descargan solos.
+
+Tres terminales (desde la raíz, con el venv activado en la del backend):
+
+```powershell
+ollama serve
+python -m uvicorn app:app --port 8000
+cd web && npm run dev
+```
+
+Variables opcionales en `.env` (raíz): `NEXORA_DATASET_DIR`, `NEXORA_RECORDER`, `NEXORA_DB_PATH`, `NEXORA_ALLOWED_ORIGINS`, `OLLAMA_URL` (por defecto `http://127.0.0.1:11434`). En el frontend manual, `web/.env.local` puede definir `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL` (por defecto `http://localhost:8000` y `ws://localhost:8000`) y `NEXT_PUBLIC_MIN_SAMPLE_FPS`.
 
 ## Uso
 
@@ -256,12 +222,13 @@ docs/                  Documentación académica (TP7, TP8)
 | No aparece la cámara | Revisar el permiso del sitio en Chrome y que ninguna otra aplicación la esté usando |
 | Pocos fps / muestras descartadas | Sin aceleración de hardware de WebGL, MediaPipe cae a CPU y baja la tasa. Activar la aceleración por hardware de Chrome y cerrar programas que usen la GPU |
 | Mensaje de consola sobre XNNPACK | Informativo, es inofensivo |
-| Error CORS o la pantalla no conecta | Abrir el frontend por `localhost:3000` o `127.0.0.1:3000`, o agregar el origen a `NEXORA_ALLOWED_ORIGINS` |
-| Sin audio | Falta `voices/es_AR-daniela-high.onnx`; ver [Instalación](#instalación) |
+| Error CORS o la pantalla no conecta (modo manual) | Usar `http://localhost:3000` o agregar el origen a `NEXORA_ALLOWED_ORIGINS`. Con Docker Compose no aplica: todo entra por el 3000 |
+| Sin audio (modo manual) | Falta la voz en `voices/`; ver [Sin Docker](#sin-docker-desarrollo). Con Docker, revisar `docker compose logs api` |
+| Puerto 3000 ocupado | Detener `npm run dev` u otro proceso en el 3000 antes de `docker compose up` |
 | El chat no se sincroniza | `BroadcastChannel` solo funciona entre pestañas del mismo navegador y perfil |
 | Oraciones lentas la primera vez | Ollama carga el modelo en memoria en la primera consulta. Las coincidencias con plantilla o caché no lo usan |
 
-Nota: el backend llama a Ollama en `127.0.0.1:11434` (no `localhost`) para evitar una demora de ~2 s por el intento previo con IPv6 en Windows.
+Nota (modo manual): por defecto Ollama está en `127.0.0.1:11434` (no `localhost`) para evitar demora por IPv6 en Windows. En Docker Compose se usa `OLLAMA_URL=http://ollama:11434`.
 
 ## Documentación y equipo
 
