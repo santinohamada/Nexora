@@ -1,17 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { Camera, MonitorPlay, Trash2, Settings, ShieldCheck } from "lucide-react";
-import { Header } from "../../components/layout/Header";
-import { TopPredictions } from "../../components/camera/TopPredictions";
-import { ChatBubble } from "../../components/chat/ChatBubble";
-import { CaptureMode } from "../../components/capture/CaptureMode";
-import { useMediaPipeTasks } from "../../hooks/useMediaPipeTasks";
-import { useSignWebSocket } from "../../hooks/useSignWebSocket";
-import { useSentenceBuilder } from "../../hooks/useSentenceBuilder";
-import { useChatChannel } from "../../hooks/useChatChannel";
-import { sendAudit } from "../../lib/audit";
-import { ChatMessage, Frame, PredictionResult } from "../../types";
+import { useEffect, useRef, useCallback } from "react";
+import { Camera, MonitorPlay, Trash2 } from "lucide-react";
+import { Header } from "../../../components/layout/Header";
+import { TopPredictions } from "../../../components/camera/TopPredictions";
+import { SkeletonToggle } from "../../../components/camera/SkeletonToggle";
+import { ChatBubble } from "../../../components/chat/ChatBubble";
+import { useSignWebSocket } from "../../../hooks/useSignWebSocket";
+import { useSentenceBuilder } from "../../../hooks/useSentenceBuilder";
+import { useStation } from "../../../components/stations/StationProvider";
+import { ChatMessage, Frame, PredictionResult } from "../../../types";
 
 const CONFIDENCE_THRESHOLD = 70;
 
@@ -38,19 +36,21 @@ const PREDICT_STRIDE_FRAMES = readIntEnv(
 
 export default function PacientePage() {
   console.log("[Render] PacientePage");
-  const [mode, setMode] = useState<"predict" | "capture">("predict");
-  const modeRef = useRef(mode);
 
-  const [consentState, setConsentState] = useState<"pending" | "accepted" | "declined">("pending");
-  const consentDialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (consentState !== "accepted") {
-      consentDialogRef.current?.focus();
-    }
-  }, [consentState]);
-
-  const { chatHistory, sendMessage, markReported, clearHistory } = useChatChannel();
+  const {
+    showConsentDialog,
+    chatHistory,
+    sendMessage,
+    markReported,
+    clearHistory,
+    showSkeleton,
+    setShowSkeleton,
+    videoRef,
+    canvasRef,
+    cameraStatus: status,
+    cameraError,
+    setFrameHandler,
+  } = useStation();
 
   // Keep the latest message in view once the chat overflows its fixed-height panel
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -61,11 +61,6 @@ export default function PacientePage() {
 
   const recordedFrames = useRef<Frame[]>([]);
   const framesSinceLastPredictRef = useRef(0);
-  const captureHandlerRef = useRef<((f: Frame, blendshapes?: number[]) => void) | null>(null);
-
-  useEffect(() => {
-    modeRef.current = mode;
-  }, [mode]);
 
   // --- Sentence building from predictions ---
   const handleNewPatientMessage = useCallback((msg: ChatMessage) => {
@@ -108,18 +103,10 @@ export default function PacientePage() {
   );
 
   // --- WebSocket for sign predictions ---
-  const { wsStatus, sendFrames } = useSignWebSocket({ onMessage: handleNewPrediction });
+  const { sendFrames } = useSignWebSocket({ onMessage: handleNewPrediction });
 
-  // --- MediaPipe frame handling ---
   const handleFrame = useCallback(
-    (frameData: Frame, blendshapes?: number[]) => {
-      if (modeRef.current === "capture") {
-        if (captureHandlerRef.current) {
-          captureHandlerRef.current(frameData, blendshapes);
-        }
-        return;
-      }
-
+    (frameData: Frame) => {
       recordedFrames.current.push(frameData);
       if (recordedFrames.current.length > RECORDING_MAX_FRAMES) {
         recordedFrames.current.shift();
@@ -137,89 +124,13 @@ export default function PacientePage() {
     [sendFrames]
   );
 
-  const { videoRef, canvasRef, status, setStatus, error: cameraError } = useMediaPipeTasks({
-    onFrame: handleFrame,
-    drawLandmarksOnCanvas: true,
-    enabled: consentState === "accepted",
-  });
+  useEffect(() => {
+    setFrameHandler(handleFrame);
+    return () => setFrameHandler(null);
+  }, [handleFrame, setFrameHandler]);
 
   return (
-    <>
-      {consentState !== "accepted" && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-6">
-          <div
-            ref={consentDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="consent-title"
-            tabIndex={-1}
-            className="bg-white rounded-[2rem] shadow-xl border border-slate-200 max-w-lg w-full p-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <ShieldCheck className="text-indigo-600" size={28} />
-              <h2 id="consent-title" className="text-2xl font-bold text-slate-800">
-                Consentimiento para usar la cámara
-              </h2>
-            </div>
-            <p className="text-base text-slate-600 leading-relaxed mb-4">
-              Usamos tu cámara solo para reconocer tus señas y traducirlas a
-              texto y voz. No se guarda ningún video ni imagen: el
-              procesamiento ocurre en este dispositivo.
-            </p>
-            {consentState === "declined" && (
-              <p className="text-base text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-                El traductor necesita la cámara para funcionar. Podés
-                reconsiderar cuando quieras.
-              </p>
-            )}
-            <div className="flex flex-col sm:flex-row gap-3 justify-end mt-4">
-              {consentState === "declined" ? (
-                <button
-                  type="button"
-                  onClick={() => setConsentState("pending")}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
-                >
-                  Reconsiderar
-                </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConsentState("declined");
-                      sendAudit({ type: "consent", station: "paciente", consent: "declined" });
-                    }}
-                    className="px-6 py-3 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl font-semibold transition-colors"
-                  >
-                    No acepto
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConsentState("accepted");
-                      sendAudit({ type: "consent", station: "paciente", consent: "accepted" });
-                    }}
-                    className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
-                  >
-                    Acepto y continúo
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      {mode === "capture" ? (
-        <CaptureMode
-          videoRef={videoRef}
-          canvasRef={canvasRef}
-          status={status}
-          setStatus={setStatus}
-          setMode={setMode}
-          captureHandlerRef={captureHandlerRef}
-        />
-      ) : (
-        <main className="min-h-screen bg-slate-50 flex flex-col" inert={consentState !== "accepted"}>
+      <main className="min-h-screen bg-slate-50 flex flex-col" inert={showConsentDialog}>
           <Header />
 
         <div className="flex-1 flex flex-col p-8 pb-20 max-w-[1600px] mx-auto w-full">
@@ -301,6 +212,8 @@ export default function PacientePage() {
                 )}
               </div>
 
+              <SkeletonToggle checked={showSkeleton} onChange={setShowSkeleton} />
+
               <TopPredictions />
             </div>
 
@@ -335,19 +248,11 @@ export default function PacientePage() {
                   >
                     <Trash2 size={16} /> Limpiar Historial
                   </button>
-                  <button
-                    onClick={() => setMode("capture")}
-                    className="ml-auto flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-800 text-sm"
-                  >
-                    <Settings size={16} /> Ajustes (Modo Captura)
-                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </main>
-      )}
-    </>
   );
 }

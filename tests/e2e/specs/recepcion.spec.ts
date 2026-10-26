@@ -15,7 +15,7 @@ const reply = (page, text: string) => page.getByPlaceholder("Escribir...").fill(
 test("TC-LSA-004-01 estado inicial de P-03 y validación de texto vacío", async ({ page }) => {
   await page.goto("/recepcion");
   await expect(page.getByRole("heading", { name: "Estación de Recepción / Enfermería" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Historial del Paciente" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Conversación" })).toBeVisible();
   await expect(page.getByText(EMPTY_P3)).toBeVisible();
   const send = page.getByRole("button", { name: "Enviar" });
   const area = page.getByPlaceholder("Escribir...");
@@ -146,7 +146,7 @@ test("TC-LSA-005-01 dictado: el texto transcripto se suma al ya escrito", async 
   await p3.addInitScript(SR_DOUBLE);
   await p3.goto("/recepcion");
   const area = p3.getByPlaceholder("Escribir...");
-  const mic = p3.locator("button.rounded-full");
+  const mic = p3.getByRole("button", { name: "Dictar respuesta por voz" });
   await expect(mic).toBeEnabled();
   await area.fill("Buenos días"); // the catalog types "Buenos dias" but expects "Buenos días ..." (typo in the catalog); accented text kept consistent
   await mic.click();
@@ -164,7 +164,7 @@ test("TC-LSA-005-01 dictado: el texto transcripto se suma al ya escrito", async 
   const afterFinal = await area.inputValue();
   await mic.click();
   const stillActive = await p3.evaluate(() => !!(window as any).__srStarted);
-  await expect(p3.getByText("← Click para hablar")).toBeVisible();
+  await expect(p3.getByRole("button", { name: "Dictar respuesta por voz" })).toBeVisible();
   const send = p3.getByRole("button", { name: "Enviar" });
   const sendText = await area.inputValue();
   obs(`Doble de SpeechRecognition (simulado): lang=${cfg?.lang} continuous=${cfg?.continuous} interimResults=${cfg?.interimResults}. Área tras parcial 'pase': '${afterPartial}'; tras final 'pase por favor': '${afterFinal}'. Tras pulsar el micrófono de nuevo el indicador vuelve a '← Click para hablar'; la instancia iniciada sigue activa (sin stop): ${stillActive}.`);
@@ -179,7 +179,7 @@ test("TC-LSA-005-01 dictado: el texto transcripto se suma al ya escrito", async 
 test("TC-LSA-005-02 varios segmentos finales en una misma sesión de dictado", async ({ page }) => {
   await page.addInitScript(SR_DOUBLE);
   await page.goto("/recepcion");
-  const mic = page.locator("button.rounded-full");
+  const mic = page.getByRole("button", { name: "Dictar respuesta por voz" });
   await expect(mic).toBeEnabled();
   await mic.click();
   await expect(page.getByText("Escuchando... click para detener")).toBeVisible();
@@ -201,7 +201,7 @@ test("TC-LSA-005-03 dictado sin soporte del navegador y error de micrófono", as
   });
   await p1.goto("/recepcion");
   await expect(p1.getByText("El navegador no soporta reconocimiento de voz.")).toBeVisible();
-  await expect(p1.locator("button.rounded-full")).toBeDisabled();
+  await expect(p1.getByRole("button", { name: "Dictar respuesta por voz" })).toBeDisabled();
   const dup = await p1.getByText(/Error de micrófono:/).allTextContents();
   await reply(p1, "Respuesta manual");
   await expect(bubbleBox(p1, "Respuesta manual")).toBeVisible();
@@ -211,13 +211,13 @@ test("TC-LSA-005-03 dictado sin soporte del navegador y error de micrófono", as
   const p2 = await ctx2.newPage();
   await p2.addInitScript(SR_DOUBLE);
   await p2.goto("/recepcion");
-  const mic = p2.locator("button.rounded-full");
+  const mic = p2.getByRole("button", { name: "Dictar respuesta por voz" });
   await expect(mic).toBeEnabled();
   await mic.click();
   await expect(p2.getByText("Escuchando... click para detener")).toBeVisible();
   await p2.evaluate(() => (window as any).__srStarted.onerror({ error: "not-allowed" }));
   await expect(p2.getByText("Error de micrófono: not-allowed")).toBeVisible();
-  await expect(p2.getByText("← Click para hablar")).toBeVisible();
+  await expect(p2.getByRole("button", { name: "Dictar respuesta por voz" })).toBeVisible();
   await expect(p2.getByText("Escuchando... click para detener")).toHaveCount(0);
   await ctx2.close();
   obs(`Sin soporte: se muestra 'El navegador no soporta reconocimiento de voz.', micrófono deshabilitado y la respuesta escrita funciona. Aviso adicional mostrado en el mismo caso: ${JSON.stringify(dup)} (D-14b). Con error simulado not-allowed: 'Error de micrófono: not-allowed' e indicador '← Click para hablar'.`);

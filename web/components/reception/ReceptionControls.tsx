@@ -1,4 +1,4 @@
-import { useState, useRef, memo, useCallback } from "react";
+import { useState, useRef, memo, useCallback, useEffect } from "react";
 import { Send, Mic, MicOff } from "lucide-react";
 import { useSpeechToText } from "../../hooks/useSpeechToText";
 
@@ -18,6 +18,51 @@ export const ReceptionControls = memo(function ReceptionControls({
   }, []);
 
   const { isListening, toggleListening, error, isSupported } = useSpeechToText(handleSpeechResult);
+  const [micLevel, setMicLevel] = useState(0);
+
+  useEffect(() => {
+    if (!isListening) {
+      setMicLevel(0);
+      return;
+    }
+    let raf = 0;
+    let stream: MediaStream | null = null;
+    let audio: AudioContext | null = null;
+    let cancelled = false;
+    const smooth = { current: 0 };
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((media) => {
+      if (cancelled) {
+        media.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      stream = media;
+      audio = new AudioContext();
+      const source = audio.createMediaStreamSource(media);
+      const analyser = audio.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      const samples = new Uint8Array(analyser.fftSize);
+      const tick = () => {
+        analyser.getByteTimeDomainData(samples);
+        let sum = 0;
+        for (let i = 0; i < samples.length; i++) {
+          const v = (samples[i] - 128) / 128;
+          sum += v * v;
+        }
+        const target = Math.min(1, Math.sqrt(sum / samples.length) * 5);
+        smooth.current += (target - smooth.current) * 0.12;
+        setMicLevel(smooth.current);
+        raf = requestAnimationFrame(tick);
+      };
+      tick();
+    }).catch(() => setMicLevel(0));
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      stream?.getTracks().forEach((track) => track.stop());
+      audio?.close();
+    };
+  }, [isListening]);
 
   const handleToggleListening = () => {
     if (!isListening) baseTextRef.current = receptionText.trimEnd();
@@ -32,58 +77,64 @@ export const ReceptionControls = memo(function ReceptionControls({
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-6">
-      <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 flex flex-col">
-        <textarea
+    <div>
+      {!isSupported && (
+        <p className="text-red-500 text-sm mb-2">
+          El navegador no soporta reconocimiento de voz.
+        </p>
+      )}
+      {error && (
+        <p className="text-red-500 text-sm mb-2">
+          Error de micrófono: {error}
+        </p>
+      )}
+      <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-full pl-4 pr-1.5 py-1.5">
+        <input
           value={receptionText}
           onChange={(e) => setReceptionText(e.target.value)}
-          readOnly={isListening} // dictation owns the text while listening
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSend();
+          }}
+          readOnly={isListening}
           placeholder="Escribir..."
-          className="w-full h-32 bg-slate-100 border border-slate-200 rounded-2xl p-4 text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 resize-none mb-4"
+          aria-label="Escribir respuesta"
+          className="flex-1 min-w-0 bg-transparent text-slate-800 outline-none"
         />
+        <div className="relative w-10 h-10 shrink-0">
+          {isListening && (
+            <span
+              aria-hidden
+              className="absolute left-1/2 top-1/2 w-10 h-10 rounded-full bg-red-400/45 blur-[2px] pointer-events-none"
+              style={{ transform: `translate(-50%, -50%) scale(${1 + micLevel * 0.9})` }}
+            />
+          )}
+          <button
+            type="button"
+            onClick={handleToggleListening}
+            aria-label={isListening ? "Detener dictado" : "Dictar respuesta por voz"}
+            disabled={!isSupported}
+            className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center ${
+              isListening
+                ? "bg-red-600 text-white"
+                : "bg-[#1e448a] text-white disabled:opacity-50"
+            }`}
+          >
+            {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+          </button>
+        </div>
         <button
+          type="button"
           onClick={handleSend}
           disabled={!receptionText.trim()}
-          className="w-full py-4 bg-[#1e448a] hover:bg-[#15346b] disabled:opacity-50 text-white font-semibold rounded-2xl flex justify-center items-center gap-2 transition-colors shadow-md"
+          className="shrink-0 w-10 h-10 rounded-full bg-[#1e448a] hover:bg-[#15346b] disabled:opacity-40 text-white flex items-center justify-center"
+          aria-label="Enviar"
         >
-          <Send size={18} /> Enviar
+          <Send size={18} />
         </button>
       </div>
-
-      <div className="flex-1 bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 flex flex-col">
-        <h3 className="text-xl font-bold text-slate-800 mb-6">
-          Respuesta por voz:
-        </h3>
-        <div className="flex-1 flex flex-col items-center justify-center">
-          {!isSupported && (
-            <p className="text-red-500 text-sm mb-4">
-              El navegador no soporta reconocimiento de voz.
-            </p>
-          )}
-          {error && (
-            <p className="text-red-500 text-sm mb-4">
-              Error de micrófono: {error}
-            </p>
-          )}
-          <div className="flex items-center gap-6">
-            <button
-              onClick={handleToggleListening}
-              aria-label={isListening ? "Detener dictado" : "Dictar respuesta por voz"}
-              disabled={!isSupported}
-              className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-all ${
-                isListening
-                  ? "bg-red-600 hover:bg-red-700 animate-pulse text-white ring-4 ring-red-200"
-                  : "bg-[#1e448a] hover:bg-[#15346b] text-white disabled:opacity-50"
-              }`}
-            >
-              {isListening ? <MicOff size={32} /> : <Mic size={32} />}
-            </button>
-            <span className={`font-medium ${isListening ? "text-red-500" : "text-slate-500"}`}>
-              {isListening ? "Escuchando... click para detener" : "← Click para hablar"}
-            </span>
-          </div>
-        </div>
-      </div>
+      {isListening && (
+        <p className="mt-2 text-sm text-red-500">Escuchando... click para detener</p>
+      )}
     </div>
   );
 });

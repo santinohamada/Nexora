@@ -232,7 +232,7 @@ test("TC-LSA-009-01 el diálogo de consentimiento bloquea la cámara hasta acept
   await expect(dlg).toBeFocused();
   expect(await page.evaluate(() => (window as any).__gum)).toBe(0);
   await expect(page.locator("main[inert]")).toHaveCount(1);
-  const clickable = await page.getByText("Ajustes (Modo Captura)").click({ timeout: 1500 }).then(() => true).catch(() => false);
+  const clickable = await page.getByRole("button", { name: "Limpiar Historial" }).click({ timeout: 1500 }).then(() => true).catch(() => false);
   expect(clickable).toBe(false);
   const auditReq = page.waitForRequest((r) => r.url().endsWith("/audit"));
   const auditRes = page.waitForResponse((r) => r.url().endsWith("/audit"));
@@ -288,18 +288,16 @@ test("TC-LSA-009-03 permiso de cámara denegado por el navegador tras consentir"
   expect(msg, "el sistema debe informar el error de cámara al paciente").not.toBeNull();
 });
 
-test("TC-LSA-009-04 el consentimiento no persiste entre recargas y /recepcion no activa la cámara", async ({ page, context }) => {
+test("TC-LSA-009-04 el consentimiento persiste al recargar y otra pestaña de recepción no abre la cámara", async ({ page, context }) => {
   await page.goto("/paciente");
   await accept(page);
   await expect.poll(() => page.evaluate(() => (window as any).__gum), { timeout: 60_000 }).toBe(1);
   await page.reload();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await sleep(1000);
-  expect(await page.evaluate(() => (window as any).__gum)).toBe(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => (window as any).__gum), { timeout: 60_000 }).toBe(1);
   const store = await storageDump(page);
-  const cookies = await context.cookies();
-  expect(store.haystack.toLowerCase() + JSON.stringify(cookies).toLowerCase()).not.toMatch(/consent|accepted/);
-  obs(`Tras recargar: diálogo visible y getUserMedia 0. ${store.keys}; cookies del contexto=${cookies.length}. Ninguna clave ni cookie contiene 'consent' o 'accepted'.`);
+  expect(store.haystack).toContain("nexora-camera-consent");
+  obs(`Tras recargar: sin diálogo y getUserMedia 1. ${store.keys}.`);
   const p3 = await context.newPage();
   await p3.goto("/recepcion");
   await sleep(3000);
@@ -393,9 +391,10 @@ test("TC-LSA-015-08 accesibilidad básica con axe-core (critical/serious)", asyn
   total += await scan("/paciente tras aceptar");
   const p3 = await openReception(context);
   total += await scan("/recepcion", p3);
-  await page.getByText("Ajustes (Modo Captura)").click();
-  await expect(page.getByText("Modo de Captura")).toBeVisible();
-  total += await scan("Modo Captura");
+  const cap = await context.newPage();
+  await cap.goto("/captura");
+  await expect(cap.getByText("Modo de Captura")).toBeVisible();
+  total += await scan("Modo Captura", cap);
   expect(total, report.join(" | ")).toBe(0);
   obs(report.join(" | "));
   void ws;

@@ -181,7 +181,7 @@ export async function openReception(context: BrowserContext) {
   const page = await context.newPage();
   await page.goto("/recepcion");
   await expect(page.getByRole("heading", { name: "Estación de Recepción / Enfermería" })).toBeVisible();
-  await hydrated(page, "textarea");
+  await hydrated(page, '[placeholder="Escribir..."]');
   return page;
 }
 
