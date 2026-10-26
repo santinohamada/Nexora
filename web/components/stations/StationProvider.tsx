@@ -55,8 +55,8 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   const onStation = pathname === "/paciente" || pathname === "/recepcion";
 
   useEffect(() => {
-    if (consent === "accepted" && pathname === "/paciente") setCameraOn(true);
-  }, [consent, pathname]);
+    if (consent === "accepted" && onStation) setCameraOn(true);
+  }, [consent, onStation]);
 
   const acceptConsent = useCallback(() => {
     localStorage.setItem(CONSENT_KEY, "accepted");

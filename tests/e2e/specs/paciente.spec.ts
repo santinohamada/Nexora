@@ -288,7 +288,7 @@ test("TC-LSA-009-03 permiso de cámara denegado por el navegador tras consentir"
   expect(msg, "el sistema debe informar el error de cámara al paciente").not.toBeNull();
 });
 
-test("TC-LSA-009-04 el consentimiento persiste al recargar y otra pestaña de recepción no abre la cámara", async ({ page, context }) => {
+test("TC-LSA-009-04 el consentimiento persiste al recargar y recepción abre la cámara", async ({ page, context }) => {
   await page.goto("/paciente");
   await accept(page);
   await expect.poll(() => page.evaluate(() => (window as any).__gum), { timeout: 60_000 }).toBe(1);
@@ -300,8 +300,7 @@ test("TC-LSA-009-04 el consentimiento persiste al recargar y otra pestaña de re
   obs(`Tras recargar: sin diálogo y getUserMedia 1. ${store.keys}.`);
   const p3 = await context.newPage();
   await p3.goto("/recepcion");
-  await sleep(3000);
-  expect(await p3.evaluate(() => (window as any).__gum)).toBe(0);
+  await expect.poll(() => p3.evaluate(() => (window as any).__gum), { timeout: 60_000 }).toBe(1);
 });
 
 test("TC-LSA-014-04 latencia percibida e2e_ms y sincronización entre caras (predicciones simuladas)", async ({ context, request }) => {
