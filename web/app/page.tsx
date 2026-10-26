@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { User, Activity } from "lucide-react";
+import { User, Activity, Camera } from "lucide-react";
 
 export default function LandingPage() {
   return (
@@ -22,7 +22,7 @@ export default function LandingPage() {
           Selecciona la estación que deseas abrir. Para un entorno de doble monitor, abre cada enlace en una ventana y pantalla diferente.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
           <Link
             href="/paciente"
             className="flex flex-col items-center p-8 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-3xl transition-all hover:scale-105"
@@ -31,7 +31,18 @@ export default function LandingPage() {
               <User size={32} />
             </div>
             <h2 className="text-xl font-bold text-indigo-900 mb-2">Estación del Paciente</h2>
-            <p className="text-indigo-700/80 text-sm">Cámara, captura de señas y traductor IA en tiempo real.</p>
+            <p className="text-indigo-700/80 text-sm">Cámara y traductor de señas en tiempo real.</p>
+          </Link>
+
+          <Link
+            href="/captura"
+            className="flex flex-col items-center p-8 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-3xl transition-all hover:scale-105"
+          >
+            <div className="bg-slate-800 text-white p-4 rounded-full mb-4 shadow-md">
+              <Camera size={32} />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Captura de señas</h2>
+            <p className="text-slate-600 text-sm">Grabar muestras y reentrenar el modelo.</p>
           </Link>
 
           <Link

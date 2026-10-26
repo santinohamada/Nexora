@@ -16,7 +16,8 @@ def fr(n, lm=75, vals=4):
 
 
 def cap(base, label=L, frames=None, **extra):
-    return http(base, "POST", "/capture", {"label": label, "frames": fr(5) if frames is None else frames, **extra})
+    body = {"label": label, "recorder": "test", "frames": fr(5) if frames is None else frames, **extra}
+    return http(base, "POST", "/capture", body)
 
 
 def listing(base, *parts):

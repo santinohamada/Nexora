@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir --upgrade pip \
   && pip install --no-cache-dir torch --extra-index-url https://download.pytorch.org/whl/cpu \
   && pip install --no-cache-dir -r requirements.txt
 
-COPY app.py storage.py capture_validation.py ./
+COPY app.py storage.py capture_validation.py train_lstm.py ./
 COPY src/ src/
 COPY models/ models/
 COPY docker/api-entrypoint.sh /docker/api-entrypoint.sh

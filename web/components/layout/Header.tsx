@@ -25,7 +25,14 @@ export const Header = memo(function Header() {
         </Link>
       </div>
 
-      <div className="flex bg-slate-100 p-1 rounded-full shadow-inner border border-slate-200/60">
+      <div className="flex items-center gap-3">
+        <Link
+          href="/captura"
+          className="px-5 py-2 rounded-full text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm"
+        >
+          Captura
+        </Link>
+        <div className="flex bg-slate-100 p-1 rounded-full shadow-inner border border-slate-200/60">
         <Link
           href="/paciente"
           className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition-all ${
@@ -48,6 +55,7 @@ export const Header = memo(function Header() {
           <Activity size={16} />
           Vista Recepción / Enfermería
         </Link>
+        </div>
       </div>
     </header>
   );

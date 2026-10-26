@@ -71,14 +71,14 @@ docker compose up --build
 
 Abrí **http://localhost:3000**. La primera vez puede tardar varios minutos: construye las imágenes, baja MediaPipe, la voz Piper, Ollama y el modelo `qwen2:1.5b`. Todo corre en CPU. El navegador solo habla con el puerto 3000 (proxy Caddy → frontend y API); no hace falta instalar Python, Node ni Ollama en el host.
 
-Opcional: copiá `.env.example` a `.env` y definí `NEXORA_DATASET_DIR` y `NEXORA_RECORDER` si grabás en una carpeta compartida (ver [Dataset compartido](#dataset-compartido-google-drive)). Compose monta esa ruta en el contenedor del API.
+Las grabaciones y el modelo reentrenado se guardan en `dataset/` y `models/` del repo (Compose monta esas carpetas en el contenedor).
 
 ```powershell
 docker compose down          # apagar
 docker compose logs -f api   # logs del backend
 ```
 
-Para **entrenar** el LSTM (`train_lstm.py`) seguí usando un venv en el host; después reiniciá el contenedor `api` para que cargue el modelo nuevo.
+En **Modo Captura** podés usar **Reentrenar modelo** sin salir del navegador. Para entrenar a mano: `python train_lstm.py` en el host (con el venv) y reiniciar el contenedor `api` si no usás el botón.
 
 ### Sin Docker (desarrollo)
 
@@ -100,7 +100,7 @@ python -m uvicorn app:app --port 8000
 cd web && npm run dev
 ```
 
-Variables opcionales en `.env` (raíz): `NEXORA_DATASET_DIR`, `NEXORA_RECORDER`, `NEXORA_DB_PATH`, `NEXORA_ALLOWED_ORIGINS`, `OLLAMA_URL` (por defecto `http://127.0.0.1:11434`). En el frontend manual, `web/.env.local` puede definir `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL` (por defecto `http://localhost:8000` y `ws://localhost:8000`) y `NEXT_PUBLIC_MIN_SAMPLE_FPS`.
+Variables opcionales por entorno (sin archivo obligatorio): `NEXORA_DATASET_DIR` (por defecto `dataset/`), `NEXORA_DB_PATH`, `NEXORA_ALLOWED_ORIGINS`, `OLLAMA_URL`. En el frontend manual, `web/.env.local` puede definir `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL` y `NEXT_PUBLIC_MIN_SAMPLE_FPS`.
 
 ## Uso
 
@@ -117,10 +117,12 @@ Variables opcionales en `.env` (raíz): `NEXORA_DATASET_DIR`, `NEXORA_RECORDER`,
 
 Sirve para grabar muestras nuevas y reentrenar.
 
-1. En `/paciente`, botón **Ajustes (Modo Captura)**.
-2. Elegir la seña (la lista sale de `GET /classes`, o sea de `models/custom_classes.json`) y la cantidad de **Repeticiones**.
-3. **Empezar**: cuenta regresiva y grabación de 45 frames por muestra. Cada muestra se guarda como `.npy` en `<NEXORA_DATASET_DIR>/custom/<seña>/` (y los blendshapes en `custom_blendshapes/`).
-4. Si la cámara procesó menos de 18 fps durante la grabación, la muestra se descarta con un aviso (ver `MIN_SAMPLE_FPS` en `web/components/capture/CaptureMode.tsx`, ajustable con `NEXT_PUBLIC_MIN_SAMPLE_FPS`). Cerrar otros programas que usen la GPU suele resolverlo.
+1. Abrí `/captura`.
+2. Completar **Tu nombre** (va en el archivo: `<timestamp>_<nombre>.npy`).
+3. Elegir la seña (lista de `GET /classes` y `GET /dataset_stats`) y **Repeticiones**.
+4. **Empezar**: cuenta regresiva y 45 frames por muestra en `dataset/custom/<seña>/` (blendshapes en `dataset/custom_blendshapes/`).
+5. **Reentrenar modelo** cuando haya muestras nuevas; al terminar, la pantalla avisa que el reconocimiento volvió a estar listo.
+6. Si la cámara procesó menos de 18 fps, la muestra se descarta (ver `MIN_SAMPLE_FPS` en `CaptureMode.tsx`).
 
 ### Entrenamiento y evaluación
 
@@ -135,7 +137,7 @@ python train_lstm.py --cv 5
 python eval_model.py <directorio_dataset>
 ```
 
-Otras opciones de `train_lstm.py`: `--data-dir`, `--blendshapes`, `--out-prefix` (guarda un modelo experimental en vez del de producción), `--hand-local {0,1,2}` y `--seed`. Por defecto toma `<NEXORA_DATASET_DIR>/custom`. Reiniciar el backend después de entrenar para que cargue el modelo nuevo.
+Otras opciones de `train_lstm.py`: `--data-dir`, `--blendshapes`, `--out-prefix`, `--hand-local {0,1,2}` y `--seed`. Por defecto usa `dataset/custom`. Con el botón **Reentrenar modelo** en la UI no hace falta reiniciar el backend.
 
 ### Vocabulario actual
 
@@ -149,13 +151,8 @@ Cada integrante graba en su PC con su propio backend y las muestras se sincroniz
 
 1. El dueño de la carpeta la comparte por email con cada integrante con rol **Editor**.
 2. Cada integrante agrega un acceso directo a la carpeta en **Mi unidad** y la marca como **Disponible sin conexión**, para que Drive la mantenga sincronizada en disco.
-3. En el `.env` de la raíz (copia de `.env.example`) completar:
-   ```ini
-   NEXORA_DATASET_DIR=G:\Mi unidad\Nexora\dataset
-   NEXORA_RECORDER=santino
-   ```
-   `NEXORA_DATASET_DIR` apunta a la carpeta que contiene `custom/` y `custom_blendshapes/`. `NEXORA_RECORDER` es el nombre de quien graba (solo letras, números y guiones, máximo 32). Las muestras se guardan como `<timestamp>_<nombre>.npy`, así no chocan con las de los demás. Sin `NEXORA_RECORDER` el nombre es `<timestamp>.npy`; sin `NEXORA_DATASET_DIR` se usa `dataset/`.
-4. El backend, `train_lstm.py` y `eval_model.py` leen el `.env` al iniciar.
+3. Sincronizá la carpeta `dataset/` del repo con la compartida (o apuntá `NEXORA_DATASET_DIR` en el entorno del proceso si usás otra ruta). En Modo Captura cada uno pone su nombre en la pantalla; los archivos quedan como `<timestamp>_<nombre>.npy`.
+4. Antes de **Reentrenar modelo** o `train_lstm.py`, esperá a que Drive termine de sincronizar.
 
 Precauciones:
 
@@ -200,13 +197,13 @@ Playwright levanta el backend en el puerto 8000 y el frontend en el 3000: el **8
 ```
 app.py                 API FastAPI: REST, WebSocket /ws/predict, Ollama, Piper
 storage.py             SQLite: reportes y auditoría
-capture_validation.py  Validación de capturas, reportes y auditoría; lectura del .env
+capture_validation.py  Validación de capturas, reportes y auditoría; rutas del dataset
 train_lstm.py          Entrenamiento y validación cruzada del LSTM
 eval_model.py          Evaluación de un modelo contra un dataset
 src/                   Features (src/features.py) y modelo (src/model/lstm.py)
 models/                lstm.pth y custom_classes.json
 voices/                Voz Piper (no versionada)
-dataset/               Muestras .npy (o la carpeta de NEXORA_DATASET_DIR)
+dataset/               Muestras .npy (custom/ y custom_blendshapes/)
 web/                   Frontend Next.js (app/, components/, hooks/, lib/)
 tests/api/             Harness y casos de la API
 tests/e2e/             Playwright

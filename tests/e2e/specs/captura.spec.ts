@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { test, expect, obs, sleep, openPatient, API, RUNTIME, cleanupCaptureLabels } from "./helpers";
+import { test, expect, obs, sleep, API, RUNTIME, cleanupCaptureLabels } from "./helpers";
 import type { Page } from "@playwright/test";
 
 // Capture tests write under dataset/custom/zz_ui_* (the backend's cwd is the temp runtime copy, tests/e2e/.tmp/runtime); removed before and after.
@@ -19,7 +19,7 @@ const folder = (label: string) => path.join(RUNTIME, "dataset", "custom", label)
 const npyCount = (label: string) => (fs.existsSync(folder(label)) ? fs.readdirSync(folder(label)).filter((f) => f.endsWith(".npy")).length : 0);
 
 async function openCapture(context) {
-  const { page, ws } = await openPatient(context);
+  const page = await context.newPage();
   const reqs: any[] = [];
   const resps: { status: number; body: any }[] = [];
   page.on("request", (r) => {
@@ -28,10 +28,11 @@ async function openCapture(context) {
   page.on("response", async (r) => {
     if (r.request().method() === "POST" && r.url().endsWith("/capture")) resps.push({ status: r.status(), body: await r.json().catch(() => null) });
   });
-  await page.getByText("Ajustes (Modo Captura)").click();
+  await page.goto("/captura");
   await expect(page.getByRole("heading", { name: "Modo de Captura" })).toBeVisible();
   await expect(chip(page, "dolor")).toContainText("(");
-  return { page, ws, reqs, resps };
+  await page.getByLabel("Tu nombre").fill("e2e");
+  return { page, reqs, resps };
 }
 async function addLabel(page: Page, name: string, how: "click" | "enter" = "click") {
   await page.getByRole("button", { name: "Nueva seña" }).click();
@@ -96,8 +97,8 @@ test("TC-LSA-006-01 grabar una muestra con cuenta regresiva, 45 frames y guardad
   const info = npyInfo(path.join(RUNTIME, resps[0].body.saved_to));
   expect(info).toMatchObject({ descr: "<f4", shape: "(45, 75, 4)" });
   await expect(chip(page, L)).toHaveText(`${L}(1)`);
-  await page.getByRole("button", { name: "Volver a Inferencia" }).click();
-  await page.getByText("Ajustes (Modo Captura)").click();
+  await page.getByRole("link", { name: "Volver a Inferencia" }).click();
+  await page.goto("/captura");
   await expect(chip(page, L)).toContainText("(1)");
   obs(`Pantalla 'Modo de Captura' con 'Seña a grabar:', 'Volver a Inferencia' y ${list.length} chips ordenados [${list.map((c) => `${c.label}${c.count === null ? "" : ` (${c.count})`}`).join(", ")}] sin 'idle'; 'Grabando para: dolor (${stats.dolor} muestras)'. Se grabó con la etiqueta de prueba ${L}: cuenta regresiva 3, 2, 1 (intervalos ${steps.join(" y ")} ms), 'GRABANDO', 'Procesando...', '¡Guardado!'; POST /capture label=${body.label} frames=${body.frames.length}x75x4 blendshapes=${body.blendshapes.length}x52 -> ${resps[0].status} samples_for_label=${resps[0].body.samples_for_label}; archivo .npy ${info.descr} ${info.shape}; chip '${L} (1)' tras volver.`);
 });
@@ -190,7 +191,7 @@ test("TC-LSA-006-04 Detener cancela la repetición en curso sin guardarla", asyn
 
 test("TC-LSA-007-02 lista combinada de etiquetas, filtro de búsqueda y alta de etiqueta válida", async ({ context, request }) => {
   for (const l of ["zz_ui_007a", "zz_ui_007b", "zz_ui_007c"]) {
-    const r = await request.post(`${API}/capture`, { data: { label: l, frames: validFrames(), blendshapes: validBlendshapes() } }); // test data setup
+    const r = await request.post(`${API}/capture`, { data: { label: l, recorder: "e2e", frames: validFrames(), blendshapes: validBlendshapes() } }); // test data setup
     expect(r.status()).toBe(200);
   }
   const { page } = await openCapture(context);

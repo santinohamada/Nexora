@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, memo } from "react";
 import { Status, Frame } from "../../types";
 import Image from "next/image";
+import Link from "next/link";
 import { Plus, Tag, Search } from "lucide-react";
+import { SkeletonToggle } from "../../components/camera/SkeletonToggle";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const RECORDING_SAMPLE_LENGTH = 45;
@@ -13,6 +15,12 @@ const MIN_SAMPLE_FPS = Number(process.env.NEXT_PUBLIC_MIN_SAMPLE_FPS ?? 18);
 const LABEL_PATTERN = /^[a-z0-9_]{1,32}$/;
 const LABEL_FORMAT_MESSAGE =
   "Formato de seña inválido: solo minúsculas, números y guion bajo, hasta 32 caracteres.";
+const RECORDER_PATTERN = /^[a-z0-9-]{1,32}$/i;
+const RECORDER_FORMAT_MESSAGE =
+  "Nombre inválido: solo letras, números y guion, hasta 32 caracteres.";
+const RECORDER_STORAGE_KEY = "nexora-recorder";
+
+type TrainStatus = "idle" | "running" | "ready" | "error";
 
 type DatasetStats = Record<string, number>;
 
@@ -21,15 +29,17 @@ export const CaptureMode = memo(function CaptureMode({
   canvasRef,
   status,
   setStatus,
-  setMode,
   captureHandlerRef,
+  showSkeleton,
+  onShowSkeletonChange,
 }: {
   videoRef: (node: HTMLVideoElement | null) => void;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   status: Status;
   setStatus: React.Dispatch<React.SetStateAction<Status>>;
-  setMode: (mode: "predict" | "capture") => void;
   captureHandlerRef: React.MutableRefObject<((f: Frame, blendshapes?: number[]) => void) | null>;
+  showSkeleton: boolean;
+  onShowSkeletonChange: (show: boolean) => void;
 }) {
 
   const [captureLabel, setCaptureLabel] = useState("");
@@ -43,8 +53,52 @@ export const CaptureMode = memo(function CaptureMode({
   const [currentRepeat, setCurrentRepeat] = useState(0);
   const [labelError, setLabelError] = useState<string | null>(null);
   const [captureError, setCaptureError] = useState<string | null>(null);
+  const [recorderName, setRecorderName] = useState("");
+  const [recorderError, setRecorderError] = useState<string | null>(null);
+  const [trainStatus, setTrainStatus] = useState<TrainStatus>("idle");
+  const [trainMessage, setTrainMessage] = useState("");
   // Identifies the running sequence; Detener (or a new start) bumps it so stale loops abort silently.
   const runIdRef = useRef(0);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(RECORDER_STORAGE_KEY);
+      if (saved) setRecorderName(saved);
+    } catch {
+      /* private mode */
+    }
+  }, []);
+
+  const normalizedRecorder = recorderName.trim().toLowerCase();
+  const recorderValid = RECORDER_PATTERN.test(normalizedRecorder);
+
+  useEffect(() => {
+    try {
+      if (recorderValid) localStorage.setItem(RECORDER_STORAGE_KEY, normalizedRecorder);
+    } catch {
+      /* private mode */
+    }
+  }, [normalizedRecorder, recorderValid]);
+
+  const pollTrainStatus = () => {
+    fetch(`${API_URL}/train`)
+      .then((res) => res.json())
+      .then((data: { status?: TrainStatus; message?: string }) => {
+        const st = data.status ?? "idle";
+        setTrainStatus(st);
+        setTrainMessage(data.message ?? "");
+        if (st === "ready") fetchLabelsAndStats();
+      })
+      .catch((err) => console.error("Error fetching train status:", err));
+  };
+
+  useEffect(() => {
+    pollTrainStatus();
+    if (trainStatus !== "running") return;
+    const id = window.setInterval(pollTrainStatus, 2000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trainStatus]);
 
   const fetchLabelsAndStats = () => {
     // Fetch known classes from model
@@ -111,6 +165,7 @@ export const CaptureMode = memo(function CaptureMode({
   }, [captureHandlerRef]);
 
   const isIdle = status === "idle" || status === "done" || status === "error";
+  const trainingBusy = trainStatus === "running";
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -147,6 +202,7 @@ export const CaptureMode = memo(function CaptureMode({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           label: captureLabel,
+          recorder: normalizedRecorder,
           frames: recordedFramesRef.current,
           blendshapes: recordedBlendshapesRef.current,
         }),
@@ -163,7 +219,32 @@ export const CaptureMode = memo(function CaptureMode({
     return "ok";
   };
 
+  const handleStartTraining = async () => {
+    if (trainStatus === "running") return;
+    setTrainMessage("");
+    try {
+      const res = await fetch(`${API_URL}/train`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const detail = typeof body?.detail === "string" ? body.detail : `HTTP ${res.status}`;
+        setTrainStatus("error");
+        setTrainMessage(detail);
+        return;
+      }
+      setTrainStatus("running");
+      setTrainMessage("Entrenando… el reconocimiento está pausado.");
+      pollTrainStatus();
+    } catch {
+      setTrainStatus("error");
+      setTrainMessage("No hay conexión con el servidor.");
+    }
+  };
+
   const handleStartSequence = async () => {
+    if (!recorderValid) {
+      setRecorderError(RECORDER_FORMAT_MESSAGE);
+      return;
+    }
     if (!LABEL_PATTERN.test(captureLabel)) {
       setCaptureError(LABEL_FORMAT_MESSAGE);
       return;
@@ -244,18 +325,42 @@ export const CaptureMode = memo(function CaptureMode({
             priority
           />
         </div>
-        <button
-          onClick={() => setMode("predict")}
+        <Link
+          href="/paciente"
           className="px-5 py-2 bg-slate-900 text-white rounded-full text-sm font-semibold hover:bg-slate-800 transition-colors shadow-sm"
         >
           Volver a Inferencia
-        </button>
+        </Link>
       </header>
 
       <div className="flex-1 flex flex-col p-8 pb-20 max-w-[1600px] mx-auto w-full">
 
       <div className="bg-white p-6 rounded-2xl shadow-sm flex flex-col items-center gap-6 max-w-2xl mx-auto w-full mt-10">
         <h2 className="text-xl font-bold">Modo de Captura</h2>
+
+        <div className="w-full">
+          <label htmlFor="recorder-name" className="text-sm font-medium text-slate-700">
+            Tu nombre
+          </label>
+          <input
+            id="recorder-name"
+            type="text"
+            value={recorderName}
+            onChange={(e) => {
+              setRecorderName(e.target.value);
+              setRecorderError(null);
+            }}
+            placeholder="Va en el nombre del archivo, ej. inaki"
+            aria-label="Tu nombre"
+            className="mt-1 w-full bg-slate-100 border border-slate-200 text-sm rounded-lg p-2.5 outline-none focus:border-indigo-400 transition-colors"
+            disabled={!isIdle || trainingBusy}
+          />
+          {recorderError && (
+            <p role="alert" className="text-sm text-red-700 mt-1">
+              {recorderError}
+            </p>
+          )}
+        </div>
 
         {/* Label selector */}
         <div className="w-full">
@@ -404,6 +509,8 @@ export const CaptureMode = memo(function CaptureMode({
           )}
         </div>
 
+        <SkeletonToggle checked={showSkeleton} onChange={onShowSkeletonChange} />
+
         {/* Controls */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -415,13 +522,13 @@ export const CaptureMode = memo(function CaptureMode({
               onChange={(e) => setRepeatCount(Math.max(1, parseInt(e.target.value) || 1))}
               className="bg-slate-100 rounded-lg p-2 w-20 text-center outline-none"
               min="1"
-              disabled={!isIdle}
+              disabled={!isIdle || trainingBusy}
             />
           </div>
           {isIdle && countdown === null ? (
             <button
               onClick={handleStartSequence}
-              disabled={!captureLabel.trim()}
+              disabled={!captureLabel.trim() || !recorderValid || trainingBusy}
               className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Empezar
@@ -441,6 +548,32 @@ export const CaptureMode = memo(function CaptureMode({
             {captureError}
           </p>
         )}
+
+        <div className="w-full border-t border-slate-200 pt-4 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={handleStartTraining}
+            disabled={trainingBusy || !isIdle}
+            className="w-full px-4 py-2.5 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {trainingBusy ? "Entrenando modelo…" : "Reentrenar modelo"}
+          </button>
+          {trainStatus === "running" && (
+            <p className="text-sm text-amber-800" role="status">
+              Entrenando… el reconocimiento está pausado.
+            </p>
+          )}
+          {trainStatus === "ready" && (
+            <p className="text-sm text-emerald-700" role="status">
+              Listo. El modelo ya usa las muestras nuevas. {trainMessage}
+            </p>
+          )}
+          {trainStatus === "error" && trainMessage && (
+            <p className="text-sm text-red-700" role="alert">
+              {trainMessage}
+            </p>
+          )}
+        </div>
 
         {/* Selected label indicator */}
         {captureLabel && (

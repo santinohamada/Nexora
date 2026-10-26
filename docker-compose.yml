@@ -25,12 +25,11 @@ services:
         condition: service_completed_successfully
     environment:
       OLLAMA_URL: http://ollama:11434
-      NEXORA_DATASET_DIR: /dataset
       NEXORA_DB_PATH: /data/lsa_salud.db
-      NEXORA_RECORDER: ${NEXORA_RECORDER:-}
       NEXORA_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
     volumes:
-      - ${NEXORA_DATASET_DIR:-./dataset}:/dataset
+      - ./dataset:/app/dataset
+      - ./models:/app/models
       - ./data:/data
       - nexora_voices:/app/voices
     restart: unless-stopped

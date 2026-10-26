@@ -6,6 +6,7 @@ import re
 import unicodedata
 import atexit
 import asyncio
+import threading
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -34,6 +35,7 @@ from capture_validation import (
     validate_report_payload,
 )
 import storage
+from train_lstm import train_final
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -153,20 +155,69 @@ WS_RECEIVE_TIMEOUT_MS = int(os.environ.get("WS_RECEIVE_TIMEOUT_MS", "5000"))
 LSTM_MODEL_PATH = "models/lstm.pth"
 LSTM_CLASSES_PATH = "models/custom_classes.json"
 
-if not os.path.exists(LSTM_MODEL_PATH) or not os.path.exists(LSTM_CLASSES_PATH):
-    print("[Nexora] ATENCIÓN: No se encontraron los archivos del modelo LSTM. Por favor graba datos y entrena el modelo.")
-    CLASSES = []
-    model = None
-    MAX_FRAMES = LSTM_MAX_FRAMES
-else:
-    with open(LSTM_CLASSES_PATH, "r", encoding="utf-8") as f:
-        CLASSES = json.load(f)
+model = None
+CLASSES: list[str] = []
+MAX_FRAMES = LSTM_MAX_FRAMES
 
-    model = SignLanguageLSTM(num_classes=len(CLASSES), input_size=FEATURE_SIZE).to(device)
-    model.load_state_dict(torch.load(LSTM_MODEL_PATH, map_location=device, weights_only=False))
-    model.eval()
+_train_state = {"status": "idle", "message": ""}
+_train_lock = threading.Lock()
+
+
+def _load_lstm_from_disk() -> None:
+    global model, CLASSES, MAX_FRAMES
+    if not os.path.exists(LSTM_MODEL_PATH) or not os.path.exists(LSTM_CLASSES_PATH):
+        print("[Nexora] ATENCIÓN: No se encontraron los archivos del modelo LSTM. Por favor graba datos y entrena el modelo.")
+        CLASSES = []
+        model = None
+        MAX_FRAMES = LSTM_MAX_FRAMES
+        return
+    with open(LSTM_CLASSES_PATH, "r", encoding="utf-8") as f:
+        classes = json.load(f)
+    loaded = SignLanguageLSTM(num_classes=len(classes), input_size=FEATURE_SIZE).to(device)
+    try:
+        loaded.load_state_dict(torch.load(LSTM_MODEL_PATH, map_location=device, weights_only=False))
+    except RuntimeError as e:
+        print(f"[Nexora] No se pudo cargar {LSTM_MODEL_PATH}: {e}")
+        return
+    loaded.eval()
+    CLASSES = classes
+    model = loaded
     MAX_FRAMES = LSTM_MAX_FRAMES
     print(f"[Nexora] Custom LSTM Model loaded on {device} — {len(CLASSES)} classes — {MAX_FRAMES} frames ({LSTM_MODEL_PATH})")
+
+
+_load_lstm_from_disk()
+
+
+def _training_running() -> bool:
+    with _train_lock:
+        return _train_state["status"] == "running"
+
+
+def _ensure_inference_available() -> None:
+    if _training_running():
+        raise HTTPException(
+            status_code=503,
+            detail="Entrenamiento en curso. El reconocimiento y la captura están pausados.",
+        )
+
+
+def _train_worker() -> None:
+    global _train_state
+    try:
+        data_dir = os.path.join(DATASET_DIR, "custom")
+        # Production LSTM is 384 features (landmarks + hand-local). Blendshapes are stored but not part of the model.
+        train_final(data_dir, None, None, 42, hand_local=1)
+        _load_lstm_from_disk()
+        with _train_lock:
+            _train_state = {
+                "status": "ready",
+                "message": f"Modelo listo con {len(CLASSES)} clases.",
+            }
+    except Exception as e:
+        print(f"[Nexora] Training failed: {e}")
+        with _train_lock:
+            _train_state = {"status": "error", "message": str(e)}
 
 PIPER_MODEL_PATH = "voices/es_AR-daniela-high.onnx"
 if os.path.exists(PIPER_MODEL_PATH):
@@ -340,6 +391,7 @@ class SkeletonPayload(BaseModel):
 
 class CapturePayload(BaseModel):
     label: str
+    recorder: str
     frames: list[list[list[float]]]
     blendshapes: list[list[float]] | None = None
 
@@ -395,7 +447,6 @@ def _infer(data: np.ndarray) -> tuple[dict, float]:
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
-RECORDER = validate_recorder(os.environ.get("NEXORA_RECORDER"))  # fails fast at startup
 os.makedirs(os.path.join(DATASET_DIR, "custom"), exist_ok=True)
 DB_PATH = storage.DEFAULT_DB_PATH
 storage.init_db(DB_PATH)
@@ -453,8 +504,26 @@ def dataset_stats():
     return stats
 
 
+@app.get("/train")
+def train_status():
+    with _train_lock:
+        return dict(_train_state)
+
+
+@app.post("/train")
+def train_start():
+    with _train_lock:
+        if _train_state["status"] == "running":
+            raise HTTPException(status_code=409, detail="Ya hay un entrenamiento en curso.")
+        _train_state["status"] = "running"
+        _train_state["message"] = "Entrenando el modelo LSTM…"
+    threading.Thread(target=_train_worker, daemon=True).start()
+    return {"status": "running"}
+
+
 @app.post("/capture")
 def capture(payload: CapturePayload):
+    _ensure_inference_available()
     if len(payload.frames) < 5:
         raise HTTPException(status_code=400, detail="Too few frames (min 5)")
 
@@ -462,6 +531,13 @@ def capture(payload: CapturePayload):
         validate_capture_label(payload.label)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    try:
+        recorder = validate_recorder(payload.recorder)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not recorder:
+        raise HTTPException(status_code=400, detail="Nombre de grabación requerido")
 
     T = len(payload.frames)
 
@@ -472,7 +548,7 @@ def capture(payload: CapturePayload):
         raise HTTPException(status_code=400, detail=str(e))
 
     timestamp = int(time.time() * 1000)
-    name = f"{timestamp}_{RECORDER}.npy" if RECORDER else f"{timestamp}.npy"
+    name = f"{timestamp}_{recorder}.npy"
     label_dir = os.path.join(DATASET_DIR, "custom", payload.label)
     os.makedirs(label_dir, exist_ok=True)
     filename = os.path.join(label_dir, name)
@@ -567,6 +643,7 @@ def metrics(since: str | None = None):
 
 @app.post("/predict")
 def predict(payload: SkeletonPayload):
+    _ensure_inference_available()
     if len(payload.frames) < 5:
         raise HTTPException(status_code=400, detail="Too few frames (min 5)")
 
@@ -609,6 +686,10 @@ async def websocket_predict(websocket: WebSocket):
 
     try:
         while True:
+            if _training_running():
+                await websocket.send_json({"error": "Entrenamiento en curso"})
+                await asyncio.sleep(0.5)
+                continue
             try:
                 data_np = None
                 if proto_version == "2":

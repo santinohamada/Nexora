@@ -1,6 +1,6 @@
 :3000 {
 	@api {
-		path /classes /dataset_stats /capture /report /audit /process_sentence /predict /metrics
+		path /classes /dataset_stats /capture /report /audit /process_sentence /predict /metrics /train
 		path /reports/*
 		path /ws/*
 	}

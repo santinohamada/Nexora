@@ -166,15 +166,12 @@ def cross_validate(data_dir, bs_dir, folds, seed, hand_local=1):
 def train_final(data_dir, bs_dir, out_prefix, seed, hand_local=1):
     """Train on all samples. Saves models/lstm.pth + custom_classes.json, or models/<prefix>_lstm.pt for experiments."""
     if not os.path.exists(data_dir):
-        print(f"Dataset path {data_dir} not found. Por favor graba algunos datos primero.")
-        return
+        raise ValueError(f"No se encontró {data_dir}. Grabá muestras primero.")
     classes, files, labels = _list_samples(data_dir)
     if not classes:
-        print("No se encontraron clases en el dataset. Por favor graba algunos datos primero.")
-        return
+        raise ValueError("No hay clases en el dataset. Grabá muestras primero.")
     if not files:
-        print("No se encontraron archivos .npy en el dataset.")
-        return
+        raise ValueError("No hay archivos .npy en el dataset.")
     model = _fit(files, labels, {c: i for i, c in enumerate(classes)}, bs_dir, seed, hand_local)
     os.makedirs(MODELS_DIR, exist_ok=True)
     model_path = os.path.join(MODELS_DIR, f"{out_prefix}_lstm.pt") if out_prefix else MODEL_PATH
