@@ -103,6 +103,20 @@ Una variable ya definida en la consola tiene prioridad sobre el `.env`. El front
 
 ## Ejecución
 
+### Docker Compose (recomendado)
+
+Requiere [Docker Desktop](https://www.docker.com/products/docker-desktop/) (o Docker Engine + Compose). El puerto **3000** del host debe estar libre (detené `npm run dev` si lo tenías corriendo). El API no se publica en el 8000: el navegador entra solo por el proxy en el 3000, así no choca con otros servicios que usen ese puerto.
+
+Opcional: en `.env` de la raíz, `NEXORA_DATASET_DIR` y `NEXORA_RECORDER` (igual que en [Dataset compartido](#dataset-compartido-google-drive)); Compose monta esa carpeta en el contenedor del API.
+
+```powershell
+docker compose up --build
+```
+
+Abrí `http://localhost:3000`. La primera vez descarga dependencias de las imágenes, los modelos de MediaPipe (build del frontend), la voz Piper y el modelo `qwen2:1.5b` de Ollama; puede tardar varios minutos. Todo corre en CPU. Para entrenar el LSTM (`train_lstm.py`) seguí usando el venv en el host.
+
+### Manual (tres terminales)
+
 Tres procesos, cada uno en su terminal.
 
 ```powershell

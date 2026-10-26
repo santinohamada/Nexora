@@ -145,6 +145,9 @@ atexit.register(_timing_close_sink)
 # ---------------------------------------------------------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Default 127.0.0.1 (not localhost): on Windows, localhost tries IPv6 ::1 first (~2 s delay).
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
+
 LSTM_MAX_FRAMES = int(os.environ.get("LSTM_MAX_FRAMES", "45"))
 WS_RECEIVE_TIMEOUT_MS = int(os.environ.get("WS_RECEIVE_TIMEOUT_MS", "5000"))
 LSTM_MODEL_PATH = "models/lstm.pth"
@@ -733,7 +736,7 @@ Traducción:"""
         natural_sentence = words  # fallback
         try:
             ollama_res = requests.post(
-                "http://127.0.0.1:11434/api/generate",  # not localhost: Windows tries IPv6 ::1 first and waits ~2 s before IPv4
+                f"{OLLAMA_URL}/api/generate",
                 json={
                     "model": "qwen2:1.5b",
                     "prompt": prompt,

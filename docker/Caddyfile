@@ -1,0 +1,13 @@
+:3000 {
+	@api {
+		path /classes /dataset_stats /capture /report /audit /process_sentence /predict /metrics
+		path /reports/*
+		path /ws/*
+	}
+	handle @api {
+		reverse_proxy api:8000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}
