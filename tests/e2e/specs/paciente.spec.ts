@@ -117,8 +117,8 @@ test("TC-LSA-001-05 cierre de oración por idle y burbuja automática en ambas c
   await expect(p2.getByText("Generando respuesta de IA...")).toBeVisible();
   const buttons = await p2.getByRole("button").allTextContents();
   expect(buttons.filter((b) => /confirm|enviar|aceptar|^ok$/i.test(b.trim()))).toEqual([]);
-  await expect(bubbleBox(p2, "Me duele la cabeza.")).toContainText("PACIENTE");
-  await expect(bubbleBox(p3, "Me duele la cabeza.")).toContainText("PACIENTE");
+  await expect(bubbleBox(p2, "Me duele la cabeza.").locator("xpath=ancestor::div[contains(@class,'justify-end')][1]")).toBeVisible();
+  await expect(bubbleBox(p3, "Me duele la cabeza.").locator("xpath=ancestor::div[contains(@class,'justify-start')][1]")).toBeVisible();
   await expect(sentenceWindow(p2)).toHaveCount(0);
   const [t2, t3] = [(await bubbleTimes(p2))[0], (await bubbleTimes(p3))[0]];
   obs(`Predicciones simuladas yo/cabeza/dolor (100 ms). POST /process_sentence ${gap} ms después de la última predicción, cuerpo {"words":"yo cabeza dolor"}; botones visibles en P-02 durante el proceso: [${buttons.map((b) => b.trim()).join(" | ")}]; burbuja PACIENTE "Me duele la cabeza." en ambas caras, diferencia entre caras ${Math.abs(t3 - t2)} ms.`);
@@ -178,7 +178,7 @@ test("TC-LSA-001-09 página de inicio y navegación a cada estación", async ({ 
   await page.goto("/");
   await page.getByRole("link", { name: /Estación de Recepción/ }).click();
   await expect(page).toHaveURL(/\/recepcion$/);
-  await expect(page.getByRole("heading", { name: "Estación de Recepción / Enfermería" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Conversación con paciente" })).toBeVisible();
   obs(`Título 'Bienvenido a Nexora', tarjetas 'Estación del Paciente' y 'Estación de Recepción'; logo con texto alternativo '${logoAlt}' (marca Nexora, D-19); /paciente muestra el diálogo sin activar la cámara.`);
 });
 

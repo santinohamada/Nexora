@@ -5,8 +5,9 @@ import { usePathname } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { useMediaPipeTasks } from "../../hooks/useMediaPipeTasks";
 import { useChatChannel } from "../../hooks/useChatChannel";
+import { useLiveTranslation } from "../../hooks/useLiveTranslation";
 import { sendAudit } from "../../lib/audit";
-import { Frame, Status } from "../../types";
+import { Status } from "../../types";
 
 const CONSENT_KEY = "nexora-camera-consent";
 
@@ -24,8 +25,11 @@ type StationValue = ReturnType<typeof useChatChannel> & {
   cameraError: string | null;
   showSkeleton: boolean;
   setShowSkeleton: (show: boolean) => void;
+  showWords: boolean;
+  setShowWords: (show: boolean) => void;
   stream: MediaStream | null;
-  setFrameHandler: (handler: ((frame: Frame) => void) | null) => void;
+  transcript: string;
+  isProcessingSentence: boolean;
 };
 
 const StationContext = createContext<StationValue | null>(null);
@@ -35,9 +39,10 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   const [consent, setConsent] = useState<Consent>("pending");
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [showSkeleton, setShowSkeleton] = useState(true);
+  const [showWords, setShowWords] = useState(true);
   const [cameraOn, setCameraOn] = useState(false);
-  const frameHandlerRef = useRef<((frame: Frame) => void) | null>(null);
   const chat = useChatChannel();
+  const { onFrame, transcript, isProcessingSentence } = useLiveTranslation(chat.sendMessage);
 
   useEffect(() => {
     const saved = localStorage.getItem(CONSENT_KEY);
@@ -72,14 +77,6 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   const reconsiderConsent = useCallback(() => {
     setConsent("pending");
     setShowConsentDialog(true);
-  }, []);
-
-  const setFrameHandler = useCallback((handler: ((frame: Frame) => void) | null) => {
-    frameHandlerRef.current = handler;
-  }, []);
-
-  const onFrame = useCallback((frame: Frame) => {
-    frameHandlerRef.current?.(frame);
   }, []);
 
   const media = useMediaPipeTasks({
@@ -135,8 +132,11 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
     cameraError: media.error,
     showSkeleton,
     setShowSkeleton,
+    showWords,
+    setShowWords,
     stream: media.stream,
-    setFrameHandler,
+    transcript,
+    isProcessingSentence,
   };
 
   const station = pathname === "/recepcion" ? "recepcion" : "paciente";

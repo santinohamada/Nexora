@@ -1,6 +1,6 @@
 import { memo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Flag, AlertTriangle } from "lucide-react";
+import { Flag, AlertTriangle, Trash2 } from "lucide-react";
 import { ChatMessage } from "../../types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -10,21 +10,23 @@ type SendState = "idle" | "sending" | "error";
 export const ChatBubble = memo(function ChatBubble({
   msg,
   onReported,
+  onDelete,
 }: {
   msg: ChatMessage;
   onReported?: (id: number) => void;
+  onDelete?: (id: number) => void;
 }) {
   console.log("[Render] ChatBubble");
   const isPatient = msg.role === "PACIENTE";
   const pathname = usePathname();
   const station = pathname === "/recepcion" ? "recepcion" : "paciente";
+  const isOwn = station === "recepcion" ? !isPatient : isPatient;
   const [sendState, setSendState] = useState<SendState>("idle");
   const isReported = Boolean(msg.reported);
 
   const inFlight = useRef(false);
 
   const handleReport = async () => {
-    // A ref (not state) so a fast double-click cannot fire two POSTs before the re-render disables the button.
     if (inFlight.current || isReported) return;
     inFlight.current = true;
     setSendState("sending");
@@ -54,63 +56,84 @@ export const ChatBubble = memo(function ChatBubble({
       ? "Traducción reportada. Repetí la seña para enviar el mensaje de nuevo."
       : "Traducción reportada como incorrecta. No la tomes como válida: el paciente va a repetir la seña.";
 
+  const bubbleClass = isOwn
+    ? "bg-[#1e448a] text-white rounded-2xl rounded-br-md"
+    : isReported
+      ? "bg-amber-50 text-slate-600 rounded-2xl rounded-bl-md border border-amber-300"
+      : "bg-white text-slate-800 rounded-2xl rounded-bl-md border border-slate-200/80";
+
+  const canDelete = Boolean(onDelete) && station === "recepcion" && isOwn && !isPatient;
+
   return (
-    <div className={`flex w-full min-w-0 ${isPatient ? "justify-start" : "justify-end"}`}>
-      <div className="flex flex-col min-w-0 max-w-[85%]">
-        <div
-          className={`p-3.5 rounded-3xl shadow-sm transition-colors ${
-            isPatient
-              ? isReported
-                ? "bg-amber-50 text-slate-500 rounded-tl-none border border-amber-300"
-                : "bg-white text-slate-800 rounded-tl-none border border-slate-200"
-              : "bg-[#1e448a] text-white rounded-tr-none"
-          }`}
-        >
+    <div className={`flex w-full min-w-0 ${isOwn ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`flex min-w-0 max-w-[min(78%,18rem)] gap-1 ${isOwn ? "flex-row items-end" : "flex-col"}`}
+      >
+        {canDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete?.(msg.id)}
+            aria-label="Eliminar mensaje"
+            className="shrink-0 p-1 mb-0.5 text-slate-400 hover:text-red-600 transition-colors rounded-md"
+          >
+            <Trash2 size={15} />
+          </button>
+        )}
+        <div className="flex flex-col min-w-0 flex-1">
+        <div className={`px-2.5 py-1.5 shadow-sm ${bubbleClass}`}>
           <div
-            className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isPatient ? "text-teal-500" : "text-blue-200"}`}
+            className={`inline-flex flex-wrap items-end gap-x-1.5 max-w-full ${
+              isOwn ? "justify-end" : "justify-start"
+            }`}
           >
-            {msg.role}
-          </div>
-          <p
-            className={`text-sm leading-relaxed wrap-anywhere ${isReported ? "line-through decoration-amber-400/70" : ""}`}
-          >
-            {msg.text}
-          </p>
-          <div className="flex items-center gap-3 mt-1.5">
-            {isPatient &&
-              (isReported ? (
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700">
-                  <AlertTriangle size={12} /> Traducción reportada
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleReport}
-                  disabled={sendState === "sending"}
-                  aria-label="Reportar traducción incorrecta o ambigua"
-                  className="flex items-center gap-1 text-[10px] font-medium text-slate-400 hover:text-red-500 disabled:opacity-50 disabled:hover:text-slate-400 transition-colors"
-                >
-                  <Flag size={12} />
-                  {sendState === "sending" ? "Enviando..." : "Reportar traducción"}
-                </button>
-              ))}
             <span
-              className={`text-[10px] shrink-0 ml-auto ${isPatient ? "text-slate-400" : "text-blue-300"}`}
+              data-chat-message
+              className={`text-[13px] leading-snug break-words ${
+                isReported ? "line-through decoration-amber-400/70" : ""
+              }`}
+            >
+              {msg.text}
+            </span>
+            <span
+              className={`text-[10px] leading-none shrink-0 translate-y-px ${
+                isOwn ? "text-blue-200/85" : "text-slate-400"
+              }`}
             >
               {msg.time}
             </span>
           </div>
         </div>
+        {isPatient && (
+          <div className={`mt-0.5 px-0.5 ${isOwn ? "text-right" : ""}`}>
+            {isReported ? (
+              <span className="flex items-center gap-1 text-[10px] font-medium text-amber-700">
+                <AlertTriangle size={11} /> Traducción reportada
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={handleReport}
+                disabled={sendState === "sending"}
+                aria-label="Reportar traducción incorrecta o ambigua"
+                className="flex items-center gap-1 text-[10px] font-medium text-slate-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+              >
+                <Flag size={11} />
+                {sendState === "sending" ? "Enviando..." : "Reportar traducción"}
+              </button>
+            )}
+          </div>
+        )}
         {isPatient && isReported && (
-          <p role="status" className="text-[11px] text-amber-700 mt-1 px-1 max-w-sm">
+          <p role="status" className="text-[10px] text-amber-700 mt-0.5 px-0.5 max-w-sm leading-snug">
             {reportedNotice}
           </p>
         )}
         {sendState === "error" && (
-          <p role="alert" className="text-[10px] text-red-500 mt-1 px-1">
+          <p role="alert" className="text-[10px] text-red-500 mt-0.5 px-0.5">
             No se pudo enviar el reporte. Probá de nuevo.
           </p>
         )}
+        </div>
       </div>
     </div>
   );

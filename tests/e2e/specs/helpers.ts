@@ -37,7 +37,7 @@ async function installProbes(context: BrowserContext) {
     let last = 0;
     const start = () =>
       new MutationObserver(() => {
-        const n = document.querySelectorAll("p.pb-4").length;
+        const n = document.querySelectorAll("[data-chat-message]").length;
         for (let i = last; i < n; i++) w.__bubbles.push(Date.now());
         last = n;
       }).observe(document.documentElement, { childList: true, subtree: true });
@@ -180,7 +180,7 @@ export async function openPatient(context: BrowserContext, opts: { accept?: bool
 export async function openReception(context: BrowserContext) {
   const page = await context.newPage();
   await page.goto("/recepcion");
-  await expect(page.getByRole("heading", { name: "Estación de Recepción / Enfermería" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Conversación con paciente" })).toBeVisible();
   await hydrated(page, '[placeholder="Escribir..."]');
   return page;
 }
@@ -200,8 +200,8 @@ export const patientMsg = (id: number, text = "Me duele la cabeza.", words = ["y
 });
 
 export const bubbleBox = (page: Page, text: string) =>
-  page.locator("div.max-w-\\[85\\%\\]").filter({ has: page.locator("p", { hasText: text }) });
-export const bubbleTexts = (page: Page) => page.locator("p.pb-4").allTextContents();
+  page.locator("[data-chat-message]").filter({ hasText: text }).locator("xpath=ancestor::div[contains(@class,'shadow-sm')][1]");
+export const bubbleTexts = (page: Page) => page.locator("[data-chat-message]").allTextContents();
 export const bubbleTimes = (page: Page): Promise<number[]> => page.evaluate(() => (window as any).__bubbles);
 /** Transcript pill over the video ("yo cabeza dolor"). */
 export const sentenceWindow = (page: Page) => page.locator("span.text-white.truncate");

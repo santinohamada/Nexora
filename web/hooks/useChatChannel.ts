@@ -4,14 +4,24 @@ import { ChatMessage } from "../types";
 type ChatEvent =
   | { type: "MESSAGE"; payload: ChatMessage }
   | { type: "REPORTED"; id: number }
-  | { type: "CLEAR" };
+  | { type: "CLEAR" }
+  | { type: "ATTENDANT_NAME"; name: string }
+  | { type: "DELETE"; id: number };
+
+const ATTENDANT_NAME_KEY = "nexora-attendant-name";
 
 const flagReported = (history: ChatMessage[], id: number) =>
   history.map((m) => (m.id === id && !m.reported ? { ...m, reported: true } : m));
 
 export function useChatChannel() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [attendantName, setAttendantNameState] = useState("");
   const [channel, setChannel] = useState<BroadcastChannel | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(ATTENDANT_NAME_KEY);
+    if (saved) setAttendantNameState(saved);
+  }, []);
 
   useEffect(() => {
     const bc = new BroadcastChannel("nexora-chat");
@@ -29,6 +39,12 @@ export function useChatChannel() {
         setChatHistory((prev) => flagReported(prev, data.id));
       } else if (data.type === "CLEAR") {
         setChatHistory([]);
+      } else if (data.type === "ATTENDANT_NAME") {
+        setAttendantNameState(data.name);
+        if (data.name) localStorage.setItem(ATTENDANT_NAME_KEY, data.name);
+        else localStorage.removeItem(ATTENDANT_NAME_KEY);
+      } else if (data.type === "DELETE") {
+        setChatHistory((prev) => prev.filter((m) => m.id !== data.id));
       }
     };
 
@@ -65,5 +81,32 @@ export function useChatChannel() {
     }
   }, [channel]);
 
-  return { chatHistory, sendMessage, markReported, clearHistory };
+  const setAttendantName = useCallback(
+    (name: string) => {
+      const trimmed = name.trim();
+      setAttendantNameState(trimmed);
+      if (trimmed) localStorage.setItem(ATTENDANT_NAME_KEY, trimmed);
+      else localStorage.removeItem(ATTENDANT_NAME_KEY);
+      channel?.postMessage({ type: "ATTENDANT_NAME", name: trimmed });
+    },
+    [channel]
+  );
+
+  const deleteMessage = useCallback(
+    (id: number) => {
+      setChatHistory((prev) => prev.filter((m) => m.id !== id));
+      channel?.postMessage({ type: "DELETE", id });
+    },
+    [channel]
+  );
+
+  return {
+    chatHistory,
+    sendMessage,
+    markReported,
+    clearHistory,
+    deleteMessage,
+    attendantName,
+    setAttendantName,
+  };
 }

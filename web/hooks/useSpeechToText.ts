@@ -16,6 +16,7 @@ export function useSpeechToText(onResult: (text: string) => void) {
   const recognitionRef = useRef<any>(null);
   const onResultRef = useRef(onResult);
   const finalsRef = useRef("");
+  const restartAfterStopRef = useRef(false);
 
   useEffect(() => {
     onResultRef.current = onResult;
@@ -46,12 +47,26 @@ export function useSpeechToText(onResult: (text: string) => void) {
     };
 
     rec.onerror = (event: any) => {
-      console.error("Speech recognition error:", event.error);
-      setError(event.error);
+      const code = event.error as string;
+      if (code === "no-speech" || code === "aborted") return;
+      console.error("Speech recognition error:", code);
+      setError(code);
       setIsListening(false);
     };
 
     rec.onend = () => {
+      if (restartAfterStopRef.current) {
+        restartAfterStopRef.current = false;
+        finalsRef.current = "";
+        onResultRef.current("");
+        try {
+          rec.start();
+          setIsListening(true);
+        } catch {
+          setIsListening(false);
+        }
+        return;
+      }
       setIsListening(false);
     };
 
@@ -91,5 +106,19 @@ export function useSpeechToText(onResult: (text: string) => void) {
     }
   }, [isListening, startListening, stopListening]);
 
-  return { isListening, toggleListening, error, isSupported };
+  /** Clears accumulated dictation; if mic is on, restarts recognition so old finals do not reappear. */
+  const resetTranscript = useCallback(() => {
+    finalsRef.current = "";
+    onResultRef.current("");
+    const rec = recognitionRef.current;
+    if (!rec || !isListening) return;
+    restartAfterStopRef.current = true;
+    try {
+      rec.stop();
+    } catch {
+      restartAfterStopRef.current = false;
+    }
+  }, [isListening]);
+
+  return { isListening, toggleListening, resetTranscript, error, isSupported };
 }

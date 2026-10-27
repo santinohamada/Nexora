@@ -17,7 +17,8 @@ export const ReceptionControls = memo(function ReceptionControls({
     setReceptionText(base ? base + " " + text : text);
   }, []);
 
-  const { isListening, toggleListening, error, isSupported } = useSpeechToText(handleSpeechResult);
+  const { isListening, toggleListening, resetTranscript, isSupported } =
+    useSpeechToText(handleSpeechResult);
   const [micLevel, setMicLevel] = useState(0);
 
   useEffect(() => {
@@ -74,6 +75,7 @@ export const ReceptionControls = memo(function ReceptionControls({
     onSend(receptionText.trim());
     setReceptionText("");
     baseTextRef.current = "";
+    resetTranscript();
   };
 
   return (
@@ -81,11 +83,6 @@ export const ReceptionControls = memo(function ReceptionControls({
       {!isSupported && (
         <p className="text-red-500 text-sm mb-2">
           El navegador no soporta reconocimiento de voz.
-        </p>
-      )}
-      {error && (
-        <p className="text-red-500 text-sm mb-2">
-          Error de micrófono: {error}
         </p>
       )}
       <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-full pl-4 pr-1.5 py-1.5">
@@ -132,9 +129,6 @@ export const ReceptionControls = memo(function ReceptionControls({
           <Send size={18} />
         </button>
       </div>
-      {isListening && (
-        <p className="mt-2 text-sm text-red-500">Escuchando... click para detener</p>
-      )}
     </div>
   );
 });
