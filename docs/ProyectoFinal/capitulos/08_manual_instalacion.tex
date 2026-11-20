@@ -1,2 +1,271 @@
-\chapter{Manual de instalación}
-\pendiente{configuración de servidor y clientes: requisitos, Docker Compose y variables de entorno. Fuente: README del repositorio.}
+\chapter{Manual de instalación}\label{cap:manual-instalacion}
+
+Este manual describe cómo dejar en funcionamiento una estación de LSA Salud: los requisitos, la instalación con Docker Compose, las variables de entorno, la verificación de la primera ejecución, la operación diaria y la solución de los problemas más comunes. Está dirigido al personal técnico. El uso de las estaciones se explica en el capítulo~\ref{cap:manual-usuario}.
+
+\section{Alcance y componentes}
+
+En el PMV, servidor y clientes comparten la misma computadora. El \emph{servidor} son los contenedores de Docker Compose (frontend, backend, modelo de lenguaje y proxy) y los \emph{clientes} son dos pestañas o ventanas de Google Chrome, una por estación, abiertas en esa misma computadora (figura~\ref{fig:vista-fisica}). No se requiere ningún servidor central ni conexión entre estaciones. La sincronización de la conversación entre la Estación del Paciente y la de Recepción usa el propio navegador, por lo que ambas deben abrirse en el mismo navegador y perfil; no se admite, en esta versión, abrir una estación desde otro equipo de la red.
+
+Las tecnologías que componen el sistema se detallan en la tabla~\ref{tab:tecnologias} y sus características técnicas en la tabla~\ref{tab:especificaciones}.
+
+\section{Requisitos}
+
+\begin{table}[H]
+  \centering
+  \caption{Requisitos de instalación}\label{tab:req-instalacion}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm} X}
+    \toprule
+    \textbf{Requisito} & \textbf{Detalle} \\
+    \midrule
+    Sistema operativo & Windows 11 (entorno en el que se probó el PMV). \\
+    Contenedores & Docker Desktop, o bien Docker Engine con el complemento Compose. \\
+    Navegador & Google Chrome, necesario para la cámara, el dictado por voz y MediaPipe. \\
+    Cámara y audio & Cámara web, altavoces o auriculares para la voz del sistema y micrófono para el dictado de Recepción. \\
+    Pantallas & Un monitor por estación (Paciente y Recepción) es lo previsto; con un solo monitor se pueden usar dos ventanas. \\
+    Procesador y memoria & El repositorio no fija mínimos. El reconocimiento corre en CPU dentro de Docker; una GPU con aceleración WebGL en Chrome es opcional y mejora la tasa de captura. \\
+    Almacenamiento & Espacio para las imágenes de Docker (incluidas las bibliotecas de PyTorch en CPU), el modelo de lenguaje \texttt{qwen2:1.5b} y la voz Piper. \\
+    Red & Conexión a Internet solo en la primera instalación, para construir las imágenes y descargar el modelo de lenguaje y la voz. Luego funciona sin conexión. \\
+    Puertos & El puerto 3000 del equipo debe estar libre; es el único que se expone. \\
+    Herramientas & Git, para obtener el código. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+No es necesario instalar Python, Node ni Ollama en el equipo anfitrión: están dentro de las imágenes. La tabla~\ref{tab:req-desarrollo} lista lo adicional que se necesita solo para ejecutar el sistema sin Docker, entrenar el modelo o correr las pruebas.
+
+\begin{table}[H]
+  \centering
+  \caption{Requisitos adicionales para desarrollo, entrenamiento y pruebas}\label{tab:req-desarrollo}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm} X}
+    \toprule
+    \textbf{Requisito} & \textbf{Detalle} \\
+    \midrule
+    Python & Versión 3.10, con las dependencias de \texttt{requirements.txt}. \\
+    Node.js & Versión 22.5 o superior (requerida por las pruebas de interfaz). \\
+    Ollama & Instalado en el equipo, con el modelo \texttt{qwen2:1.5b}, si se ejecuta el backend sin Docker. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Los pesos del modelo de reconocimiento (\texttt{models/lstm.pth}) y sus clases (\texttt{models/custom\_classes.json}) están incluidos en el repositorio. La voz Piper no se versiona: con Docker se descarga sola.
+
+\section{Instalación con Docker Compose}
+
+El procedimiento es el mismo en cada estación.
+
+\begin{enumerate}
+  \item Instalar Docker Desktop y Google Chrome, y verificar que Docker Desktop esté iniciado.
+  \item Clonar el repositorio y ubicarse en su carpeta raíz:
+\begin{lstlisting}[numbers=none, language=bash]
+git clone https://github.com/santinohamada/Nexora.git
+cd Nexora
+\end{lstlisting}
+  \item Construir y levantar los servicios:
+\begin{lstlisting}[numbers=none, language=bash]
+docker compose up --build
+\end{lstlisting}
+  \item Esperar a que termine. La primera vez demora varios minutos: se construyen las imágenes, se descarga el modelo \texttt{qwen2:1.5b}, se compila el frontend (que descarga los modelos de MediaPipe) y el backend descarga la voz Piper. Las ejecuciones siguientes son mucho más rápidas.
+  \item Abrir \texttt{http://localhost:3000} en Google Chrome.
+\end{enumerate}
+
+Con \texttt{docker compose up -d} los servicios se ejecutan en segundo plano. El archivo \texttt{docker-compose.yml} define cinco servicios, descritos en la tabla~\ref{tab:servicios-compose}, de los cuales solo \texttt{proxy} publica un puerto en el equipo.
+
+\begin{table}[H]
+  \centering
+  \caption{Servicios de Docker Compose}\label{tab:servicios-compose}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{3.6cm} X}
+    \toprule
+    \textbf{Servicio} & \textbf{Imagen o contexto} & \textbf{Función} \\
+    \midrule
+    \texttt{ollama} & \texttt{ollama/ollama} & Servidor del modelo de lenguaje local (puerto interno 11434). \\
+    \texttt{ollama-pull} & \texttt{ollama/ollama} & Tarea única que descarga \texttt{qwen2:1.5b} y termina; el backend espera a que finalice con éxito. \\
+    \texttt{api} & \texttt{Dockerfile} de la raíz (Python 3.10, PyTorch en CPU) & Backend FastAPI (puerto interno 8000). Al iniciar descarga la voz Piper si falta. \\
+    \texttt{web} & \texttt{web/Dockerfile} (Node 22) & Frontend Next.js compilado para producción (puerto interno 3000). \\
+    \texttt{proxy} & \texttt{caddy:2} & Único servicio expuesto: puerto 3000 del equipo. Envía la API y el WebSocket al backend y el resto al frontend. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Como el navegador solo habla con el puerto 3000, no hay problemas de origen cruzado (CORS) ni hace falta abrir otros puertos. La tabla~\ref{tab:volumenes} indica qué datos persisten fuera de los contenedores.
+
+\begin{table}[H]
+  \centering
+  \caption{Volúmenes y datos persistentes}\label{tab:volumenes}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm} >{\raggedright\arraybackslash}p{2.6cm} X}
+    \toprule
+    \textbf{Volumen} & \textbf{Servicio} & \textbf{Contenido} \\
+    \midrule
+    \texttt{./dataset} & \texttt{api} & Muestras de entrenamiento grabadas con el Modo Captura. \\
+    \texttt{./models} & \texttt{api} & Modelo LSTM y clases; el reentrenamiento los reemplaza. \\
+    \texttt{./data} & \texttt{api} & Base SQLite (\texttt{lsa\_salud.db}) con reportes y auditoría. \\
+    \texttt{nexora\_voices} & \texttt{api} & Voz Piper descargada. \\
+    \texttt{ollama\_models} & \texttt{ollama} & Modelo de lenguaje descargado. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Variables de entorno}
+
+El sistema funciona sin configuración adicional: Docker Compose ya define los valores necesarios. Las variables de la tabla~\ref{tab:variables} solo se modifican para casos particulares. En Docker Compose las del backend se definen en la sección \texttt{environment} del servicio \texttt{api}; sin Docker pueden fijarse en el entorno del proceso o en un archivo \texttt{.env} en la raíz del repositorio (se carga con \texttt{python-dotenv}).
+
+\begin{table}[H]
+  \centering
+  \caption{Variables de entorno}\label{tab:variables}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.3cm} >{\raggedright\arraybackslash}p{3.4cm} X}
+    \toprule
+    \textbf{Variable} & \textbf{Valor por defecto} & \textbf{Descripción} \\
+    \midrule
+    \multicolumn{3}{@{}l}{\textit{Backend}} \\
+    \texttt{OLLAMA\_URL} & \url{http://127.0.0.1:11434} & Dirección del servidor Ollama. En Compose vale \url{http://ollama:11434}. Se usa \texttt{127.0.0.1} y no \texttt{localhost} para evitar demoras por IPv6 en Windows. \\
+    \texttt{NEXORA\_DB\_PATH} & \url{data/lsa_salud.db} & Archivo de la base SQLite. En Compose vale \url{/data/lsa_salud.db}. \\
+    \texttt{NEXORA\_\allowbreak ALLOWED\_\allowbreak ORIGINS} & \url{http://localhost:3000}, \url{http://127.0.0.1:3000} & Orígenes autorizados por CORS, separados por comas. \\
+    \texttt{NEXORA\_\allowbreak DATASET\_\allowbreak DIR} & \texttt{dataset} & Carpeta de las muestras de entrenamiento. \\
+    \texttt{LSTM\_MAX\_FRAMES} & \texttt{45} & Largo de la ventana del modelo, en frames. Debe coincidir con el usado al entrenar. \\
+    \texttt{WS\_RECEIVE\_\allowbreak TIMEOUT\_MS} & \texttt{5000} & Tiempo máximo de espera de datos en el WebSocket de predicción. \\
+    \texttt{LATENCY\_V2\_\allowbreak TIMING} & \texttt{off} & Telemetría por etapa para mediciones (\texttt{off}, \texttt{stdout} o \texttt{jsonl}). \\
+    \multicolumn{3}{@{}l}{\textit{Frontend}} \\
+    \texttt{NEXT\_PUBLIC\_\allowbreak API\_URL} & \url{http://localhost:8000} & Dirección de la API que usa el navegador. En Compose vale \url{http://localhost:3000}. \\
+    \texttt{NEXT\_PUBLIC\_\allowbreak WS\_URL} & \url{ws://localhost:8000} & Dirección del WebSocket de predicción. En Compose vale \url{ws://localhost:3000}. \\
+    \texttt{NEXT\_PUBLIC\_\allowbreak MIN\_SAMPLE\_FPS} & \texttt{18} & Tasa mínima de cuadros para aceptar una muestra en el Modo Captura. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Las variables \texttt{NEXT\_PUBLIC\_*} se incorporan al frontend al compilarlo. En Docker Compose se pasan como argumentos de construcción del servicio \texttt{web}, por lo que un cambio exige volver a construir con \texttt{docker compose up --build}; al ejecutar sin Docker pueden definirse en \texttt{web/.env.local}. Existen otras variables de ajuste fino del frontend y de la medición de latencia que no deben modificarse en una instalación normal.
+
+\section{Ejecución sin Docker (desarrollo)}
+
+Esta modalidad es útil para desarrollar o depurar. Requiere los componentes de la tabla~\ref{tab:req-desarrollo}. Desde la raíz del repositorio, en PowerShell:
+
+\begin{lstlisting}[numbers=none, language=bash]
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+cd web && npm install && cd ..
+ollama pull qwen2:1.5b
+\end{lstlisting}
+
+La voz Piper debe descargarse manualmente: los archivos \texttt{es\_AR-daniela-high.onnx} y \texttt{es\_AR-daniela-high.onnx.json} del repositorio de voces de Piper en Hugging Face (carpeta \texttt{es/es\_AR/daniela/high}) se copian en la carpeta \texttt{voices/}. Los modelos de MediaPipe los descargan solos los comandos \texttt{npm run dev} y \texttt{npm run build}. Luego se abren tres terminales desde la raíz, con el entorno virtual activado en la del backend:
+
+\begin{lstlisting}[numbers=none, language=bash]
+ollama serve
+python -m uvicorn app:app --port 8000
+cd web && npm run dev
+\end{lstlisting}
+
+El backend debe lanzarse siempre desde la raíz del repositorio, porque resuelve \texttt{models/}, \texttt{voices/} y \texttt{dataset/} de forma relativa. En esta modalidad el sistema también se abre en \texttt{http://localhost:3000}, y el origen de la API es el puerto 8000.
+
+\section{Verificación de la primera ejecución}
+
+Para comprobar que la instalación funciona, se recomienda seguir esta lista:
+
+\begin{enumerate}
+  \item \textbf{Servicios activos.} \texttt{docker compose ps -a} debe mostrar \texttt{ollama}, \texttt{api}, \texttt{web} y \texttt{proxy} en ejecución; \texttt{ollama-pull} aparece finalizado (\emph{Exited (0)}).
+  \item \textbf{Backend listo.} \texttt{docker compose logs api} debe incluir los mensajes \texttt{Custom LSTM Model loaded} y \texttt{Piper TTS Model loaded}. Si falta el segundo, el sistema funciona pero sin voz.
+  \item \textbf{API accesible.} La dirección \texttt{http://localhost:3000/classes} debe devolver la lista de señas: \texttt{["cabeza","dolor","idle","respirar","yo"]}.
+  \item \textbf{Inicio.} \texttt{http://localhost:3000} muestra la pantalla de inicio con las tarjetas de las estaciones.
+  \item \textbf{Estación del Paciente.} En \texttt{/paciente} aparece el diálogo de consentimiento; al aceptarlo y permitir la cámara, se ve la imagen con el indicador \emph{EN VIVO} y el panel \emph{Top-3 Predicciones} se actualiza.
+  \item \textbf{Estación de Recepción.} En \texttt{/recepcion}, en otra pestaña del mismo navegador, se ve la imagen de la cámara del paciente; un mensaje escrito y enviado aparece en la pantalla del paciente.
+  \item \textbf{Traducción y voz.} Con las señas \emph{yo}, \emph{dolor}, \emph{cabeza} y las manos bajas al final, se obtiene la oración \emph{Me duele la cabeza.} y se escucha en voz alta.
+\end{enumerate}
+
+\section{Apertura de las estaciones}
+
+\begin{enumerate}
+  \item Abrir \texttt{http://localhost:3000/paciente} en Google Chrome y mover la ventana al monitor del paciente.
+  \item Abrir \texttt{http://localhost:3000/recepcion} en otra pestaña o ventana \textbf{del mismo navegador} y moverla al monitor del personal.
+  \item La primera vez, Chrome solicita permiso para usar la cámara (estación del paciente) y el micrófono (dictado de Recepción). Deben permitirse; si se bloquearon, se restablecen desde el ícono del candado junto a la dirección.
+  \item El consentimiento del paciente se guarda en el navegador; para volver a preguntarlo hay que borrar los datos del sitio.
+\end{enumerate}
+
+Chrome puede mostrar la ventana de la estación en pantalla completa con la tecla F11 para el uso en el puesto de atención.
+
+\section{Operación: detener, reanudar y actualizar}
+
+\begin{lstlisting}[numbers=none, language=bash]
+docker compose down            # apagar
+docker compose up -d           # volver a iniciar sin reconstruir
+docker compose logs -f api     # seguir los registros del backend
+docker compose restart api     # reiniciar solo el backend
+\end{lstlisting}
+
+Los datos de la tabla~\ref{tab:volumenes} sobreviven al apagado. El comando \texttt{docker compose down -v} elimina además los volúmenes con nombre y obliga a volver a descargar la voz y el modelo de lenguaje, por lo que requiere conexión a Internet.
+
+Para actualizar a una nueva versión del código:
+
+\begin{lstlisting}[numbers=none, language=bash]
+git pull
+docker compose up --build -d
+\end{lstlisting}
+
+Antes de actualizar o migrar una estación conviene copiar las carpetas \texttt{dataset/}, \texttt{models/} y \texttt{data/}, que contienen las muestras, el modelo vigente y los reportes.
+
+\section{Reentrenamiento y nuevas señas (Modo Captura)}
+
+El Modo Captura es una herramienta interna del equipo técnico, no una estación de cliente. Se abre en \texttt{http://localhost:3000/captura} (figura~\ref{fig:man-captura}) y sirve para grabar muestras y reentrenar el modelo. No debe usarse durante una atención: mientras se entrena, el reconocimiento queda pausado y se lee \emph{Entrenando\ldots{} el reconocimiento está pausado.}
+
+\figuraTP{manual/11_captura}{0.9\textwidth}{Modo Captura (herramienta interna del equipo)}{fig:man-captura}
+
+\begin{enumerate}
+  \item Completar \textbf{Tu nombre}, que forma parte del nombre del archivo (\texttt{<marca de tiempo>\_<nombre>.npy}); admite letras, números y guiones, hasta 32 caracteres.
+  \item Elegir la seña a grabar. Para agregar una seña nueva, usar \textbf{Nueva seña} e ingresar su nombre (minúsculas, números y guion bajo, hasta 32 caracteres).
+  \item Indicar las \textbf{Repeticiones} y presionar \textbf{Empezar}. Cada repetición tiene una cuenta regresiva y graba 45 cuadros en \texttt{dataset/custom/<seña>/}; los \emph{blendshapes} faciales se guardan en \texttt{dataset/custom\_blendshapes/}.
+  \item Si la cámara procesó menos de 18 cuadros por segundo, la muestra se descarta con un aviso; se recomienda cerrar los programas que usen la GPU.
+  \item Con muestras nuevas, presionar \textbf{Reentrenar modelo}. Al finalizar, el reconocimiento vuelve a estar disponible sin reiniciar el backend.
+\end{enumerate}
+
+También puede entrenarse desde la línea de comandos, con el entorno virtual activado y desde la raíz del repositorio:
+
+\begin{lstlisting}[numbers=none, language=bash]
+python train_lstm.py             # entrena y guarda models/lstm.pth
+python train_lstm.py --cv 5      # validacion cruzada (no guarda el modelo)
+python eval_model.py <directorio_dataset>   # evalua el modelo actual
+\end{lstlisting}
+
+Si se entrena fuera del botón y el sistema corre con Docker, hay que reiniciar el backend con \texttt{docker compose restart api} para que cargue el nuevo modelo. Si las muestras se comparten entre integrantes mediante una carpeta de Google Drive, debe esperarse a que termine la sincronización antes de entrenar; de lo contrario el modelo usa un conjunto incompleto.
+\section{Pruebas automáticas}
+
+El repositorio incluye pruebas de la API y de la interfaz. Las de interfaz usan Playwright, que levanta su propio backend (puerto 8000, que debe estar libre) y el frontend (puerto 3000), con una cámara y un micrófono virtuales de Chromium:
+
+\begin{lstlisting}[numbers=none, language=bash]
+cd tests\e2e
+npm install
+npx playwright install chromium
+npx playwright test
+\end{lstlisting}
+
+Las suites se ejecutan de a una, nunca en paralelo, para no superponer los puertos. El detalle del procedimiento y de los prerrequisitos de cada suite está en \texttt{tests/README.md}.
+
+\section{Solución de problemas}
+
+\begin{table}[H]
+  \centering
+  \caption{Problemas frecuentes y su solución}\label{tab:problemas}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm} X}
+    \toprule
+    \textbf{Síntoma} & \textbf{Causa probable y solución} \\
+    \midrule
+    \texttt{docker compose} indica que no puede conectarse con Docker & Docker Desktop no está iniciado. Iniciarlo y repetir el comando. \\
+    El puerto 3000 está ocupado & Otro proceso lo usa, por ejemplo un \texttt{npm run dev}. Detenerlo antes de ejecutar \texttt{docker compose up}. \\
+    El servicio \texttt{api} no arranca y \texttt{ollama-pull} falla & No hubo conexión a Internet para descargar el modelo \texttt{qwen2:1.5b} en la primera instalación. Conectar el equipo y repetir \texttt{docker compose up}. \\
+    El backend se reinicia en bucle al iniciar & Falta la voz Piper y no pudo descargarse (sin Internet). Con conexión, el reinicio automático la descarga; también puede copiarse la voz al volumen \texttt{nexora\_voices}. \\
+    No se escucha la voz del sistema & El backend no cargó la voz Piper. Revisar \texttt{docker compose logs api} (mensaje \texttt{Piper TTS Model not found}). Sin Docker, verificar que los dos archivos estén en \texttt{voices/}. El texto de la traducción se muestra igual. \\
+    \texttt{/classes} devuelve una lista vacía y las señas no se reconocen & Faltan o no se pudieron cargar \texttt{models/lstm.pth} o \texttt{models/custom\_classes.json}. Restaurarlos desde el repositorio (\texttt{git checkout -- models}) o reentrenar el modelo. \\
+    La cámara no aparece (\emph{No se pudo acceder a la cámara.}) & Permiso denegado en Chrome o cámara en uso por otra aplicación. Permitir el sitio desde el candado, cerrar la otra aplicación y recargar. \\
+    No aparece el diálogo de consentimiento & El consentimiento ya quedó guardado en ese navegador. Borrar los datos del sitio para volver a preguntarlo. \\
+    La oración aparece como las palabras sueltas & No hubo plantilla ni respuesta válida de Ollama, y el sistema muestra las palabras reconocidas. Verificar que el servicio \texttt{ollama} esté activo y que el modelo se haya descargado. La primera consulta es lenta mientras Ollama carga el modelo en memoria. \\
+    Pocas muestras por segundo o muestras descartadas & MediaPipe cae a CPU si Chrome no tiene aceleración por hardware (WebGL). Activar la aceleración por hardware de Chrome y cerrar programas que usen la GPU. \\
+    Las estaciones no se sincronizan & \texttt{BroadcastChannel} solo funciona entre pestañas del mismo navegador y perfil, en la misma computadora. \\
+    Error de CORS o la pantalla no conecta (sin Docker) & Abrir el sistema desde \texttt{http://localhost:3000} o agregar el origen a \texttt{NEXORA\_ALLOWED\_ORIGINS}. Con Compose no aplica. \\
+    \texttt{uvicorn} falla al importar módulos (sin Docker) & Se lanzó fuera de la raíz del repositorio. Ejecutarlo siempre desde la raíz. \\
+    Un cambio en \texttt{NEXT\_PUBLIC\_*} no tiene efecto & Esas variables se incorporan al compilar. Repetir \texttt{docker compose up --build}. \\
+    Error 503 ``Entrenamiento en curso'' & El modelo se está reentrenando; esperar a que termine antes de usar el reconocimiento o la captura. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
