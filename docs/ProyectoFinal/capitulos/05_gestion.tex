@@ -26,7 +26,14 @@ La Declaración de Alcance organiza el proyecto en seis fases. La tabla~\ref{tab
 
 El cronograma aprobado reprogramó algunas de estas fechas respecto de las propuestas originales: el diseño de la arquitectura se extendió hasta julio y las pruebas formales en entorno controlado se alinearon con el calendario de la cátedra (véase la sección de hitos). Para el seguimiento detallado, el trabajo se descompuso en paquetes de la EDT, presentados en el plan de gestión de este capítulo.
 
-\pendiente{diagrama de Gantt por fase exportado del cronograma}
+Las figuras~\ref{fig:gantt-fase1} a~\ref{fig:gantt-fase6} presentan el cronograma planificado (versión~4), una figura por fase de la EDT. Las barras oscuras agrupan cada entregable y las claras muestran sus paquetes de trabajo. Se trata de la línea base de planificación; las fechas reales de cada hito y su desvío se presentan en la sección siguiente.
+
+\input{gantt/fase1}
+\input{gantt/fase2}
+\input{gantt/fase3}
+\input{gantt/fase4}
+\input{gantt/fase5}
+\input{gantt/fase6}
 
 \section{Hitos}
 
@@ -105,9 +112,9 @@ Los criterios CRIT-01 a CRIT-06 figuran en la Declaración de Alcance; CRIT-07 s
 
 \section{Metodología de desarrollo}
 
-El Plan de Dirección no incluye una sección que nombre la metodología de desarrollo. Lo que surge de la documentación del proyecto es un enfoque combinado:
+El proyecto adoptó una metodología híbrida: \textbf{gestión del proyecto según la Guía del PMBOK del PMI, con desarrollo del producto iterativo e incremental}. La Guía del PMBOK aporta el marco de gestión de todo el ciclo, y el desarrollo iterativo e incremental organiza la construcción del software dentro de ese marco. Sus componentes son:
 \begin{itemize}
-  \item \textbf{Gestión planificada.} La iniciación y la planificación siguen la estructura del PMI: acta de constitución, declaración de alcance, EDT con paquetes de trabajo que tienen responsable, esfuerzo y entradas y salidas, cronograma, plan financiero y registro de riesgos, con entregables asociados a fechas de control.
+  \item \textbf{Gestión según el PMBOK.} La iniciación, la planificación, el seguimiento y el cierre siguen los grupos de procesos de la Guía del PMBOK: acta de constitución, declaración de alcance, EDT con paquetes de trabajo que tienen responsable, esfuerzo y entradas y salidas, cronograma, plan financiero y registro de riesgos, con entregables asociados a fechas de control.
   \item \textbf{Construcción incremental del producto.} Primero se obtuvo una versión mínima funcional (el desarrollo comenzó el 29/06 y la versión inicial estuvo lista el 17/07), luego se ajustó el modelo y se optimizó la latencia (agosto) y finalmente se ejecutaron dos ciclos formales de prueba (20 y 21/10). El modo de captura permite ampliar el vocabulario de forma incremental.
   \item \textbf{Retroalimentación frecuente.} Varios entregables se presentaron en una primera versión para recibir la devolución del cotutor e iterar antes de su aprobación, y los documentos formales fueron revisados por el tutor y el cotutor.
 \end{itemize}
@@ -129,9 +136,8 @@ Iterativo e incremental & Entrega una versión funcional temprana y la mejora po
 \end{tabularx}
 \end{table}
 
-\paragraph{Justificación.} Las condiciones del proyecto son una fecha límite improrrogable (15/11/2026), entregables formales con requisitos y criterios de aceptación trazados en una matriz, un equipo de cuatro integrantes y una incertidumbre técnica concentrada en el modelo de reconocimiento (riesgos 5, 9 y 16). Esas condiciones favorecen planificar y controlar el proyecto con la estructura del PMI y construir el producto de manera incremental, priorizando un PMV que permita medir latencia y precisión de forma temprana. El enfoque combinado conserva la trazabilidad exigida y reduce el riesgo técnico mejor que una secuencia estrictamente lineal.
+\paragraph{Justificación.} Las condiciones del proyecto son una fecha límite improrrogable (15/11/2026), entregables formales con requisitos y criterios de aceptación trazados en una matriz, un equipo de cuatro integrantes y una incertidumbre técnica concentrada en el modelo de reconocimiento (riesgos 5, 9 y 16). Esas condiciones favorecen planificar y controlar el proyecto con la Guía del PMBOK y construir el producto de manera incremental, priorizando un PMV que permita medir latencia y precisión de forma temprana. El enfoque combinado conserva la trazabilidad exigida y reduce el riesgo técnico mejor que una secuencia estrictamente lineal.
 
-\pendiente{confirmar con el equipo la denominación formal de la metodología adoptada; el Plan de Dirección no incluye una sección de metodología y el texto anterior se infiere de la práctica documentada en la EDT, el cronograma y el Informe Final.}
 
 \section{Registro de interesados}
 
