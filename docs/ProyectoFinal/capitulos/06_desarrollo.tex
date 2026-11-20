@@ -1,36 +1,492 @@
 \chapter{Desarrollo del tema}
 
+Este capítulo documenta cómo se construyó el Producto Mínimo Viable (PMV) de LSA Salud, desde el modelo de negocio hasta las pruebas. El análisis y el diseño se elaboraron en el Trabajo Práctico~7 (Análisis y Diseño) y las pruebas en el Trabajo Práctico~8 (Testing); aquí se los resume y se los articula con la implementación. Los entregables de análisis y diseño describen el sistema completo, con estaciones fijas de doble cara en varios puntos de atención; el PMV implementado opera con dos estaciones de cliente, Paciente y Recepción, y cuenta además con una herramienta interna del equipo (Modo Captura) para grabar señas y reentrenar el modelo, que no es una estación de cliente. Cuando una decisión o un requisito corresponde solo al sistema completo, se lo indica de forma expresa.
+
 \section{Modelo de negocio}
-\pendiente{propuesta de valor, cliente y sostenibilidad.}
+
+\paragraph{Cliente y usuarios.} El cliente es el Sanatorio 9 de Julio, que patrocina el proyecto y cuya guardia y admisión son el punto de aplicación. Los usuarios directos son el personal de recepción y de enfermería, que lee la traducción y responde, y los pacientes sordos e hipoacúsicos usuarios de la Lengua de Señas Argentina (LSA), que se comunican sin depender de un acompañante. Indirectamente se benefician los profesionales de salud y el sistema sanitario, que sufre las demoras operativas descriptas en el capítulo~\emph{Tema}.
+
+\paragraph{Propuesta de valor.} El sistema ofrece al sanatorio un canal de comunicación directo, bidireccional y privado entre el paciente y el personal, sin intérprete humano disponible y sin hardware especializado. Según el Acta de Constitución y la propuesta inicial del proyecto, el valor esperado es el siguiente; se trata de estimaciones de la etapa de planificación, no de mediciones realizadas con el PMV:
+\begin{itemize}
+  \item \textbf{Tiempo:} una interacción administrativa básica de unas 50 palabras pasaría de aproximadamente 4 minutos a 0,6 minutos, una reducción estimada del 80~\% al 85~\%.
+  \item \textbf{Recursos operativos:} en una guardia de 50.000 consultas anuales se recuperarían entre 33 y 250 horas operativas por año.
+  \item \textbf{Calidad clínica:} la comprensión del paciente pasaría del 18~\% sin mediación adecuada al 93~\% con ella, y la readmisión a 30 días del 24,3~\% al 14,9~\%, según los estudios citados en el Acta.
+  \item \textbf{Autonomía y confidencialidad:} se elimina la mediación involuntaria de acompañantes, y el procesamiento local, sin almacenamiento de imágenes ni de la conversación, preserva la privacidad.
+  \item \textbf{Bajo costo de adopción:} funciona con cámaras, pantallas y PC comerciales, integradas de forma no invasiva a la infraestructura existente.
+\end{itemize}
+
+\paragraph{Estructura de costos y financiamiento.} El costo del proyecto, su precio de venta estimado y las fuentes de ingresos del desarrollo (fondos de investigación y desarrollo, y el Premio INVAP, además de aportes del cliente) se detallan en el capítulo de Gestión del proyecto (tabla~\ref{tab:presupuesto}).
+
+\paragraph{Sostenibilidad.} Desde lo técnico, el sistema no depende de servicios de pago en la nube: el reconocimiento, el modelo de lenguaje y la síntesis de voz se ejecutan en la propia PC, de modo que no genera costos recurrentes de infraestructura externa, y el vocabulario puede ampliarse con el Modo Captura y el reentrenamiento sin intervención de terceros. Desde lo organizacional, la Declaración de Alcance excluye el mantenimiento técnico posterior al 15/11/2026, que requeriría un contrato de servicio independiente.
+
+\pendiente{modelo de ingresos del producto una vez finalizado el proyecto (licenciamiento, suscripción o servicio de soporte): los documentos de gestión no lo definen, por lo que debe acordarse con el equipo antes de redactarlo.}
 
 \section{Desarrollo del producto}
 
 \subsection{Análisis}
+
 \subsubsection{Especificación de Requerimientos de Software}
-\pendiente{fuente: TP7 (ERS IEEE 830) y Matriz de Trazabilidad.}
+
+La Especificación de Requerimientos de Software (ERS) sigue la estructura recomendada por el estándar IEEE Std 830-1998 \parencite{ieee830}: introducción, descripción general, requisitos específicos y apéndices de trazabilidad. Define a LSA Salud como un sistema independiente, que corre íntegramente en una PC local, que captura las señas con visión por computadora, las clasifica con una red neuronal, reconstruye una oración en español, la sintetiza en voz y mantiene un canal de conversación sincronizado entre la estación del paciente y la del personal. La ERS también acota lo que el sistema no hace: no reemplaza al intérprete humano, no almacena datos clínicos ni el historial de conversaciones, no envía datos fuera de la máquina local y no reconoce la LSA como lengua continua, sino un vocabulario clínico acotado y ampliable.
+
+Los requisitos de origen son los seis funcionales y siete no funcionales de la Matriz de Trazabilidad de Requisitos del proyecto. La tabla~\ref{tab:req-oficiales} los resume e indica su estado en el PMV; los resultados de las mediciones provienen de los ciclos de prueba descriptos en la sección~\ref{sec:pruebas-plan}.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{1.5cm} >{\raggedright\arraybackslash}p{6.0cm} >{\raggedright\arraybackslash}p{7.1cm}}
+  \caption{Requisitos de la Matriz de Trazabilidad y su estado en el PMV}\label{tab:req-oficiales}\\
+  \toprule
+  \textbf{ID} & \textbf{Requisito} & \textbf{Estado en el PMV} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{ID} & \textbf{Requisito} & \textbf{Estado en el PMV} \\
+  \midrule
+  \endhead
+  RF-01 & Traducir LSA a texto y voz en español en tiempo casi real. & Implementado: captura, LSTM, traducción y síntesis de voz. \\
+  RF-02 & Transcribir la voz o el texto del profesional a un formato accesible para el paciente. & Implementado: respuesta por texto o por dictado en la Estación de Recepción. \\
+  RF-03 & Pantalla de consentimiento explícito antes de activar la cámara. & Implementado: diálogo previo a la cámara en la Estación del Paciente. \\
+  RF-04 & Registro de logs de uso y métricas operativas anónimas para auditoría. & Implementado: eventos anónimos en SQLite y consulta de métricas. \\
+  RF-05 & Detectar las señas no interpretables con confianza y evitar mostrar una traducción incorrecta. & Implementado: umbral de confianza del 70~\% y descarte del reposo. \\
+  RF-06 & Permitir reportar una traducción incorrecta o ambigua para mejorar el modelo. & Implementado, por sugerencia del cotutor: botón de reporte en el mensaje del paciente. \\
+  RNF-01 & Latencia menor a 1 segundo. & Cumplido en uso real: p95 de 945~ms (ciclo~2). \\
+  RNF-02 & Exactitud mínima del 90~\% en entornos controlados. & Exactitud media del 98,67~\% en validación cruzada (ciclo~2), con la salvedad de la sección~\ref{sec:pruebas-plan}. \\
+  RNF-03 & Procesamiento sin almacenamiento persistente de imágenes ni video. & Cumplido: solo se persisten reportes y eventos anónimos. \\
+  RNF-04 & Hardware comercial estándar. & La prueba se ejecutó sobre una PC y una cámara comerciales. \\
+  RNF-05 & Dataset ampliado y adaptado al dominio clínico. & Vocabulario inicial de cuatro señas (yo, cabeza, dolor y respirar) más la clase de reposo; ampliable con el Modo Captura. \\
+  RNF-06 & Validación lingüística del dataset por intérpretes oficiales de LSA. & Etapa de sistema completo. Las señas del PMV provienen de Spreadthesign \parencite{spreadthesign}. \\
+  RNF-07 & Estación fija de guardia o triaje con pantalla de doble cara. & Etapa de sistema completo. \\
+  \bottomrule
+\end{longtable}
+
+La ERS desarrolla cada requisito de origen en sub-requisitos técnicos trazables, con identificador, prioridad, entrada, proceso, salida y casos de uso relacionados. Los sub-requisitos sin requisito de origen, que corresponden a las herramientas internas del equipo (Modo Captura, gestión de vocabulario y reentrenamiento), llevan el prefijo \texttt{RF-T-}. La tabla~\ref{tab:req-sub} los resume; la matriz completa entre requisitos funcionales, casos de uso y requisitos no funcionales figura en el anexo~\ref{anx:trazabilidad}.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{2.2cm} >{\raggedright\arraybackslash}p{7.9cm} >{\raggedright\arraybackslash}p{2.2cm} >{\raggedright\arraybackslash}p{2.0cm}}
+  \caption{Sub-requisitos funcionales de la ERS}\label{tab:req-sub}\\
+  \toprule
+  \textbf{ID} & \textbf{Descripción} & \textbf{Prioridad} & \textbf{CU} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{ID} & \textbf{Descripción} & \textbf{Prioridad} & \textbf{CU} \\
+  \midrule
+  \endhead
+  RF-01.1 & Captura en tiempo real de los landmarks de manos, pose y rostro, a 20~fps fijos. & Esencial & CU-01 \\
+  RF-01.2 & Acumulación de frames en un búfer de 45 y envío periódico al backend por WebSocket. & Esencial & CU-01 \\
+  RF-01.3 & Clasificación de la ventana con la red LSTM y umbral de confianza del 70~\%. & Esencial & CU-01, CU-02 \\
+  RF-01.4 & Construcción de la secuencia de palabras y cierre de la oración al reconocer el reposo. & Esencial & CU-01 \\
+  RF-01.5 & Traducción a oración natural: plantilla médica, caché o modelo de lenguaje local. & Esencial & CU-02 \\
+  RF-01.6 & Síntesis de voz con acento argentino, con caché de audio. & Esencial & CU-03 \\
+  RF-01.7 & Sincronización de la conversación entre las dos estaciones. & Esencial & CU-01, CU-04 \\
+  RF-01.8 & Verificación de fidelidad clínica: la oración no puede incorporar términos ausentes de la secuencia. & Esencial & CU-02 \\
+  RF-02.1 & Respuesta del personal por texto. & Esencial & CU-04 \\
+  RF-02.2 & Respuesta del personal por dictado de voz. & Condicional & CU-05 \\
+  RF-03.1 & Consentimiento explícito de cámara antes de activarla. & Esencial & CU-09 \\
+  RF-04.1 & Registro de eventos de auditoría anónimos. & Condicional & CU-11 \\
+  RF-06.1 & Reporte de traducción incorrecta o ambigua. & Condicional & CU-10 \\
+  RF-T-01 a RF-T-05 & Herramientas internas: etiqueta de seña, estadísticas del dataset, grabación y persistencia de muestras, y reentrenamiento del modelo. & Condicional & CU-06 a CU-08 \\
+  RF-T-06 & Selección de la estación desde la página de inicio. & Deseable & Previo a CU-01 y CU-04 \\
+  \bottomrule
+\end{longtable}
+
+Los requisitos de rendimiento se expresaron como metas medibles (tabla~\ref{tab:rendimiento}) y el sistema registra la latencia de cada etapa en sus eventos de auditoría, de modo que pueden verificarse de forma continua. Además de los atributos de calidad de origen, el equipo definió seis requisitos no funcionales técnicos (\texttt{RNF-T-01} a \texttt{RNF-T-06}): fiabilidad, disponibilidad, mantenibilidad, portabilidad, usabilidad y accesibilidad, y seguridad de red.
+
+\begin{table}[H]
+  \centering
+  \caption{Requisitos de rendimiento (RNF-01.1)}\label{tab:rendimiento}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{7.2cm} >{\raggedright\arraybackslash}p{3.4cm} X}
+    \toprule
+    \textbf{Métrica} & \textbf{Valor objetivo} & \textbf{Verificación} \\
+    \midrule
+    Latencia extremo a extremo, ruta con plantilla & p50 $\leq$ 600~ms & Medición continua en \texttt{GET /metrics} \\
+    Latencia extremo a extremo, caso general & p95 $\leq$ 1~s & Medición continua en \texttt{GET /metrics} \\
+    Inferencia del LSTM por ventana & Sin regresión de p95 mayor al 10~\% entre versiones & Comparación entre versiones del modelo \\
+    Captura e inferencia de frames & 20~fps fijos & Cámara estándar \\
+    Usuarios simultáneos & Un par paciente--personal por instancia de estación & Diseño de estación independiente \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
 \subsubsection{Modelo de Casos de Uso}
-\pendiente{fuente: TP7 (diagrama y modelos de casos de uso).}
+
+Se identificaron tres actores primarios: el Paciente (ACT-01), el Personal de Recepción o Enfermería (ACT-02), que generaliza a los interesados Recepcionista y Enfermero/a porque comparten requisito, interés y estrategia de gestión, y el Desarrollador de IA o Equipo de Proyecto (ACT-03). Este último es una decisión de diseño del equipo, sin interesado equivalente en el Registro de Interesados: el trabajo sobre el dataset y el entrenamiento es una tarea del equipo y no de un usuario final. No se modelan actores secundarios (el modelo de lenguaje y el motor de voz), porque son invocados por el propio backend y no tienen iniciativa propia.
+
+El diagrama de casos de uso (figura~\ref{fig:casos-uso}) contiene doce casos de uso, resumidos en la tabla~\ref{tab:cu}. Las relaciones modeladas son las siguientes:
+\begin{itemize}
+  \item CU-01 incluye a CU-02 (traducir la secuencia) y a CU-03 (sintetizar la voz), porque ambas son subrutinas obligatorias de su flujo principal.
+  \item CU-09 (consentimiento) es precondición de CU-01: ocurre una sola vez por sesión y no en cada ejecución.
+  \item CU-05 (dictar por voz) extiende a CU-04 (responder al paciente), porque es una forma alternativa y opcional de ingresar el texto.
+  \item CU-10 (reportar una traducción) extiende a CU-01 y a CU-04, porque es opcional y puede originarse en cualquiera de las dos estaciones.
+  \item CU-01, CU-04 y CU-12 incluyen a CU-11 (auditoría), subfunción interna sin actor humano.
+  \item CU-06 (capturar una muestra) incluye a CU-07 (gestionar el vocabulario); CU-08 (entrenar el modelo) es independiente, porque el reentrenamiento se ejecuta de forma manual y fuera de línea.
+\end{itemize}
+
+\figuraTP{02_casos_uso}{\textwidth}{Diagrama de casos de uso de LSA Salud}{fig:casos-uso}
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{1.4cm} >{\raggedright\arraybackslash}p{6.6cm} >{\raggedright\arraybackslash}p{3.8cm} >{\raggedright\arraybackslash}p{2.5cm}}
+  \caption{Casos de uso de LSA Salud}\label{tab:cu}\\
+  \toprule
+  \textbf{ID} & \textbf{Caso de uso} & \textbf{Actor principal} & \textbf{Requisito} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{ID} & \textbf{Caso de uso} & \textbf{Actor principal} & \textbf{Requisito} \\
+  \midrule
+  \endhead
+  CU-01 & Comunicarse mediante Lengua de Señas Argentina & Paciente & RF-01 \\
+  CU-02 & Traducir la secuencia de señas a una oración natural & Paciente (incluido en CU-01) & RF-01, RF-05 \\
+  CU-03 & Sintetizar la oración en voz & Paciente (incluido en CU-01) & RF-01 \\
+  CU-04 & Responder al paciente & Personal de Recepción o Enfermería & RF-02 \\
+  CU-05 & Dictar la respuesta por voz & Personal de Recepción o Enfermería & RF-02 \\
+  CU-06 & Capturar una muestra de seña para entrenamiento & Desarrollador de IA o Equipo & Decisión del equipo \\
+  CU-07 & Gestionar el vocabulario de señas & Desarrollador de IA o Equipo & Decisión del equipo \\
+  CU-08 & Entrenar el modelo de reconocimiento & Desarrollador de IA o Equipo & Decisión del equipo \\
+  CU-09 & Otorgar el consentimiento explícito de cámara & Paciente & RF-03 \\
+  CU-10 & Reportar una traducción incorrecta o ambigua & Paciente o Personal & RF-06 \\
+  CU-11 & Registrar un evento de auditoría & Sin actor (subfunción) & RF-04 \\
+  CU-12 & Finalizar la atención y preparar la estación & Personal de Recepción o Enfermería & RNF-03 \\
+  \bottomrule
+\end{longtable}
+
+Cada caso de uso se documentó en formato completamente vestido (\emph{fully dressed}), con actor, intereses, precondiciones, garantías de éxito, escenario principal, extensiones, requisitos especiales y frecuencia. A modo de ejemplo, la tabla~\ref{tab:cu01} presenta el caso de uso central del sistema.
+
+\begin{table}[H]
+  \centering
+  \caption{Ficha del caso de uso CU-01: Comunicarse mediante Lengua de Señas Argentina}\label{tab:cu01}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.3cm} X}
+    \toprule
+    \textbf{Actor principal} & Paciente. \\
+    \textbf{Intereses} & El paciente quiere expresar una necesidad médica sin depender de un intérprete humano; el personal necesita recibir el mensaje en español, de forma clara y oportuna. \\
+    \textbf{Precondiciones} & El paciente otorgó el consentimiento de cámara (CU-09); la estación está abierta y el modelo de reconocimiento disponible. \\
+    \textbf{Garantía de éxito} & El mensaje traducido queda en la conversación compartida y, si corresponde, se reproduce en voz. \\
+    \textbf{Escenario principal} & (1) El paciente se ubica frente a la cámara y hace señas. (2) El sistema captura los movimientos y agrega cada seña reconocida con suficiente certeza a la secuencia. (3) El paciente baja las manos al terminar su idea. (4) El sistema reconoce el reposo y cierra la secuencia. (5) Traduce la secuencia a una oración (CU-02). (6) Sintetiza la voz (CU-03). (7) Agrega el mensaje a la conversación, visible para el personal. (8) Registra un evento de auditoría anónimo (CU-11). \\
+    \textbf{Extensiones} & Una seña bajo el umbral de certeza o el reposo no se agregan a la secuencia; si la secuencia no produce una oración clara, no se genera mensaje; sin motor de voz el sistema continúa sin audio; ante la pérdida de la conexión con el servicio de reconocimiento, se restablece sin intervención del paciente. \\
+    \textbf{Requisitos especiales} & RNF-T-01, RNF-T-05 y RNF-01.1. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
 \subsubsection{Modelo de Datos}
-\pendiente{fuente: TP7 (modelo de dominio y modelo de datos).}
+
+El modelo de dominio es un modelo conceptual del problema, no del software: representa los conceptos, atributos y asociaciones relevantes para la comunicación entre un paciente que usa LSA y el personal. Sus conceptos principales son el Paciente y el Personal, la Estación de Atención, la Conversación y los Mensajes, la Secuencia de Señas compuesta por Palabras Reconocidas que corresponden a Clases de Seña, la Traducción (basada en una Plantilla Médica o generada por el modelo de lenguaje), la Síntesis de Voz, y, del lado del equipo, el Modelo de Reconocimiento y las Muestras de Entrenamiento. Tres conceptos cubren los requisitos agregados a partir de la Matriz de Trazabilidad: el Consentimiento de Cámara (RF-03), el Evento de Auditoría (RF-04) y el Reporte de Traducción (RF-06). La figura~\ref{fig:dominio} presenta el modelo completo; en él, el Paciente y el Personal no tienen datos persistentes, porque el sistema no almacena identidad ni historia clínica.
+
+\figuraTP{01_modelo_dominio}{\textwidth}{Modelo de dominio de LSA Salud}{fig:dominio}
+
+El modelo de datos adopta una persistencia híbrida local, que combina un motor relacional embebido con el sistema de archivos:
+\begin{itemize}
+  \item \textbf{SQLite} (\texttt{data/lsa\_salud.db}) almacena los registros estructurados que requieren integridad referencial y consultas agregadas: los eventos de auditoría, los reportes de traducción y el texto de los mensajes reportados con sus palabras reconocidas. Se eligió porque funciona dentro del proceso del backend, sin servidor adicional ni puertos de red expuestos.
+  \item \textbf{El sistema de archivos} contiene los artefactos binarios de aprendizaje automático: las muestras de entrenamiento (arreglos de NumPy), los pesos del modelo (\texttt{models/lstm.pth}), la lista de clases y la voz de síntesis (\texttt{voices/}).
+  \item \textbf{La conversación ordinaria no se persiste}: vive solo en la memoria del navegador y se sincroniza entre las dos estaciones mediante \texttt{BroadcastChannel}. La única excepción controlada es el mensaje que un usuario reporta como incorrecto (CU-10), cuyo texto se guarda como insumo para priorizar el reentrenamiento.
+\end{itemize}
+
+La tabla~\ref{tab:mapeo-fisico} muestra el mapeo entre las entidades conceptuales y su implementación física. El diccionario de datos de las tablas de SQLite figura en el anexo~\ref{anx:diccionario}.
+
+\begin{table}[H]
+  \centering
+  \caption{Mapeo entre entidades del modelo y persistencia física}\label{tab:mapeo-fisico}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.2cm} >{\raggedright\arraybackslash}p{5.6cm} X}
+    \toprule
+    \textbf{Entidad} & \textbf{Destino físico} & \textbf{Motor o formato} \\
+    \midrule
+    Mensaje reportado, palabra reconocida, reporte de traducción & Tablas \texttt{reported\_message}, \texttt{recognized\_word} y \texttt{translation\_report} & SQLite \\
+    Evento de auditoría (incluye el consentimiento) & Tabla \texttt{audit\_event} & SQLite, indexada por tipo y fecha \\
+    Muestra de entrenamiento & \texttt{dataset/custom/} y \texttt{dataset/custom\_blendshapes/}, por etiqueta & NumPy: $(45, 75, 4)$ y $(45, 52)$ \\
+    Vocabulario y modelo & \texttt{models/custom\_classes.json} y \texttt{models/lstm.pth} & JSON y PyTorch \\
+    Voz de síntesis & \texttt{voices/\allowbreak es\_AR-\allowbreak daniela-\allowbreak high.onnx} & ONNX \\
+    Cachés de traducción y de audio & Memoria del proceso del backend & LRU volátil \\
+    Conversación ordinaria & Memoria del navegador & Estado de React vía \texttt{BroadcastChannel} \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
 
 \subsection{Diseño}
+
 \subsubsection{Documento de Arquitectura del Software}
-\pendiente{vistas lógica y física, tipo de arquitectura, beneficios y consideraciones. Fuente: TP7.}
+
+La arquitectura se documenta mediante dos vistas: la lógica, con los módulos de diseño y sus dependencias, y la física, con los nodos de despliegue, los procesos, los puertos y los protocolos.
+
+\paragraph{Vista lógica.} En el frontend, las páginas de la aplicación (inicio, Paciente y Recepción) son las únicas consumidoras de los \emph{hooks} de React y de los componentes; en el backend, un único módulo de endpoints concentra la API y delega la clasificación en el modelo LSTM y la validación de capturas en módulos propios (figura~\ref{fig:vista-logica}). El navegador extrae, con MediaPipe Tasks \parencite{lugaresi2019mediapipe}, los landmarks de manos, pose y rostro a 20~fps; solo tres piezas cruzan la frontera hacia el backend: el \emph{hook} del WebSocket de predicción, el de traducción de oraciones y el Modo Captura. El diálogo de consentimiento no es un componente separado: la propia página del paciente solo habilita la captura de la cámara cuando el consentimiento fue aceptado. El registro de auditoría son funciones del backend invocadas por cada operación relevante, y el reporte de traducción se inicia desde el componente del mensaje y viaja por HTTP.
+
+\figuraTP{06_vista_logica}{\textwidth}{Vista lógica de LSA Salud: módulos de diseño y dependencias}{fig:vista-logica}
+
+\paragraph{Vista física.} El sistema completo se despliega como estaciones fijas independientes, una por punto de atención (admisión, recepción, triaje y guardia), cada una con sus dos caras (Paciente y Recepción) sobre una misma PC. Cada estación es autocontenida: el navegador, el servidor del frontend (puerto 3000), el backend FastAPI sobre Uvicorn (puerto 8000) y el servicio Ollama (puerto 11434) corren en la misma máquina, sin servidor central ni datos compartidos entre estaciones (figura~\ref{fig:vista-fisica}). La síntesis de voz no es un proceso aparte, sino un modelo ONNX cargado dentro del proceso del backend. Las dos caras de una estación se comunican entre sí dentro del navegador, sin tráfico de red; la cara Paciente usa WebSocket y HTTP contra su backend, y la cara Recepción solo HTTP.
+
+\figuraTP{06_vista_fisica}{\textwidth}{Vista física de LSA Salud: nodos, procesos y protocolos de cada estación}{fig:vista-fisica}
+
+\paragraph{Tipo de arquitectura, beneficios y consideraciones.} Se trata de una arquitectura cliente-servidor local y por capas, con un frontend web que realiza la captura y la interfaz, y un backend que concentra el reconocimiento, la traducción y la persistencia, ambos dentro de una misma máquina. La tabla~\ref{tab:decisiones} resume las decisiones más relevantes, su justificación y sus consecuencias.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{3.9cm} >{\raggedright\arraybackslash}p{5.4cm} >{\raggedright\arraybackslash}p{5.3cm}}
+  \caption{Decisiones arquitectónicas de LSA Salud}\label{tab:decisiones}\\
+  \toprule
+  \textbf{Decisión} & \textbf{Justificación} & \textbf{Consecuencia} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Decisión} & \textbf{Justificación} & \textbf{Consecuencia} \\
+  \midrule
+  \endhead
+  Procesamiento y persistencia locales, sin servicios en la nube & Los datos de salud no deben salir de la máquina (RNF-03.1) y el flujo crítico no debe depender de la conectividad (RNF-T-02). & Ollama y el motor de voz deben instalarse de antemano; no hay escalado horizontal sin rediseño. \\
+  SQLite embebido para auditoría y reportes & Se requieren registros estructurados con integridad referencial y consultas agregadas, sin servidor de base de datos. & Transacciones y modo WAL; las métricas se obtienen con consultas SQL. \\
+  Consentimiento controlado desde la propia página del paciente & Evita agregar un componente de guardia para un estado que ya vive en esa página. & La cámara nunca se activa sin consentimiento previo. \\
+  Transmisión de landmarks por WebSocket & Minimiza la latencia frente a abrir una conexión HTTP por solicitud (RNF-01.1). & Una conexión persistente por sesión, con reconexión automática cada 2 segundos. \\
+  MediaPipe Tasks en el navegador, a 20~fps fijos & Una ventana de 45 frames abarca el mismo lapso en cualquier equipo; los \emph{blendshapes} faciales conservan los marcadores no manuales de la LSA. & Un único \emph{hook} de captura; el backend nunca recibe imágenes ni video. \\
+  Restricción de CORS a la red local & Cada estación sirve solo a su propia red (RNF-T-06). & Agregar un dispositivo exige configurar su origen. \\
+  Backend en un solo módulo con cachés LRU en memoria & Simplicidad de despliegue y respuestas inmediatas para frases repetidas. & Una carga alta en un endpoint puede afectar a los demás; las cachés se pierden al reiniciar. \\
+  \bottomrule
+\end{longtable}
+
+Los beneficios principales son la privacidad por diseño, la disponibilidad sin Internet, la baja latencia y el bajo costo de adopción. Las consideraciones a tener en cuenta son la dependencia de Ollama y de la voz Piper instaladas de antemano, el uso de Google Chrome (necesario para el dictado por voz) y la ausencia de escalado horizontal. La arquitectura es de estaciones independientes, por lo que el ensamblaje físico de la estación fija y su calibración forman parte de la instalación del sistema completo.
+
 \subsubsection{Mockups}
-\pendiente{fuente: TP7.}
+
+Se elaboraron bocetos de baja a media fidelidad de las cinco pantallas, cada uno con elementos numerados que luego se referencian en los casos de uso reales. Las pantallas son: P-01, selección de estación; P-02, Estación del Paciente; P-03, Estación de Recepción; P-04, Modo Captura (herramienta interna del equipo); y P-05, diálogo de consentimiento. Un principio de producto atraviesa el diseño: en el flujo del paciente no hay botones de confirmación manual; la oración se exhibe brevemente en pantalla antes de reproducir el audio, y ese lapso funciona como confirmación automática. Las excepciones deliberadas son el consentimiento de cámara y el reporte de una traducción, que exigen una acción explícita.
+
+La figura~\ref{fig:mock-p02} presenta la Estación del Paciente: la cámara con los landmarks superpuestos, la oración en construcción, el panel de las tres predicciones más probables y la conversación compartida, con el botón para reportar una traducción sobre los mensajes del paciente. La figura~\ref{fig:mock-p03} presenta la Estación de Recepción, y la figura~\ref{fig:mock-p05}, el diálogo de consentimiento.
+
+\figuraTP{04_mockup_p02_paciente}{\textwidth}{Mockup de la pantalla P-02: Estación del Paciente}{fig:mock-p02}
+
+\figuraTP{04_mockup_p03_recepcion}{\textwidth}{Mockup de la pantalla P-03: Estación de Recepción}{fig:mock-p03}
+
+\figuraTP{04_mockup_p05_consentimiento}{0.75\textwidth}{Mockup de la pantalla P-05: diálogo de consentimiento}{fig:mock-p05}
+
 \subsubsection{Diagrama Entidad Relación}
-\pendiente{fuente: TP7.}
+
+El modelo conceptual de persistencia (figura~\ref{fig:er}) distingue tres subsistemas: los artefactos binarios del sistema de archivos, las tablas relacionales de SQLite y la representación volátil del mensaje en el navegador. Sus relaciones esenciales son:
+\begin{itemize}
+  \item Un \emph{Mensaje} se convierte, como máximo, en un \emph{Mensaje reportado}: de todos los mensajes de una atención, solo los reportados pasan de la memoria volátil al disco.
+  \item Un mensaje reportado tiene al menos un \emph{Reporte de traducción} y puede acumular varios, si lo señalan por separado el paciente y el personal.
+  \item Un mensaje reportado se compone de hasta 20 \emph{Palabras reconocidas}, que se asocian a una \emph{Clase de seña} y permiten al equipo priorizar qué señas necesitan más muestras.
+  \item El \emph{Evento de auditoría} es una entidad independiente, para la trazabilidad y las métricas de latencia y consentimiento.
+\end{itemize}
+
+\figuraTP{09_er_conceptual}{\textwidth}{Diagrama entidad-relación conceptual de la persistencia de LSA Salud}{fig:er}
+
+El modelo lógico (figura~\ref{fig:modelo-logico}) traduce el esquema a tablas con claves primarias y foráneas, tipos y restricciones: unicidad del par identificador de mensaje y texto, clave primaria compuesta para el orden de las palabras con eliminación en cascada, validación de la estación (\texttt{paciente} o \texttt{recepcion}) e índice compuesto por tipo y fecha en los eventos de auditoría.
+
+\figuraTP{09_modelo_logico}{\textwidth}{Modelo lógico de la persistencia de LSA Salud}{fig:modelo-logico}
+
 \subsubsection{Diagramas de Colaboración}
-\pendiente{fuente: TP7.}
+
+Siguiendo la técnica de Larman, se documentaron nueve operaciones de sistema (SO-01 a SO-09), cada una con su contrato de operación, su diagrama de colaboración, los patrones GRASP aplicados y la trazabilidad de cada objeto con su archivo fuente. Un diagrama de colaboración (\emph{communication diagram} en UML~2.5) muestra cómo los objetos de diseño reales, es decir los \emph{hooks}, los componentes, los \emph{handlers} del backend y el modelo, cooperan para cumplir una operación. La tabla~\ref{tab:so} las resume.
+
+\begin{table}[H]
+  \centering
+  \caption{Operaciones de sistema y diagramas de colaboración}\label{tab:so}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.3cm} >{\raggedright\arraybackslash}p{5.4cm} >{\raggedright\arraybackslash}p{1.4cm} >{\raggedright\arraybackslash}p{2.4cm} X}
+    \toprule
+    \textbf{ID} & \textbf{Operación} & \textbf{Diag.} & \textbf{CU} & \textbf{Requisito} \\
+    \midrule
+    SO-01 & \texttt{reconocerSeña(frame)} & DC-01 & CU-01 & RF-01.1 a RF-01.4 \\
+    SO-02 & \texttt{cerrarOracionYTraducir(\allowbreak secuencia)} & DC-02 & CU-01, CU-02 & RF-01.4, RF-01.5 \\
+    SO-03 & \texttt{sintetizarVoz(oracion)} & DC-03 & CU-03 & RF-01.6 \\
+    SO-04 & \texttt{enviarRespuesta(mensaje)} & DC-04 & CU-04 & RF-01.7, RF-02.1 \\
+    SO-05 & \texttt{capturarMuestra(frames, etiqueta)} & DC-05 & CU-06 & RF-T-03, RF-T-04 \\
+    SO-06 & \texttt{otorgarConsentimiento(\allowbreak paciente)} & DC-06 & CU-09 & RF-03.1 \\
+    SO-07 & \texttt{registrarEventoAuditoria(\allowbreak operacion)} & DC-07 & CU-11 & RF-04.1 \\
+    SO-08 & \texttt{reportarTraduccion(mensaje)} & DC-08 & CU-10 & RF-06.1 \\
+    SO-09 & \texttt{limpiarConversacion()} & DC-09 & CU-12 & RNF-03, RF-04.1 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+La figura~\ref{fig:dc01} muestra la operación central, el reconocimiento de una seña. La controladora es la función que recibe cada frame en la página del paciente: acumula los frames en un búfer y, cada ocho frames nuevos y con al menos veinte acumulados, envía la ventana por WebSocket al backend; allí el modelo LSTM clasifica y devuelve la seña, la confianza y las tres predicciones más probables. Si la confianza alcanza el 70~\% y la clase no es el reposo, la palabra se agrega a la secuencia; si es el reposo con esa confianza, se cierra la oración (SO-02). El \emph{hook} del WebSocket aísla a la página del protocolo de transporte (bajo acoplamiento) y el \emph{handler} del backend media entre el frontend y el modelo (indirección). La figura~\ref{fig:dc08} muestra la operación que implementa el requisito RF-06: el reporte persiste el mensaje, sus palabras reconocidas y la estación que lo reportó, registra un evento de auditoría y sincroniza el estado hacia la otra cara de la estación.
+
+\figuraTP{08_colaboracion_dc01}{\textwidth}{DC-01: colaboración para \texttt{reconocerSeña(frame)}}{fig:dc01}
+
+\figuraTP{08_colaboracion_dc08}{0.9\textwidth}{DC-08: colaboración para \texttt{reportarTraduccion(mensaje)}}{fig:dc08}
+
+Los siete diagramas restantes (DC-02 a DC-07 y DC-09) se incluyen en el anexo~\ref{anx:colaboracion}.
 
 \subsection{Implementación}
+
 \subsubsection{Tecnologías de implementación}
-\pendiente{herramientas elegidas y comparativas: lenguajes, frameworks, modelo de IA, base de datos.}
+
+La elección de las tecnologías respondió a las restricciones del proyecto: ejecución local, hardware comercial de bajo costo, privacidad por diseño y un equipo de cuatro integrantes sin desarrollo tercerizado. La tabla~\ref{tab:tecnologias} resume las herramientas elegidas, y la tabla~\ref{tab:comparativa} contrasta cada elección con una alternativa de referencia según los criterios del proyecto; no se trata de mediciones propias, sino de la justificación de diseño.
+
+\begin{table}[H]
+  \centering
+  \caption{Tecnologías de implementación de LSA Salud}\label{tab:tecnologias}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.6cm} >{\raggedright\arraybackslash}p{4.8cm} X}
+    \toprule
+    \textbf{Componente} & \textbf{Tecnología} & \textbf{Función} \\
+    \midrule
+    Frontend & Next.js, React, TypeScript y Tailwind CSS & Interfaz web de las estaciones. \\
+    Visión por computadora & MediaPipe Tasks (\texttt{@mediapipe/\allowbreak tasks-vision}) & Landmarks de manos, pose y rostro en el navegador. \\
+    Backend & Python, FastAPI y Uvicorn & API REST y WebSocket de predicción, traducción, captura y reportes. \\
+    Reconocimiento de señas & PyTorch, red LSTM de 2 capas y 128 unidades \parencite{hochreiter1997lstm} & Clasifica ventanas de 45 frames de 384 características. \\
+    Reconstrucción gramatical & Plantillas médicas y Ollama con \texttt{qwen2:1.5b} & Convierte palabras sueltas en una oración natural. \\
+    Síntesis de voz & Piper TTS, voz \texttt{es\_AR-daniela-high} (ONNX) & Voz con acento argentino. \\
+    Dictado de voz & Web Speech API (Google Chrome) & Respuesta del personal por voz. \\
+    Sincronización & \texttt{BroadcastChannel} & Conversación entre las dos estaciones, sin red. \\
+    Persistencia & SQLite y archivos NumPy, JSON y ONNX & Auditoría, reportes, muestras y modelos. \\
+    Despliegue y pruebas & Docker Compose, Caddy y Playwright & Empaquetado local, proxy único y pruebas de interfaz. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Comparativa de las tecnologías elegidas frente a alternativas de referencia}\label{tab:comparativa}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.7cm} >{\raggedright\arraybackslash}p{3.3cm} >{\raggedright\arraybackslash}p{3.3cm} X}
+    \toprule
+    \textbf{Aspecto} & \textbf{Elegida} & \textbf{Alternativa} & \textbf{Criterio de elección} \\
+    \midrule
+    Entrada del modelo & Landmarks de MediaPipe & Clasificación directa del video & Los landmarks son solo coordenadas: el backend no recibe imágenes y se cumple RNF-03. \\
+    Modelo de secuencias & LSTM & Redes de mayor tamaño & La ventana de 45 frames de un vocabulario acotado se resuelve con un modelo pequeño que infiere en milisegundos en CPU. \\
+    Modelo de lenguaje & Local (Ollama, \texttt{qwen2:1.5b}) & Servicio en la nube & Ningún dato de la conversación sale de la máquina; funciona sin Internet. \\
+    Síntesis de voz & Piper local & Servicio de voz en la nube & Voz argentina sin conexión ni costos recurrentes. \\
+    Base de datos & SQLite embebida & Servidor relacional externo & Sin servicio adicional ni puertos expuestos; alcanza para auditoría y reportes. \\
+    Backend & FastAPI & Servidores separados para REST y WebSocket & Un único proceso atiende REST y WebSocket en el entorno de consultorio. \\
+    Lenguajes & Python y TypeScript & --- & Python concentra el ecosistema de aprendizaje automático; TypeScript aporta tipado en la interfaz. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
 \subsubsection{Modelo de implementación}
-\pendiente{diagrama de despliegue, especificaciones técnicas y estrategia de implementación (Docker Compose).}
+
+\paragraph{Estrategia de implementación.} El PMV se entrega como un conjunto de contenedores que se levantan con un único comando de Docker Compose, de modo que la estación no requiere instalar Python, Node ni Ollama en el equipo anfitrión. Esta decisión responde a los riesgos de portabilidad del proyecto: permite reproducir el entorno en otra PC y probar el sistema fuera del sanatorio. El archivo de composición define cinco servicios:
+\begin{itemize}
+  \item \texttt{ollama}: servidor del modelo de lenguaje local.
+  \item \texttt{ollama-pull}: tarea única que descarga el modelo \texttt{qwen2:1.5b} antes de iniciar el backend.
+  \item \texttt{api}: backend FastAPI con PyTorch en CPU, que descarga la voz Piper en la primera ejecución.
+  \item \texttt{web}: frontend Next.js compilado para producción.
+  \item \texttt{proxy}: Caddy, único servicio expuesto, en el puerto 3000 del anfitrión; enruta la API y el WebSocket hacia el backend y el resto hacia el frontend, de modo que el navegador habla solo con un origen.
+\end{itemize}
+Las carpetas \texttt{dataset/}, \texttt{models/} y \texttt{data/} se montan como volúmenes, por lo que las grabaciones, el modelo reentrenado y la base de datos persisten al apagar los contenedores. El modelo reentrenado se puede aplicar sin reiniciar el backend. El procedimiento paso a paso se describe en el manual de instalación.
+
+\paragraph{Diagrama de despliegue.} La vista física de la figura~\ref{fig:vista-fisica} es el diagrama de despliegue del sistema. El PMV corresponde a una instancia de esa estación: el navegador Chrome con las dos pestañas (Paciente y Recepción) y los servicios de Compose sobre la misma PC, sin ningún nodo externo. El sistema completo replica esa instancia en cada punto de atención.
+
+\paragraph{Especificaciones técnicas.} La tabla~\ref{tab:especificaciones} resume las características técnicas del PMV.
+
+\begin{table}[H]
+  \centering
+  \caption{Especificaciones técnicas del PMV}\label{tab:especificaciones}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.6cm} X}
+    \toprule
+    \textbf{Aspecto} & \textbf{Especificación} \\
+    \midrule
+    Estaciones de cliente & Dos: Paciente (\texttt{/paciente}) y Recepción (\texttt{/recepcion}). El Modo Captura (\texttt{/captura}) es una herramienta interna del equipo. \\
+    Vocabulario & Cuatro señas (yo, cabeza, dolor y respirar), tomadas de Spreadthesign, y la clase de reposo (\texttt{idle}). \\
+    Captura de señas & MediaPipe Tasks a 20~fps; ventana de 45 frames. \\
+    Transmisión al backend & Solo coordenadas de landmarks por WebSocket, con un paso de predicción fijo de 8 frames (unos 0,4 s a 20~fps) y un mínimo de 20 frames acumulados. \\
+    Modelo de reconocimiento & LSTM de 2 capas y 128 unidades ocultas; entrada de 384 características por frame (75 landmarks $\times$ 4 valores más 84 características locales de mano). \\
+    Umbral de confianza & 70~\%; con el reposo a ese nivel se cierra la oración. \\
+    Traducción & Plantilla médica, caché de 200 entradas o modelo de lenguaje local con tiempo de espera de 8 segundos. \\
+    Voz & Piper, WAV mono de 16 bits a 22.050~Hz, con caché de 50 entradas. \\
+    Entorno de ejecución & Probado en Windows 11 con Google Chrome; backend en Python 3.10; CPU suficiente, GPU opcional. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
 
 \subsection{Pruebas}
+
 \subsubsection{Modelo de pruebas}
-\pendiente{fuente: TP8 (Plan de Testing).}
-\subsubsection{Plan de pruebas}
-\pendiente{casos de prueba en ficha y resultados de los ciclos 1 y 2. Fuente: TP8.}
+
+El Plan de Testing (identificador \texttt{PT-LSASALUD-G9-01}) sigue la estructura del plan modelo de la cátedra, basada en IEEE~829, y define una prueba de sistema en dos ciclos: el ciclo~1 (ejecución inicial, versión \texttt{f29917a} del repositorio) y el ciclo~2 (regresión, versión \texttt{0638d22}).
+
+\paragraph{Ítems y características a probar.} Los ítems son el backend (API REST y WebSocket), la interfaz web con las pantallas P-01 a P-05, el módulo de entrenamiento y la persistencia. Se prueban la funcionalidad de los doce casos de uso, el rendimiento (RNF-01), la privacidad y la seguridad (RNF-03, RNF-T-06) y las restricciones de calidad del sistema (RNF-02, RNF-04 y RNF-T-02 a RNF-T-05). No se prueban la estructura interna del código, los componentes de terceros (MediaPipe, PyTorch, Ollama, Piper y la Web Speech API), la carga con usuarios simultáneos, otros sistemas operativos o navegadores distintos de Windows y Google Chrome, ni el ensamblaje físico de la estación fija.
+
+\paragraph{Aproximación.} Las pruebas son funcionales, de caja negra, derivadas de los casos de uso y de los requisitos no funcionales, y se ejecutan en parte con herramientas automáticas (pruebas de API, pruebas de interfaz con Playwright y análisis de accesibilidad con axe-core) y en parte de forma manual, con una persona realizando señas frente a la cámara, hablando al micrófono o inspeccionando la estación. El conjunto consta de 15 casos: uno por cada caso de uso (CU-01 a CU-12) y uno por cada grupo de requisitos no funcionales (privacidad y seguridad, rendimiento, y calidad y restricciones). Cada caso consolida los escenarios principal y alternativos de su grupo y, según el registro de casos, conserva el mapeo con los 83 casos originales.
+
+\paragraph{Criterios.} La severidad de los defectos se califica de 1 a 4: crítico, alto, medio y bajo. Un caso se aprueba si el resultado obtenido coincide con el esperado; en caso contrario se registra como no aprobado y se documenta un defecto. La prueba se aprueba cuando se ejecutaron todos los casos, no hay defectos abiertos de severidad 1 o 2, y los de severidad 3 y 4 están registrados y, si se difieren, justificados. La prueba se suspende al final de cada jornada, ante una falla de severidad 1 o 2 o ante una falla del entorno, y se reanuda tras una regresión sobre la nueva versión.
+
+\paragraph{Entorno y responsables.} La prueba se realiza sobre una estación local, sin servidores remotos: Windows 11, backend en Python 3.10, interfaz en Google Chrome, Ollama con \texttt{qwen2:1.5b}, Piper, SQLite, cámara, micrófono y altavoces. El equipo del proyecto actúa como grupo de testing, con un líder de testing, responsables de automatización y revisión, de ejecución manual y de casos y defectos, bajo la supervisión del tutor y del cotutor. Los entregables son el plan, la planilla de casos de prueba, la planilla de defectos y las observaciones y sugerencias de cada ciclo. Entre los riesgos previstos se encuentran la variabilidad de las salidas del modelo de lenguaje y de los tiempos de respuesta (por lo que se verifican propiedades y no textos exactos), la disponibilidad de una persona usuaria de LSA para los casos manuales y la modificación del dataset por las pruebas de captura.
+
+\subsubsection{Plan de pruebas}\label{sec:pruebas-plan}
+
+El ciclo~1 se ejecutó el 20/10/2026. Tras la corrección de los defectos por parte del equipo de desarrollo, el ciclo~2 se ejecutó el 21/10/2026 como regresión automatizada junto con las comprobaciones manuales con una persona real. La tabla~\ref{tab:casos} resume los 15 casos y sus resultados.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{4.3cm} >{\raggedright\arraybackslash}p{2.7cm} >{\raggedright\arraybackslash}p{1.9cm} >{\raggedright\arraybackslash}p{1.9cm}}
+  \caption{Casos de prueba y resultados de los ciclos 1 y 2}\label{tab:casos}\\
+  \toprule
+  \textbf{Caso} & \textbf{Objetivo} & \textbf{Defectos del ciclo 1} & \textbf{Ciclo 1} & \textbf{Ciclo 2} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Caso} & \textbf{Objetivo} & \textbf{Defectos del ciclo 1} & \textbf{Ciclo 1} & \textbf{Ciclo 2} \\
+  \midrule
+  \endhead
+  TC-LSA-001-01 & CU-01: reconocimiento de señas, armado y cierre de la oración. & DM-LSA-016, 018 & No aprobado & Aprobado \\
+  TC-LSA-002-01 & CU-02: traducción a oración natural, plantillas y degradación. & DM-LSA-001, 002 & No aprobado & Aprobado \\
+  TC-LSA-003-01 & CU-03: síntesis de voz, caché y degradación sin motor de voz. & DM-LSA-016 & No aprobado & Aprobado \\
+  TC-LSA-004-01 & CU-04: respuesta del personal por texto y sincronización. & --- & Aprobado & Aprobado \\
+  TC-LSA-005-01 & CU-05: dictado de la respuesta por voz. & DM-LSA-013, 014, 019 & No aprobado & Aprobado \\
+  TC-LSA-006-01 & CU-06: captura de muestras y validación de los datos. & DM-LSA-004, 008, 012 & No aprobado & Aprobado \\
+  TC-LSA-007-01 & CU-07: gestión del vocabulario y etiquetas. & DM-LSA-008 & No aprobado & Aprobado \\
+  TC-LSA-008-01 & CU-08: reentrenamiento del modelo. & --- & Aprobado & Aprobado \\
+  TC-LSA-009-01 & CU-09: consentimiento explícito de cámara. & DM-LSA-007 & No aprobado & Aprobado \\
+  TC-LSA-010-01 & CU-10: reporte de traducciones incorrectas. & DM-LSA-017 & No aprobado & Aprobado \\
+  TC-LSA-011-01 & CU-11: auditoría anónima y métricas. & DM-LSA-005, 015 & No aprobado & Aprobado \\
+  TC-LSA-012-01 & CU-12: finalizar la atención y vaciar la conversación. & DM-LSA-006 & No aprobado & Aprobado \\
+  TC-LSA-013-01 & Privacidad y seguridad (RNF-03, RNF-T-06). & DM-LSA-003 & No aprobado & Aprobado \\
+  TC-LSA-014-01 & Rendimiento (RNF-01). & DM-LSA-010, 016 & No aprobado & Aprobado \\
+  TC-LSA-015-01 & Calidad y restricciones (RNF-02, RNF-04 y RNF-T-02 a RNF-T-05). & DM-LSA-009, 011 & No aprobado & Aprobado \\
+  \bottomrule
+\end{longtable}
+
+Cada caso se documenta en una ficha con módulo, objetivo, categoría, prerrequisitos, procedimiento, resultados esperados, resultado obtenido y observaciones en cada ciclo. A modo de ejemplo, las tablas~\ref{tab:ficha-001} y~\ref{tab:ficha-010} presentan las fichas de los casos TC-LSA-001-01 (reconocimiento de señas) y TC-LSA-010-01 (reporte de traducciones, requisito RF-06).
+
+\begin{table}[H]
+  \centering
+  \caption{Ficha del caso de prueba TC-LSA-001-01}\label{tab:ficha-001}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.3cm} X}
+    \toprule
+    \textbf{Módulo} & P-01, P-02, P-03 y backend (CU-01). \\
+    \textbf{Objetivo} & Verificar el flujo de CU-01: reconocimiento de señas, armado y cierre de la oración y sus alternativas. \\
+    \textbf{Prerrequisitos} & Backend y frontend en ejecución, con P-02 y P-03 abiertas en Chrome y el consentimiento otorgado; muestras del dataset y una persona que conoce las señas yo, cabeza y dolor. \\
+    \textbf{Procedimiento} & (1) Una persona realiza las señas yo, cabeza y dolor y baja las manos. (2) Se envían al WebSocket muestras reales y predicciones simuladas. (3) Se verifica el cierre de la oración y la burbuja en ambas caras. (4) Se cierra el WebSocket y se simula una respuesta no clara. (5) Se envían mensajes inválidos y una trama binaria válida. \\
+    \textbf{Resultado esperado} & Se muestra ``Me duele la cabeza.'' en ambas caras, con voz; solo se agregan palabras con confianza de al menos 70~\%; la oración se cierra al reconocer el reposo y la diferencia entre caras es de 500~ms como máximo; reintento de conexión sin errores; los mensajes inválidos devuelven error sin cerrar la conexión. \\
+    \textbf{Ciclo 1} & No aprobado: diferencia entre caras de 511~ms en la última medición (DM-LSA-016) y trama binaria válida rechazada (DM-LSA-018). Quedó pendiente la prueba con una persona real. \\
+    \textbf{Ciclo 2} & Aprobado: seña reconocida con confianza de 99,99~\%, diferencia entre caras de 64~ms y reintento de conexión sin errores; la prueba con una persona real del 21/10/2026 reconoció las tres señas y cerró la oración al bajar las manos. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Ficha del caso de prueba TC-LSA-010-01}\label{tab:ficha-010}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.3cm} X}
+    \toprule
+    \textbf{Módulo} & P-02, P-03 y backend (CU-10). \\
+    \textbf{Objetivo} & Verificar el reporte de traducciones incorrectas: desde ambas pantallas, fallo de envío, persistencia, validación del endpoint de reporte y resumen. \\
+    \textbf{Prerrequisitos} & Backend con base SQLite de prueba y frontend en ejecución; mensaje del paciente visible en P-02 y P-03. \\
+    \textbf{Procedimiento} & (1) Pulsar ``Reportar traducción'' en P-02 y repetir desde P-03; verificar que los mensajes del personal no tienen el botón. (2) Cortar la conexión, reportar y pulsar el botón dos veces. (3) Enviar al endpoint reportes válidos y valores límite o inválidos. (4) Consultar el resumen con distintos límites. (5) Pedir que se reporte una traducción y evaluar si el aviso es claro. \\
+    \textbf{Resultado esperado} & El mensaje queda marcado en ambas caras y solo los del paciente tienen el botón; ante un error se ofrece reintentar y se envía un único reporte; se persisten los reportes y se rechazan los valores fuera de rango o de tipo incorrecto; el aviso es comprensible. \\
+    \textbf{Ciclo 1} & No aprobado: la validación aceptaba tipos incorrectos en el identificador del mensaje (DM-LSA-017). Quedó pendiente la evaluación del aviso. \\
+    \textbf{Ciclo 2} & Aprobado: los valores de tipo incorrecto se rechazan; el mensaje se muestra tachado con la insignia ``Traducción reportada'' y queda guardado en SQLite; el aviso para repetir la seña se consideró claro en la prueba del 21/10/2026. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{Resultados del ciclo 1.} De los 15 casos, 13 resultaron no aprobados y 2 aprobados (TC-LSA-004-01 y TC-LSA-008-01), y se registraron 19 defectos: 1 crítico, 10 de severidad alta, 7 medios y 1 bajo. Las observaciones del ciclo señalaron como hallazgo más grave que la traducción a lenguaje natural no verificaba la fidelidad clínica: el modelo de lenguaje agregaba síntomas que el paciente no había señado y fragmentos de sus instrucciones internas (DM-LSA-001), y una secuencia sin contenido se mostraba al personal como una oración (DM-LSA-002). Faltaban además funciones previstas, como la acción de finalizar la atención en la pantalla de recepción (DM-LSA-006) y el aviso al paciente cuando se deniega la cámara (DM-LSA-007). El servicio no validaba entradas ni restringía los orígenes (DM-LSA-003, DM-LSA-004 y DM-LSA-017); el Modo Captura informaba un guardado inexistente (DM-LSA-008); y los tiempos de respuesta superaban los objetivos (DM-LSA-010), la cámara dependía de Internet (DM-LSA-009) y la interfaz presentaba problemas de accesibilidad (DM-LSA-011). Las comprobaciones que requieren una persona frente a la estación quedaron pendientes para el ciclo~2.
+
+\paragraph{Resultados del ciclo 2.} La regresión del 21/10/2026 verificó y cerró los 19 defectos del ciclo~1. Además se encontraron, corrigieron y cerraron 9 defectos nuevos (DM-LSA-020 a DM-LSA-028), concentrados en el reconocimiento y la captura: por ejemplo, se reconocía ``dolor'' sin ninguna persona frente a la cámara (DM-LSA-021 y DM-LSA-022) y la oración se cerraba en la pausa entre señas (DM-LSA-023). En total, 28 de 28 defectos quedaron cerrados y ninguno abierto, y los 15 casos quedaron aprobados, incluidas las comprobaciones manuales del mismo día con una persona real (señas de punta a punta, calidad de la traducción y de la voz, dictado, captura, aviso de reporte y latencia percibida). La regresión automatizada detectó además que el aviso de cámara denegada volvía a ocultarse (DM-LSA-026, regresión de DM-LSA-007), lo que confirma el valor de repetir los casos tras cada corrección. La tabla~\ref{tab:defectos-resumen} resume los defectos por severidad y el anexo~\ref{anx:defectos} los detalla.
+
+\begin{table}[H]
+  \centering
+  \caption{Defectos registrados por severidad y ciclo de detección}\label{tab:defectos-resumen}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm} >{\centering\arraybackslash}X >{\centering\arraybackslash}X >{\centering\arraybackslash}X}
+    \toprule
+    \textbf{Severidad} & \textbf{Detectados en el ciclo 1} & \textbf{Detectados en el ciclo 2} & \textbf{Total} \\
+    \midrule
+    1 (crítico) & 1 & 2 & 3 \\
+    2 (alto) & 10 & 5 & 15 \\
+    3 (medio) & 7 & 1 & 8 \\
+    4 (bajo) & 1 & 1 & 2 \\
+    \midrule
+    \textbf{Total} & 19 & 9 & 28 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{Métricas del sistema.} En conjunto, los 15 casos de prueba fueron aprobados (15 de 15). El requisito de latencia RNF-01.1 se cumple en el uso real: la latencia percibida del 21/10/2026, medida sobre 55 oraciones, tiene un p50 de 166~ms (meta de 600~ms para la ruta con plantilla) y un p95 de 945~ms (meta de 1~s); la traducción con modelo de lenguaje tiene un p95 de 573~ms. El margen del p95 es estrecho, y la prueba de interfaz con predicciones simuladas, que se ejecuta sin GPU, midió valores mayores que no representan el uso real. El tiempo de inferencia del modelo no presenta regresión entre versiones: con las mismas 100 ventanas, el p95 pasó de 0,71~ms a 0,68~ms.
+
+La precisión del modelo se evaluó con una validación cruzada estratificada de cinco particiones (caso TC-LSA-015-01), en la que cada muestra la evalúa un modelo que no la usó para entrenar. La exactitud media fue del 98,67~\%, entre 96,67~\% y 100~\% por partición, con dos errores en total: un ``dolor'' clasificado como ``cabeza'' y un ``yo'' clasificado como ``dolor''. Las particiones provienen de la misma sesión de grabación (misma persona, iluminación y día), por lo que el resultado puede sobrestimar la generalización a otras personas y condiciones. Por ello se sugiere ampliar el dataset con muestras de otras personas y repetir la medición de latencia en la estación definitiva, junto con ampliar la prueba automatizada de ``Finalizar atención'', que hoy solo comprueba que el botón exista.
