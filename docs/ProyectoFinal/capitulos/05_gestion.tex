@@ -284,11 +284,9 @@ Los 13 riesgos inaceptables cuentan con un plan de respuesta que combina accione
 21. Acceso al sanatorio & Formalizar acuerdos tempranos de disponibilidad de las instalaciones. & Docker y scripts para portabilidad; hardware que no requiera intervenir la red; pruebas E2E en un laboratorio de la facultad. & Trasladar el piloto al Hospital Nuestra Señora del Carmen; replantear el cronograma con la reserva financiera. \\
 22. Participación reducida & Consultar la carga académica real antes de asignar paquetes largos. & Reuniones grupales periódicas para redistribuir cargas; documentación técnica exhaustiva. & Reasignar tareas; apoyo temporal con la reserva. \\
 23. Ruta crítica & Lecciones aprendidas y juicio de expertos al estimar. & Coeficientes de contingencia de tiempo; monitoreo estricto de las tareas sin holgura. & Compresión (\emph{crashing}) con las reservas; desarrollo paralelo de \emph{frontend} y \emph{backend}. \\
-24. Flujos \emph{frontend}--modelo & Aprobar los \emph{wireframes} con el personal médico antes de programar. & Guía de usuario anticipada; transiciones de estado de escucha muy simples. & Vista médica reducida a un chat básico; capacitación presencial en los cambios de turno. \\
+24. Flujos \emph{frontend}--modelo & Definir el contrato de mensajes antes de programar: el \emph{frontend} envía solo coordenadas por una conexión WebSocket persistente, sin imágenes ni una solicitud HTTP por cuadro. & Enviar ventanas de cuadros con un paso de predicción fijo; prototipo temprano de la conexión de punta a punta; medir la latencia contra CRIT-01 en cada iteración. & Aumentar el paso entre predicciones o acortar la ventana; ejecutar el \emph{frontend} y el servidor de inferencia en el mismo equipo de la estación. \\
 \end{longtable}
 }
-
-\pendiente{el riesgo 24 se describe en el Registro de Riesgos como latencia entre \emph{frontend} y modelo de IA, pero su hoja de plan (y el Plan de Dirección) responde a un rechazo del personal médico durante las pruebas; corregir en la fuente o ajustar la fila de la tabla antes de entregar.}
 
 Varias de las medidas de evitación y mitigación se materializaron en el PMV: el procesamiento es íntegramente local, el \emph{backend} recibe solo las coordenadas de las manos y la estación del paciente exige consentimiento antes de activar la cámara, lo que responde a los riesgos 5, 8 y 13.
 
