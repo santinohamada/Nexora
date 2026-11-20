@@ -1,8 +1,8 @@
-\chapter{Desarrollo del tema}
+\chapter{Desarrollo del tema}\label{cap:desarrollo}
 
 Este capítulo documenta cómo se construyó el Producto Mínimo Viable (PMV) de LSA Salud, desde el modelo de negocio hasta las pruebas. El análisis y el diseño se elaboraron en el Trabajo Práctico~7 (Análisis y Diseño) y las pruebas en el Trabajo Práctico~8 (Testing); aquí se los resume y se los articula con la implementación. Los entregables de análisis y diseño describen el sistema completo, con estaciones fijas de doble cara en varios puntos de atención; el PMV implementado opera con dos estaciones de cliente, Paciente y Recepción, y cuenta además con una herramienta interna del equipo (Modo Captura) para grabar señas y reentrenar el modelo, que no es una estación de cliente. Cuando una decisión o un requisito corresponde solo al sistema completo, se lo indica de forma expresa.
 
-\section{Modelo de negocio}
+\section{Modelo de negocio}\label{sec:modelo-negocio}
 
 \paragraph{Cliente y usuarios.} El cliente es el Sanatorio 9 de Julio, que patrocina el proyecto y cuya guardia y admisión son el punto de aplicación. Los usuarios directos son el personal de recepción y de enfermería, que lee la traducción y responde, y los pacientes sordos e hipoacúsicos usuarios de la Lengua de Señas Argentina (LSA), que se comunican sin depender de un acompañante. Indirectamente se benefician los profesionales de salud y el sistema sanitario, que sufre las demoras operativas descriptas en el capítulo~\emph{Tema}.
 
@@ -207,7 +207,7 @@ La tabla~\ref{tab:mapeo-fisico} muestra el mapeo entre las entidades conceptuale
 
 \subsection{Diseño}
 
-\subsubsection{Documento de Arquitectura del Software}
+\subsubsection{Documento de Arquitectura del Software}\label{sec:arquitectura}
 
 La arquitectura se documenta mediante dos vistas: la lógica, con los módulos de diseño y sus dependencias, y la física, con los nodos de despliegue, los procesos, los puertos y los protocolos.
 
@@ -306,7 +306,7 @@ Los siete diagramas restantes (DC-02 a DC-07 y DC-09) se incluyen en el anexo~\r
 
 \subsection{Implementación}
 
-\subsubsection{Tecnologías de implementación}
+\subsubsection{Tecnologías de implementación}\label{sec:tecnologias}
 
 La elección de las tecnologías respondió a las restricciones del proyecto: ejecución local, hardware comercial de bajo costo, privacidad por diseño y un equipo de cuatro integrantes sin desarrollo tercerizado. La tabla~\ref{tab:tecnologias} resume las herramientas elegidas, y la tabla~\ref{tab:comparativa} contrasta cada elección con una alternativa de referencia según los criterios del proyecto; no se trata de mediciones propias, sino de la justificación de diseño.
 
@@ -390,7 +390,7 @@ Las carpetas \texttt{dataset/}, \texttt{models/} y \texttt{data/} se montan como
 
 \subsection{Pruebas}
 
-\subsubsection{Modelo de pruebas}
+\subsubsection{Modelo de pruebas}\label{sec:modelo-pruebas}
 
 El Plan de Testing (identificador \texttt{PT-LSASALUD-G9-01}) sigue la estructura del plan modelo de la cátedra, basada en IEEE~829, y define una prueba de sistema en dos ciclos: el ciclo~1 (ejecución inicial, versión \texttt{f29917a} del repositorio) y el ciclo~2 (regresión, versión \texttt{0638d22}).
 

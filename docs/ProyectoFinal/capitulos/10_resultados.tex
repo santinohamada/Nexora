@@ -1,2 +1,114 @@
-\chapter{Resultados obtenidos}
-\pendiente{contrastar cada objetivo específico con lo obtenido en una tabla: objetivo, meta, resultado y evidencia. Métricas del TP8: 15/15 casos aprobados, accuracy de 98,67~\%, latencia de 945~ms.}
+\chapter{Resultados obtenidos}\label{cap:resultados}
+
+Este capítulo contrasta lo planificado con lo obtenido: los objetivos específicos del capítulo de Objetivos (tabla~\ref{tab:objetivos}), los criterios de aceptación del capítulo de Gestión (tabla~\ref{tab:crit}), el producto entregado, las métricas de las pruebas y el desempeño de la gestión del proyecto. Todos los valores provienen de las pruebas del Producto Mínimo Viable (PMV) descriptas en la sección~\ref{sec:pruebas-plan} y del seguimiento del Informe Final. Los objetivos que requieren operación sostenida en la guardia del sanatorio, etapa posterior al PMV, se marcan como no evaluables y no se estiman a partir de otros valores.
+
+\section{Cumplimiento de los objetivos específicos}\label{sec:res-objetivos}
+
+La tabla~\ref{tab:res-objetivos} contrasta cada objetivo específico con lo obtenido en el PMV. El estado \emph{Cumplido} indica que la meta se midió y se alcanzó en las condiciones descriptas; \emph{Cumplido parcialmente}, que solo una parte de la meta pudo verificarse; y \emph{No evaluable en el PMV}, que la medición exige una condición que el PMV no tuvo, indicada en cada caso.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{@{}p{0.9cm}p{3.3cm}p{5.0cm}p{2.7cm}p{3.1cm}@{}}
+\caption{Contraste entre los objetivos específicos y los resultados del PMV.}\label{tab:res-objetivos}\\
+\toprule
+\textbf{ID} & \textbf{Meta} & \textbf{Resultado obtenido en el PMV} & \textbf{Evidencia} & \textbf{Estado} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Meta} & \textbf{Resultado obtenido en el PMV} & \textbf{Evidencia} & \textbf{Estado} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{5}{r}{\emph{Continúa en la página siguiente}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+OE01 & Reducir al menos un 80~\% el tiempo de las interacciones administrativas y de triaje (de 4~minutos a menos de 1~minuto). & No se midió el tiempo de una interacción completa con pacientes reales. Solo se midió la latencia del sistema (p50 de 166~ms y p95 de 945~ms), que es una parte de ese tiempo. & Tabla~\ref{tab:metricas}; sección~\ref{sec:pruebas-plan} & No evaluable en el PMV: requiere registros de uso en la guardia. \\
+OE02 & Contribuir a reducir al menos un 50~\% la brecha de permanencia entre pacientes sordos y oyentes. & No se midió la permanencia en urgencias. & Tabla~\ref{tab:hitos} (H09 y H10) & No evaluable en el PMV: requiere el piloto en guardia y un año de uso operativo. \\
+OE03 & Recuperar un mínimo estimado de 150~horas anuales del personal de guardia. & No se registraron tiempos de atención que permitan la extrapolación. & Tabla~\ref{tab:hitos} (H09 y H10) & No evaluable en el PMV: requiere operación sostenida en la guardia. \\
+OE04 & Elevar la comprensión clínica de un valor de referencia cercano al 18~\% a más del 90~\%. & No se aplicaron encuestas ni preguntas de control a pacientes. Las pruebas con una persona real verificaron la calidad de la traducción, no la comprensión de diagnósticos. & Sección~\ref{sec:pruebas-plan} & No evaluable en el PMV: requiere encuestas posatención con pacientes usuarios de LSA. \\
+OE05 & Reducir la readmisión a 30~días de cerca del 24,3~\% a menos del 15~\%. & No se realizó análisis longitudinal. & Tabla~\ref{tab:hitos} (H10) & No evaluable en el PMV: requiere 24~meses de funcionamiento. \\
+OE06 & Precisión de al menos 90~\% en contextos clínicos controlados y 85~\% en entornos reales de guardia. & Exactitud media del 98,67~\% en validación cruzada de cinco particiones (96,67~\% a 100~\% por partición) y \emph{recall} por clase de 96,7~\% a 100~\%. Las particiones provienen de una sola sesión de grabación, por lo que el valor puede sobrestimar la generalización. No se midió la precisión en la guardia ni el \emph{F1-score}. & Tabla~\ref{tab:metricas}; tabla~\ref{tab:crit-res} (CRIT-02 y CRIT-03) & Cumplido parcialmente: cumplido en condición controlada; el entorno real no se evaluó. \\
+OE07 & Tiempo de respuesta inferior a 1~segundo en la interpretación en tiempo real. & Latencia percibida de 166~ms (p50) y 945~ms (p95) sobre 55~oraciones, medida en uso real con una persona. El margen del p95 es estrecho. & Tabla~\ref{tab:metricas}; tabla~\ref{tab:rendimiento} & Cumplido, con la medición a repetir en la estación definitiva. \\
+OE08 & Que al menos el 70~\% del personal de recepción y triaje use el sistema. & No hubo personal usuario en operación. & Tabla~\ref{tab:hitos} (H09 y H10) & No evaluable en el PMV: requiere registros de uso durante 6~meses de implementación. \\
+OE09 & Satisfacción superior al 85~\% en pacientes usuarios de LSA. & No se aplicaron encuestas de satisfacción. & Tabla~\ref{tab:hitos} (H09 y H10) & No evaluable en el PMV: requiere encuestas posconsulta con pacientes. \\
+OE10 & 100~\% de las interacciones sin almacenamiento persistente de imágenes ni datos sensibles. & Por diseño, al backend solo llegan coordenadas de landmarks. La prueba TC-LSA-013-01 verificó que las ventanas procesadas no modificaron ningún archivo y que solo se persiste el texto del mensaje que un usuario reporta, además de eventos de auditoría anónimos. & Tablas~\ref{tab:casos}, \ref{tab:req-oficiales} (RNF-03) y~\ref{tab:comparativa} & Cumplido parcialmente: verificado en el PMV por pruebas propias; la verificación a lo largo del ciclo de vida y la revisión normativa son posteriores. \\
+\end{longtable}
+}
+
+En síntesis, de los diez objetivos específicos, uno (OE07) se cumplió, dos (OE06 y OE10) se cumplieron parcialmente y siete (OE01 a OE05, OE08 y OE09) no pueden evaluarse con el PMV. Estos últimos son los objetivos de impacto operativo y clínico, cuya medición depende del piloto en la guardia del Sanatorio 9 de Julio, que el Informe Final registra como etapa posterior al PMV.
+
+\section{Cumplimiento de los criterios de aceptación}\label{sec:res-criterios}
+
+La tabla~\ref{tab:crit-res} contrasta los siete criterios de aceptación (tabla~\ref{tab:crit}) con los resultados del PMV.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{@{}p{1.4cm}p{6.0cm}p{3.6cm}p{4.0cm}@{}}
+\caption{Contraste entre los criterios de aceptación y los resultados del PMV.}\label{tab:crit-res}\\
+\toprule
+\textbf{ID} & \textbf{Resultado obtenido} & \textbf{Evidencia} & \textbf{Estado} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Resultado obtenido} & \textbf{Evidencia} & \textbf{Estado} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{4}{r}{\emph{Continúa en la página siguiente}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+CRIT-01 & Latencia percibida de 945~ms (p95) y 166~ms (p50) sobre 55~oraciones en uso real, inferior a 1~segundo. & Tablas~\ref{tab:metricas} y~\ref{tab:rendimiento} & Cumplido. \\
+CRIT-02 & Exactitud media del 98,67~\% en validación cruzada de cinco particiones, con \emph{recall} por clase de 96,7~\% a 100~\%. No se informó el \emph{F1-score}. La condición controlada es una única sesión de grabación. & Tabla~\ref{tab:metricas}; tabla~\ref{tab:casos} (TC-LSA-015-01) & Cumplido, con la salvedad de generalización. \\
+CRIT-03 & No se realizaron pruebas operativas en la guardia real del sanatorio. & Tabla~\ref{tab:hitos} (H09) & No evaluable en el PMV: requiere el piloto en guardia. \\
+CRIT-04 & Las ventanas procesadas en la prueba no modificaron ningún archivo; el backend solo recibe coordenadas y la única información persistida es el texto de los mensajes reportados y los eventos de auditoría anónimos. & Tablas~\ref{tab:casos} (TC-LSA-013-01), \ref{tab:req-oficiales} (RNF-03) y~\ref{tab:decisiones} & Cumplido en el PMV, verificado por la prueba de sistema y no por una auditoría independiente. \\
+CRIT-05 & Las señas del PMV provienen de Spreadthesign y no cuentan con aval formal de intérpretes de LSA. & Tabla~\ref{tab:req-oficiales} (RNF-06) & No cumplido en el PMV: queda para la etapa de sistema completo. \\
+CRIT-06 & La estación de prueba usó una PC y una cámara web comerciales, sin hardware médico. Las pantallas de doble cara no forman parte del PMV. & Tabla~\ref{tab:req-oficiales} (RNF-04 y RNF-07); tabla~\ref{tab:especificaciones} & Cumplido parcialmente: componentes estándar verificados; la estación física, pendiente. \\
+CRIT-07 & El diálogo de consentimiento aparece antes de activar la cámara; sin aceptación, la cámara permanece apagada. & Tablas~\ref{tab:req-oficiales} (RF-03) y~\ref{tab:casos} (TC-LSA-009-01); capítulo~\ref{cap:manual-usuario} & Cumplido. \\
+\end{longtable}
+}
+
+\section{Resultados del producto}\label{sec:res-producto}
+
+El PMV entregado se ejecuta en una sola computadora con Docker Compose (capítulo~\ref{cap:manual-instalacion}) y comprende:
+\begin{itemize}
+  \item \textbf{Dos estaciones de cliente}, Paciente y Recepción. En la primera, la persona usuaria de LSA hace señas frente a la cámara, con consentimiento previo, y el sistema las traduce a texto y voz en español; en la segunda, el personal lee el mensaje y responde por texto o por dictado (capítulo~\ref{cap:manual-usuario}).
+  \item \textbf{Una herramienta interna del equipo}, el Modo Captura, que permite grabar señas nuevas y reentrenar el modelo. No es una estación de cliente.
+  \item \textbf{Un vocabulario de cuatro señas} (yo, cabeza, dolor y respirar) más la clase de reposo, tomadas de Spreadthesign y ampliables con el Modo Captura (tabla~\ref{tab:especificaciones}).
+  \item \textbf{El reporte de traducciones incorrectas (RF-06)}, incorporado a pedido del cotutor, que desde ambas estaciones registra el mensaje reportado como insumo para reentrenar el modelo.
+\end{itemize}
+
+Según la tabla~\ref{tab:req-oficiales}, los seis requisitos funcionales (RF-01 a RF-06) están implementados y, de los siete no funcionales, RNF-01 a RNF-05 se cumplen en el PMV con el alcance indicado en esa tabla. RNF-06 (validación lingüística por intérpretes oficiales) y RNF-07 (estación fija de doble cara) corresponden a la etapa de sistema completo. Además, en el caso TC-LSA-015-01 el sistema siguió funcionando sin Internet, sin peticiones a hosts externos, y el análisis con axe-core no halló violaciones críticas ni graves de accesibilidad en las cuatro pantallas.
+
+\section{Resultados de las pruebas}\label{sec:res-pruebas}
+
+Las pruebas de sistema se ejecutaron en dos ciclos (20 y 21 de octubre de 2026). La tabla~\ref{tab:metricas} reúne las métricas principales; el detalle de los casos y de los defectos está en la sección~\ref{sec:pruebas-plan} y en el anexo~\ref{anx:defectos}.
+
+\begin{table}[htbp]
+\centering
+\caption{Métricas de las pruebas del PMV.}\label{tab:metricas}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}p{4.3cm}p{3.2cm}p{2.6cm}X@{}}
+\toprule
+\textbf{Métrica} & \textbf{Resultado} & \textbf{Meta} & \textbf{Observación} \\
+\midrule
+Casos de prueba aprobados & Ciclo~1: 2 de 15; ciclo~2: 15 de 15 & 15 de 15 & Los 15 casos cubren los 12 casos de uso y tres grupos de requisitos no funcionales. \\
+Defectos & 28 detectados (19 en el ciclo~1 y 9 en el ciclo~2); 28 cerrados & Ninguno abierto de severidad 1 o 2 & Tabla~\ref{tab:defectos-resumen}: 3 críticos, 15 altos, 8 medios y 2 bajos. \\
+Exactitud en validación cruzada & 98,67~\% (96,67~\% a 100~\% por partición; desvío de 1,63) & Al menos 90~\% & Cinco particiones estratificadas, 150~muestras, dos errores en total. Una sola sesión de grabación. \\
+Latencia percibida, p95 & 945~ms & Menos de 1~s & 55~oraciones medidas el 21/10/2026; el margen es estrecho. \\
+Latencia percibida, p50 & 166~ms & 600~ms (ruta con plantilla) & La traducción con modelo de lenguaje tiene un p95 de 573~ms. \\
+Inferencia del modelo, p95 & De 0,71~ms a 0,68~ms entre versiones & Regresión menor al 10~\% & Mismas 100~ventanas. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Estos resultados tienen tres límites que deben leerse junto con las cifras. Primero, la exactitud proviene de una única sesión de grabación (misma persona, iluminación y día), por lo que no mide la generalización a otras personas y condiciones; la medición con otras personas es una de las sugerencias del ciclo~2. Segundo, las comprobaciones manuales del ciclo~2 las realizó una persona, y la latencia debe repetirse en la estación definitiva. Tercero, el vocabulario es de cuatro señas, por lo que los resultados no se extrapolan a un vocabulario clínico más amplio.
+
+\section{Resultados de la gestión del proyecto}\label{sec:res-gestion}
+
+\paragraph{Cronograma.} Según la tabla~\ref{tab:hitos}, el balance acumulado de las fechas del Informe Final es de nueve días de adelanto respecto de las fechas originales. Cuatro hitos tuvieron demora positiva: el diseño de la arquitectura (21~días) y las pruebas piloto en entorno controlado (66~días), ambos por la reprogramación del cronograma aprobado, además del Plan de Riesgos (7~días) y la construcción del dataset (2~días). El PMV se desarrolló dentro de la fecha del Acta (H06, 13~días antes), y las pruebas formales se realizaron los días 20 y 21 de octubre. Los hitos de implementación piloto en guardia (H09), evaluación de impacto operativo (H10) y presentación de la versión final con manual de uso (H11) quedaron fuera del PMV.
+
+\paragraph{Alcance y cambios.} El alcance del PMV se ajustó mediante decisiones registradas en el Informe Final: la ampliación de la EDT a 36 paquetes de trabajo por observación del cotutor, la incorporación del requisito RF-06, la construcción de un dataset propio con el Modo Captura en lugar de ampliar LSA64, el uso de un diccionario de referencia (Spreadthesign) en lugar del aval de intérpretes (RNF-06) y la ejecución local con Docker en lugar de un entorno en la nube. Los riesgos de privacidad, latencia y portabilidad se atendieron con medidas que se materializaron en el producto (capítulo~\ref{cap:gestion}).
+
+\paragraph{Costos.} El Informe Final no registra costos reales de ejecución, por lo que no es posible contrastar el gasto con el presupuesto. Las cifras de la tabla~\ref{tab:presupuesto} son la estimación del Plan Financiero y no resultados.
