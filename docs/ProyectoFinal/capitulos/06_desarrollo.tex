@@ -381,7 +381,7 @@ Las carpetas \texttt{dataset/}, \texttt{models/} y \texttt{data/} se montan como
     Transmisión al backend & Solo coordenadas de landmarks por WebSocket, con un paso de predicción fijo de 8 frames (unos 0,4 s a 20~fps) y un mínimo de 20 frames acumulados. \\
     Modelo de reconocimiento & LSTM de 2 capas y 128 unidades ocultas; entrada de 384 características por frame (75 landmarks $\times$ 4 valores más 84 características locales de mano). \\
     Umbral de confianza & 70~\%; con el reposo a ese nivel se cierra la oración. \\
-    Traducción & Plantilla médica, caché de 200 entradas o modelo de lenguaje local con tiempo de espera de 8 segundos. \\
+    Traducción & Plantilla médica, caché de 200 entradas o modelo de lenguaje local con tiempo de espera de 5 segundos. \\
     Voz & Piper, WAV mono de 16 bits a 22.050~Hz, con caché de 50 entradas. \\
     Entorno de ejecución & Probado en Windows 11 con Google Chrome; backend en Python 3.10; CPU suficiente, GPU opcional. \\
     \bottomrule

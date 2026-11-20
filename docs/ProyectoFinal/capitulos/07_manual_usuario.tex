@@ -1,2 +1,145 @@
-\chapter{Manual del usuario}
-\pendiente{uso de las estaciones de Paciente y Recepción, con capturas.}
+\chapter{Manual del usuario}\label{cap:manual-usuario}
+
+Este manual está dirigido a las personas que usan LSA Salud en la atención: el paciente que se comunica en Lengua de Señas Argentina (LSA) y el personal de recepción o enfermería que lo atiende. No requiere conocimientos técnicos. La instalación y el mantenimiento del equipo se describen en el capítulo~\ref{cap:manual-instalacion}.
+
+\section{Qué es LSA Salud}
+
+LSA Salud es un traductor de LSA a texto y voz para la atención en guardia. El paciente hace señas frente a una cámara; el sistema las reconoce, arma una oración en español, la muestra en pantalla y la dice en voz alta. El personal responde escribiendo o dictando, y el paciente lee la respuesta en su pantalla. Todo el procesamiento ocurre en la propia computadora, sin enviar datos a servicios en la nube.
+
+El sistema tiene dos pantallas, o estaciones, que se abren en el navegador y se sincronizan entre sí:
+\begin{itemize}
+  \item la \textbf{Estación del Paciente}, con la cámara, la conversación y las señas reconocidas;
+  \item la \textbf{Estación de Recepción}, con la conversación, el cuadro para responder y la imagen de la cámara del paciente.
+\end{itemize}
+
+En esta versión el sistema reconoce cuatro señas: \emph{yo}, \emph{cabeza}, \emph{dolor} y \emph{respirar} (tabla~\ref{tab:especificaciones}). Combinadas, permiten expresar frases como ``yo dolor cabeza'', que el sistema traduce como ``Me duele la cabeza.''. Una seña fuera de ese vocabulario no se reconoce: la traducción es una ayuda para iniciar la comunicación y no reemplaza al intérprete humano. Ante cualquier duda sobre lo que el paciente quiso decir, hay que confirmarlo por otros medios.
+
+\paragraph{Sobre las capturas de este manual.} Las imágenes se tomaron con la aplicación en funcionamiento, usando la cámara virtual de prueba del navegador, que muestra un patrón verde en lugar de una persona. Como esa cámara no muestra manos, el mensaje del paciente de los ejemplos (``Me duele la cabeza.'') es la oración que el sistema devuelve para la secuencia \emph{yo, dolor, cabeza} y se incorporó a la conversación sin hacer las señas. El resto de los elementos (consentimiento, botones, avisos y respuestas) son los que ve el usuario real.
+
+\section{Inicio}
+
+Al abrir la dirección del sistema en Google Chrome aparece la pantalla de inicio (figura~\ref{fig:man-inicio}) con el acceso a las estaciones. Normalmente el personal técnico deja ambas estaciones abiertas, una en cada monitor; en ese caso no es necesario usar esta pantalla. Quien necesite abrirlas debe usar el mismo navegador para las dos, porque la sincronización de la conversación solo funciona entre pestañas o ventanas del mismo navegador y perfil.
+
+\figuraTP{manual/01_inicio}{0.9\textwidth}{Pantalla de inicio con los accesos a las estaciones}{fig:man-inicio}
+
+La tarjeta \textbf{Captura de señas} corresponde al Modo Captura, una herramienta interna del equipo técnico para grabar muestras y reentrenar el modelo; no forma parte del uso en la atención (véase el capítulo~\ref{cap:manual-instalacion}).
+
+\section{Consentimiento de uso de la cámara}
+
+La primera vez que se abre una estación, el sistema muestra el diálogo \textbf{Consentimiento para usar la cámara} (figura~\ref{fig:man-consentimiento}). El texto explica que la cámara se usa solo para reconocer las señas y traducirlas a texto y voz, y que no se guarda ningún video ni imagen. Hay que leerlo con el paciente antes de continuar.
+
+\figuraTP{manual/02_consentimiento}{0.9\textwidth}{Diálogo de consentimiento para usar la cámara}{fig:man-consentimiento}
+
+\begin{itemize}
+  \item \textbf{Acepto y continúo}: el paciente autoriza el uso de la cámara. Inmediatamente después, Chrome puede pedir permiso para usarla; hay que elegir \textbf{Permitir}.
+  \item \textbf{No acepto}: la cámara no se activa y el traductor no funciona. El diálogo muestra el aviso \emph{``El traductor necesita la cámara para funcionar. Podés reconsiderar cuando quieras.''} y el botón \textbf{Reconsiderar} (figura~\ref{fig:man-rechazo}), que vuelve a mostrar la pregunta.
+\end{itemize}
+
+\figuraTP{manual/03_consentimiento_rechazado}{0.9\textwidth}{Diálogo tras elegir ``No acepto''}{fig:man-rechazo}
+
+La decisión queda recordada en ese navegador, por lo que no se vuelve a preguntar en cada atención, y se registra como un evento de auditoría sin datos personales. Para cambiar una decisión ya guardada, el personal técnico debe borrar los datos del sitio en el navegador.
+
+\section{Estación del Paciente}
+
+\subsection{Qué se ve en pantalla}
+
+La figura~\ref{fig:man-paciente} muestra la Estación del Paciente con una conversación en curso. Sus elementos son:
+\begin{description}[style=nextline, leftmargin=1.5em]
+  \item[Conversación (izquierda)] Muestra los mensajes. El título dice \emph{``Conversación''} y, cuando recepción cargó su nombre, \emph{``[nombre] te está atendiendo''}. Los mensajes del paciente aparecen a la derecha, en azul; los del personal, a la izquierda, en blanco. Si todavía no hay mensajes se lee \emph{``La conversación aparecerá aquí''}.
+  \item[Captando señas (derecha)] Muestra la imagen de la cámara. El indicador \emph{``EN VIVO · Visión por computadora''} confirma que la cámara está activa. Mientras se activa, se lee \emph{``Activando cámara...''}.
+  \item[Mostrar esqueleto] Interruptor que dibuja o quita las líneas que marcan manos, cuerpo y rostro sobre la imagen.
+  \item[Mostrar palabras] Interruptor que muestra o esconde, sobre la imagen, las palabras que el sistema va reconociendo.
+  \item[Top-3 Predicciones] Las tres señas que el sistema considera más probables en este momento, con su porcentaje de confianza. Es una ayuda para el equipo técnico; el paciente no necesita mirarla.
+  \item[Limpiar Historial] Borra todos los mensajes de la conversación en ambas estaciones.
+\end{description}
+
+\figuraTP{manual/06_paciente_conversacion}{\textwidth}{Estación del Paciente con una conversación en curso}{fig:man-paciente}
+
+\subsection{Cómo comunicarse}
+
+\begin{enumerate}
+  \item El paciente se ubica frente a la cámara, de modo que se vean el rostro, el torso y ambas manos. Conviene una iluminación pareja y evitar fondos con mucho movimiento.
+  \item Hace las señas una a continuación de la otra, por ejemplo \emph{yo}, \emph{dolor}, \emph{cabeza}. Las palabras reconocidas se muestran sobre la imagen mientras \emph{Mostrar palabras} está activado.
+  \item Al terminar, \textbf{baja las manos} y las deja en reposo frente al cuerpo. Ese reposo le indica al sistema que la oración terminó.
+  \item Aparece el aviso \emph{``Generando respuesta de IA...''}. Pasados unos instantes, la oración en español se agrega a la conversación como mensaje del paciente.
+  \item Un momento después de mostrarse el texto, el sistema lo dice en voz alta, de modo que el personal lo escuche. Si el sonido no se escucha, el texto igualmente queda en pantalla.
+  \item El personal responde por escrito o por voz y el paciente lee la respuesta en la conversación. Las respuestas del personal no se leen en voz alta.
+\end{enumerate}
+
+Para hacer una nueva oración, el paciente repite el procedimiento. Si baja las manos sin haber hecho ninguna seña, el sistema descarta ese silencio y no genera ningún mensaje.
+
+\subsection{Si la traducción es incorrecta}
+
+Debajo de cada mensaje del paciente aparece el botón \textbf{Reportar traducción}. Si la oración no es lo que el paciente quiso decir, hay que tocarlo (figura~\ref{fig:man-reporte}): el mensaje queda tachado, marcado con \emph{``Traducción reportada''}, y se informa \emph{``Traducción reportada. Repetí la seña para enviar el mensaje de nuevo.''}. El paciente debe entonces repetir las señas. En la Estación de Recepción el mismo mensaje se marca como reportado y se avisa que no debe tomarse como válido.
+
+\figuraTP{manual/09_paciente_reporte}{\textwidth}{Un mensaje reportado como incorrecto en la Estación del Paciente}{fig:man-reporte}
+
+El reporte guarda el texto del mensaje, las palabras reconocidas y la estación desde la que se reportó, para que el equipo técnico mejore el reconocimiento. Si el reporte no se puede enviar, aparece \emph{``No se pudo enviar el reporte. Probá de nuevo.''}; puede intentarse otra vez, y si persiste, avisar al personal técnico.
+
+\section{Estación de Recepción}
+
+\subsection{Qué se ve en pantalla}
+
+La figura~\ref{fig:man-recepcion} muestra la Estación de Recepción. Sus elementos son:
+\begin{description}[style=nextline, leftmargin=1.5em]
+  \item[Conversación con paciente] Lista de mensajes: los del paciente a la izquierda, en blanco, y las respuestas del personal a la derecha, en azul. Sin mensajes se lee \emph{``No hay mensajes en la conversación.''}.
+  \item[Tu nombre] Nombre de quien atiende. Se cambia con el ícono del lápiz (\emph{Editar tu nombre}); se confirma con Enter o al salir del campo. El paciente lo ve en su pantalla como \emph{``[nombre] te está atendiendo''}. Queda guardado en el navegador.
+  \item[Finalizar atención] Cierra la atención: borra la conversación en ambas estaciones. Solo actúa si hay mensajes. Debe usarse al terminar con cada paciente para que el siguiente no vea la conversación anterior.
+  \item[Cuadro de respuesta] Campo \emph{``Escribir...''}, botón de micrófono y botón de envío.
+  \item[Cámara del paciente] Imagen de la cámara del paciente, con los interruptores \emph{Mostrar esqueleto} y \emph{Mostrar palabras}. Mientras no llega la imagen se lee \emph{``Esperando la cámara del paciente''}.
+\end{description}
+
+\figuraTP{manual/08_recepcion_conversacion}{\textwidth}{Estación de Recepción con una conversación en curso}{fig:man-recepcion}
+
+\subsection{Cómo atender}
+
+\begin{enumerate}
+  \item Antes de recibir al paciente, tocar el lápiz junto a \emph{Tu nombre}, escribir el nombre y confirmar con Enter.
+  \item Leer los mensajes del paciente a medida que aparecen; también se escuchan en voz alta. El texto se acompaña con la imagen de la cámara para verificar lo que el paciente expresó con las señas.
+  \item Responder de una de estas formas:
+  \begin{itemize}
+    \item \textbf{Por escrito:} escribir en \emph{Escribir...} y tocar el botón \textbf{Enviar} o presionar Enter. El botón está deshabilitado mientras el campo está vacío.
+    \item \textbf{Por voz:} tocar el botón del micrófono (\emph{Dictar respuesta por voz}), hablar y volver a tocarlo (\emph{Detener dictado}) cuando se termina. Mientras se escucha, el botón se pone rojo y el campo no se puede editar. El texto dictado aparece en el campo y puede corregirse antes de enviarlo. La primera vez, Chrome solicita permiso para usar el micrófono.
+  \end{itemize}
+  \item El mensaje aparece de inmediato en la pantalla del paciente.
+  \item Si una respuesta propia fue enviada por error, el ícono del cesto de basura (\emph{Eliminar mensaje}) la borra de ambas pantallas.
+  \item Si el paciente reporta una traducción, o si el propio personal considera que es incorrecta, puede usar \textbf{Reportar traducción} en ese mensaje; el paciente repetirá la seña.
+  \item Al terminar la atención, tocar \textbf{Finalizar atención}.
+\end{enumerate}
+
+\section{Mensajes de error y situaciones frecuentes}
+
+La tabla~\ref{tab:man-errores} resume lo que puede ocurrir durante el uso y cómo actuar. Si el problema persiste, hay que avisar al personal técnico, que dispone de la guía de solución de problemas del capítulo~\ref{cap:manual-instalacion}.
+
+\begin{table}[H]
+  \centering
+  \caption{Situaciones frecuentes durante el uso}\label{tab:man-errores}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.4cm} X}
+    \toprule
+    \textbf{Qué se ve} & \textbf{Qué hacer} \\
+    \midrule
+    \emph{No se pudo acceder a la cámara.} (figura~\ref{fig:man-camara}) & El navegador no tiene permiso para usar la cámara o la está usando otra aplicación. Permitir la cámara desde el ícono del candado junto a la dirección, cerrar las otras aplicaciones que la usen y recargar la página. \\
+    \emph{Activando cámara...} que no termina & Esperar unos segundos; si no cambia, recargar la página. \\
+    El diálogo de consentimiento con el botón \emph{Reconsiderar} & El paciente no aceptó el uso de la cámara. Explicarle el propósito y, si acepta, tocar \textbf{Reconsiderar} y luego \textbf{Acepto y continúo}. \\
+    \emph{Esperando la cámara del paciente} en Recepción & La Estación del Paciente no está abierta o no tiene cámara. Abrirla en el mismo navegador. \\
+    Las señas no producen ningún mensaje & Verificar que se vean las manos y el torso, que haya buena iluminación y que el paciente baje las manos al terminar la oración. Si el indicador \emph{Top-3 Predicciones} no cambia, avisar al personal técnico. \\
+    La oración aparece pero no se escucha & Revisar el volumen y los altavoces. El texto igualmente queda en la conversación. \\
+    \emph{El navegador no soporta reconocimiento de voz.} & El dictado solo funciona en Google Chrome. Responder por escrito o abrir la estación en Chrome. \\
+    Los mensajes no llegan a la otra pantalla & Las dos estaciones deben estar abiertas en el mismo navegador y perfil, en la misma computadora. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\figuraTP{manual/04_camara_denegada}{\textwidth}{Estación del Paciente cuando no se pudo acceder a la cámara}{fig:man-camara}
+
+\section{Privacidad}
+
+LSA Salud se diseñó para proteger los datos del paciente:
+\begin{itemize}
+  \item \textbf{No se guardan imágenes ni video.} El navegador procesa la imagen de la cámara en el propio equipo y solo envía al sistema las coordenadas de los puntos de manos, cuerpo y rostro, que no permiten reconstruir la imagen.
+  \item \textbf{No hay servicios en la nube.} El reconocimiento, la redacción de la oración y la voz se ejecutan en la misma computadora; el sistema funciona sin conexión a Internet.
+  \item \textbf{La conversación no se guarda.} Los mensajes viven solo en la memoria del navegador y desaparecen al tocar \textbf{Finalizar atención} o \textbf{Limpiar Historial}, o al cerrar la pestaña.
+  \item \textbf{Solo se conserva lo que se reporta.} Cuando alguien reporta una traducción, se guarda el texto de ese mensaje, las palabras reconocidas y la estación; no se guardan datos de identidad. El sistema también registra eventos de auditoría (por ejemplo, la aceptación del consentimiento y tiempos de respuesta), sin datos personales.
+  \item \textbf{La cámara solo se activa con consentimiento.} Sin la aceptación del paciente, la cámara permanece apagada.
+\end{itemize}

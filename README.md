@@ -6,9 +6,10 @@ Son dos pantallas del navegador que se sincronizan entre sí:
 
 | Pantalla | URL | Uso |
 |----------|-----|-----|
-| Inicio | `http://localhost:3000/` | Acceso a las dos estaciones |
-| Estación del Paciente | `http://localhost:3000/paciente` | Cámara, reconocimiento de señas, chat, Modo Captura |
+| Inicio | `http://localhost:3000/` | Acceso a las dos estaciones y a Captura |
+| Estación del Paciente | `http://localhost:3000/paciente` | Cámara, reconocimiento de señas, chat |
 | Estación de Recepción | `http://localhost:3000/recepcion` | Lee lo que dice el paciente y responde por teclado o voz |
+| Modo Captura (uso interno) | `http://localhost:3000/captura` | Grabar muestras y reentrenar el modelo |
 
 ## Contenido
 
@@ -71,7 +72,7 @@ docker compose up --build
 
 Abrí **http://localhost:3000**. La primera vez puede tardar varios minutos: construye las imágenes, baja MediaPipe, la voz Piper, Ollama y el modelo `qwen2:1.5b`. Todo corre en CPU. El navegador solo habla con el puerto 3000 (proxy Caddy → frontend y API); no hace falta instalar Python, Node ni Ollama en el host.
 
-Las grabaciones y el modelo reentrenado se guardan en `dataset/` y `models/` del repo (Compose monta esas carpetas en el contenedor).
+Las grabaciones, el modelo reentrenado y la base SQLite se guardan en `dataset/`, `models/` y `data/` del repo (Compose monta esas carpetas en el contenedor).
 
 ```powershell
 docker compose down          # apagar
@@ -100,7 +101,7 @@ python -m uvicorn app:app --port 8000
 cd web && npm run dev
 ```
 
-Variables opcionales por entorno (sin archivo obligatorio): `NEXORA_DATASET_DIR` (por defecto `dataset/`), `NEXORA_DB_PATH`, `NEXORA_ALLOWED_ORIGINS`, `OLLAMA_URL`. En el frontend manual, `web/.env.local` puede definir `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL` y `NEXT_PUBLIC_MIN_SAMPLE_FPS`.
+Variables opcionales por entorno o en un `.env` en la raíz (lo carga `python-dotenv`; no es obligatorio): `NEXORA_DATASET_DIR` (por defecto `dataset/`), `NEXORA_DB_PATH`, `NEXORA_ALLOWED_ORIGINS`, `OLLAMA_URL`. En el frontend manual, `web/.env.local` puede definir `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL` y `NEXT_PUBLIC_MIN_SAMPLE_FPS`.
 
 ## Uso
 
@@ -175,6 +176,8 @@ python test_audit.py
 python test_infer.py   # requiere muestras en dataset/custom/
 ```
 
+`test_fidelity.py` usa estilo pytest (sin bloque `__main__`): `python -m pytest test_fidelity.py`. `pytest` no está en `requirements.txt`.
+
 **Tests de API** (levantan su propio uvicorn en un puerto libre y una base temporal; requieren Ollama con `qwen2:1.5b`, si no los casos afectados quedan `blocked`):
 
 ```powershell
@@ -202,13 +205,15 @@ train_lstm.py          Entrenamiento y validación cruzada del LSTM
 eval_model.py          Evaluación de un modelo contra un dataset
 src/                   Features (src/features.py) y modelo (src/model/lstm.py)
 models/                lstm.pth y custom_classes.json
+data/                  Base SQLite lsa_salud.db (no versionada)
+docker-compose.yml     Stack Docker (ollama, api, web, proxy); Dockerfile y docker/ (Caddy, entrypoint)
 voices/                Voz Piper (no versionada)
 dataset/               Muestras .npy (custom/ y custom_blendshapes/)
 web/                   Frontend Next.js (app/, components/, hooks/, lib/)
 tests/api/             Harness y casos de la API
 tests/e2e/             Playwright
 test_*.py              Scripts de prueba unitarios (raíz)
-docs/                  Documentación académica (TP7, TP8)
+docs/                  Documentación académica (TP7, TP8, TP9, informe final en ProyectoFinal/)
 ```
 
 ## Problemas frecuentes
@@ -231,6 +236,8 @@ Nota (modo manual): por defecto Ollama está en `127.0.0.1:11434` (no `localhost
 
 - `docs/TP7/`: Análisis y Diseño (LaTeX, un entregable por archivo). Ver [`docs/README.md`](docs/README.md) para la estructura y `docs/IDS.md` para el registro de identificadores.
 - `docs/TP8/`: Testing (plan, casos de prueba, defectos y observaciones por ciclo).
+- `docs/TP9/`: Informe final y presentación del trabajo práctico.
+- `docs/ProyectoFinal/`: Informe del proyecto final (LaTeX, `latexmk -pdf`).
 
 **Equipo (UTN-FRT):**
 
