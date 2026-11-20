@@ -1,11 +1,75 @@
 \chapter{Tema}
-\pendiente{descripción del Sanatorio 9 de Julio, la necesidad (comunicación con pacientes sordos en la guardia) y los límites de la solución. Fuente: TP0 y TP1 (Acta de Constitución).}
+
+El proyecto \emph{LSA Salud} se desarrolla para el Sanatorio 9 de Julio, una institución privada de salud polivalente y de alta complejidad (tercer nivel), ubicada en San Miguel de Tucumán, que integra el Sistema Provincial de Salud (SIPROSA) y funciona como centro de referencia regional en la atención de pacientes críticos y patologías agudas. Sus servicios de guardia y admisión reciben un flujo masivo y constante de demanda, y la institución impulsa de forma sostenida políticas de modernización tecnológica orientadas a mejorar la calidad asistencial.
+
+\paragraph{Necesidad.} En ese contexto existe una barrera de accesibilidad comunicacional para los pacientes sordos e hipoacúsicos usuarios de la Lengua de Señas Argentina (LSA), reconocida como lengua natural y originaria por la Ley~27.710 \parencite{ley27710}. En la recepción, la admisión, el triaje y la atención en guardia no se dispone de herramientas de mediación, y la comunicación se resuelve con métodos rudimentarios: escritura en papel, lectura de labios o la intervención involuntaria de acompañantes. Según el Acta de Constitución, esta situación tiene cuatro consecuencias principales:
+\begin{itemize}
+  \item \textbf{Demoras operativas:} la estancia en urgencias de estos pacientes es aproximadamente 30~minutos mayor que la de los pacientes oyentes.
+  \item \textbf{Pérdida de autonomía y confidencialidad:} la dependencia de terceros para traducir vulnera la dignidad y la privacidad del paciente en el acto médico.
+  \item \textbf{Riesgo clínico:} la comprensión de diagnósticos e indicaciones pasa del 93~\% con mediación adecuada al 18~\% sin ella, lo que eleva el riesgo de errores y de readmisiones.
+  \item \textbf{Saturación en admisión:} las consultas de baja complejidad (triaje verde y azul), que representan alrededor del 60~\% de las consultas de guardia en Tucumán, son muy frecuentes y, sin un canal directo, se vuelven lentas e ineficientes.
+\end{itemize}
+
+\paragraph{Solución propuesta y sus límites.} La respuesta definida en el Acta de Constitución es un sistema de interpretación bidireccional entre LSA y español basado en inteligencia artificial y visión por computadora, pensado para el entorno de guardia, que utiliza componentes comerciales estándar y adopta el principio de privacidad desde el diseño: el procesamiento es local y no se almacenan imágenes ni video. La solución se circunscribe a la mediación comunicacional en el punto de atención y no se integra con los sistemas de información del sanatorio (véase la sección de exclusiones).
 
 \section{Alcance}
-\pendiente{alcance del PMV y del sistema completo. Fuente: TP2 (Declaración de Alcance).}
+
+El alcance se distingue en dos niveles: el del sistema completo, tal como fue definido en la Declaración de Alcance, y el del Producto Mínimo Viable (PMV) efectivamente implementado dentro del plazo del proyecto.
+
+\subsection{Sistema completo}
+
+La Declaración de Alcance define el producto como un sistema de interpretación bidireccional, en tiempo casi real, entre LSA y español, orientado a entornos de salud. Sus componentes son:
+\begin{itemize}
+  \item \textbf{Estaciones fijas} con pantalla de doble cara (visualización simultánea del paciente y del profesional), cámara estándar frontal, micrófono y altavoces, integradas de forma no invasiva en mostradores, salas de espera y boxes de guardia y triaje.
+  \item \textbf{Módulo de IA y visión por computadora} que reconoce señas estáticas y movimientos dinámicos, traduce la LSA a texto y voz en español, y transcribe la voz o el texto del profesional a un formato accesible para el paciente.
+  \item \textbf{Base de datos de dominio clínico:} ampliación del conjunto de datos nacional LSA64 hacia vocabulario médico (síntomas, niveles de dolor, alergias, antecedentes, especialidades y gestión de turnos), con validación lingüística de intérpretes oficiales de LSA.
+  \item \textbf{Privacidad desde el diseño:} procesamiento local en tiempo real, sin almacenamiento persistente de imágenes, videos ni datos médicos sensibles, y con flujos de consentimiento explícito.
+\end{itemize}
+El proyecto se organiza en seis fases: relevamiento, diseño, construcción del dataset, desarrollo y entrenamiento del PMV, pruebas e implementación piloto en un área crítica real del sanatorio, y evaluación y cierre (véase el capítulo de Gestión del proyecto).
+
+\subsection{Producto Mínimo Viable}
+
+El PMV implementado cubre el núcleo del sistema y opera con dos estaciones de cliente:
+\begin{itemize}
+  \item \textbf{Estación Paciente:} presenta una pantalla de consentimiento previa a la activación de la cámara y traduce las señas del paciente a texto y a voz.
+  \item \textbf{Estación Recepción:} permite al personal ver al paciente, seguir la conversación en un chat y responder por texto o por dictado de voz.
+\end{itemize}
+Todo el procesamiento se ejecuta de forma local: no se almacenan ni se envían imágenes o video, y el backend recibe únicamente las coordenadas de los puntos de referencia de las manos (\emph{landmarks}). El modo de captura y reentrenamiento del modelo es una herramienta interna del equipo, no una estación de cliente.
+
+El PMV reconoce cuatro señas clínicas: \emph{yo}, \emph{cabeza}, \emph{dolor} y \emph{respirar}, tomadas de Spreadthesign, repositorio de videos realizados por intérpretes de LSA. Además, por sugerencia del cotutor, se incorporó e implementó el requisito RF-06: tanto el paciente como el personal pueden reportar una traducción incorrecta o ambigua, que queda registrada para mejorar el modelo.
+
+Quedan para la etapa de sistema completo, prevista en el alcance y no consideradas un recorte, la validación formal del vocabulario por intérpretes oficiales de LSA (RNF-06), la estación fija de guardia con pantalla de doble cara (RNF-07), la ampliación del vocabulario y el piloto en la guardia del sanatorio.
 
 \section{Fuera de alcance}
-\pendiente{HCE, hardware a medida, capacitación en LSA. Fuente: TP2.}
+
+La Declaración de Alcance excluye explícitamente los siguientes elementos:
+\begin{itemize}
+  \item \textbf{Capacitación general en LSA:} no se dictan cursos ni se capacita formalmente al personal del sanatorio, dado que el propósito del sistema es automatizar la mediación comunicacional.
+  \item \textbf{Desarrollo de hardware a medida:} el alcance se limita al ensamblaje e instalación de hardware comercial estándar.
+  \item \textbf{Integración con la Historia Clínica Electrónica (HCE):} el sistema funciona de manera aislada en mostradores y terminales y no escribe ni modifica las bases de datos médicas del sanatorio.
+  \item \textbf{Modismos regionales complejos:} la primera versión no procesa variantes dialectales avanzadas fuera de la base de señas estructurada con los asesores lingüísticos.
+  \item \textbf{Mantenimiento técnico posterior a la entrega:} el soporte correctivo y evolutivo posterior al 15/11/2026 requeriría un contrato de servicio independiente.
+  \item \textbf{Reestructuración de redes:} no se realiza cableado estructurado ni configuración de enrutamiento o \emph{switches} en la red del sanatorio.
+\end{itemize}
 
 \section{Supuestos y restricciones}
-\pendiente{fuente: TP2.}
+
+\subsection{Supuestos}
+
+\begin{itemize}
+  \item \textbf{Disponibilidad de instalaciones:} el sanatorio facilita el acceso físico a recepción, admisión y triaje en los plazos estipulados para la instalación y el piloto.
+  \item \textbf{Colaboración de los intérpretes:} la comunidad de intérpretes de LSA mantiene una participación activa y constante en la validación lingüística del dataset.
+  \item \textbf{Estabilidad eléctrica y de red:} la infraestructura del sanatorio es estable durante el despliegue y el uso de las estaciones.
+  \item \textbf{Abastecimiento de componentes:} las pantallas de doble cara, las cámaras web y los periféricos de audio están disponibles de inmediato en el mercado local.
+  \item \textbf{Disposición del personal:} el personal de enfermería y de administración de guardia coopera en las entrevistas de relevamiento y utiliza el sistema durante el piloto.
+\end{itemize}
+
+\subsection{Restricciones}
+
+\begin{itemize}
+  \item \textbf{Fecha límite improrrogable:} la defensa y la entrega del informe final deben concretarse a más tardar el 15/11/2026, según el reglamento y el cronograma de la cátedra.
+  \item \textbf{Hardware:} la arquitectura debe ejecutarse sobre hardware comercial de bajo costo, sin exigir al cliente equipamiento especializado de visión artificial.
+  \item \textbf{Marco legal de privacidad:} el procesamiento de video debe ajustarse a las leyes nacionales de protección de datos personales y a la confidencialidad del acto médico, con almacenamiento persistente igual a cero.
+  \item \textbf{Ubicación geográfica:} el relevamiento técnico, la instalación física y las pruebas en entorno real se realizan exclusivamente en el Sanatorio 9 de Julio, en San Miguel de Tucumán.
+  \item \textbf{Estructura del equipo:} todo el ciclo de software, el entrenamiento de IA y la gestión funcional están a cargo de los cuatro integrantes del equipo de la UTN-FRT, sin tercerizar el desarrollo.
+\end{itemize}

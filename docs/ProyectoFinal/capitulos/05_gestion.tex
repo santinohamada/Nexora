@@ -1,25 +1,392 @@
 \chapter{Gestión del proyecto}
 
+Este capítulo resume cómo se planificó y gestionó el proyecto: las fases y los hitos, los criterios de éxito, el enfoque de trabajo, los interesados, los riesgos y el plan de gestión (estructura de trabajo, roles, comunicaciones y presupuesto). Las fuentes son los documentos de gestión elaborados durante el proyecto: Acta de Constitución, Registro de Interesados, Declaración de Alcance, Estructura de Desglose del Trabajo (EDT), Plan Financiero, Registro de Riesgos, Plan de Dirección e Informe Final.
+
 \section{Fases del proyecto}
-\pendiente{fases y cronograma (Gantt legible, uno por fase). Fuente: TP2 y TP3 (EDT y cronograma).}
+
+La Declaración de Alcance organiza el proyecto en seis fases. La tabla~\ref{tab:fases} las relaciona con los entregables y las fechas propuestas en dicho documento, ordenados cronológicamente.
+
+\begin{table}[htbp]
+\centering
+\caption{Fases del proyecto, entregables y fechas propuestas.}\label{tab:fases}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}p{2.4cm}XXp{2.1cm}@{}}
+\toprule
+\textbf{Fase} & \textbf{Actividades principales} & \textbf{Entregables} & \textbf{Fecha propuesta} \\
+\midrule
+1. Relevamiento & Entrevistas presenciales con el personal administrativo y médico para identificar los requisitos del circuito de guardia. & E01: Documento de Alcance Validado & 30/05/2026 \\
+2. Diseño & Arquitectura técnica (modelos de IA, lógica de \emph{backend} y \emph{frontend}) y selección de hardware comercial. & E02: Documento de Arquitectura & 15/06/2026 \\
+3. Construcción del dataset & Recolección, filmación, clasificación y estructuración del corpus de señas clínicas, con validación lingüística de intérpretes de LSA. & E03: Dataset Clínico LSA & 30/06/2026 \\
+4. Desarrollo y entrenamiento & Programación del PMV y entrenamiento de los modelos en condiciones controladas. & E04: Producto Mínimo Viable & 30/07/2026 \\
+5. Pruebas e implementación piloto & Pruebas controladas y simuladas, seguidas del despliegue en un área crítica real del sanatorio. & E05: Informe de Pruebas Controladas; E06: Modelo de IA Optimizado; E07: Estación Desplegada en Guardia & 15/08/2026\newline 01/09/2026\newline 15/09/2026 \\
+6. Evaluación y cierre & Medición de indicadores, optimización final, documentación técnica, manuales de uso y defensa académica. & E08: Informe de Impacto Operativo; E09: Sistema Final y Manuales; E10: Informe Final de Tesis & 15/10/2026\newline 01/11/2026\newline 15/11/2026 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+El cronograma aprobado reprogramó algunas de estas fechas respecto de las propuestas originales: el diseño de la arquitectura se extendió hasta julio y las pruebas formales en entorno controlado se alinearon con el calendario de la cátedra (véase la sección de hitos). Para el seguimiento detallado, el trabajo se descompuso en paquetes de la EDT, presentados en el plan de gestión de este capítulo.
+
+\pendiente{diagrama de Gantt por fase exportado del cronograma}
 
 \section{Hitos}
-\pendiente{hitos originales contra reales. Fuente: TP1 y TP9 (Informe Final).}
+
+La tabla~\ref{tab:hitos} contrasta la fecha original de cada hito con la fecha real o pronosticada, según el seguimiento del Informe Final. Las filas con identificador \emph{H} son hitos del Acta de Constitución; el resto corresponde a entregables de la cátedra, cuya fecha original es el fin del período de seguimiento y cuya fecha real es la de la primera entrega. Una demora negativa indica entrega anticipada.
+
+{\footnotesize
+\begin{longtable}{@{}p{3.4cm}p{1.85cm}p{1.85cm}p{1.35cm}p{5.7cm}@{}}
+\caption{Hitos y entregables: fechas originales, reales y demora (en días).}\label{tab:hitos}\\
+\toprule
+\textbf{Hito} & \textbf{Fecha original} & \textbf{Fecha real} & \textbf{Demora} & \textbf{Comentario} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Hito} & \textbf{Fecha original} & \textbf{Fecha real} & \textbf{Demora} & \textbf{Comentario} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{5}{r}{\emph{Continúa en la página siguiente}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+Propuesta de tema (Traductor LSA Salud) & 29/04/2026 & 15/04/2026 & $-14$ & Propuestas subidas al inicio para recibir la devolución del cotutor; aprobada el 29/04. \\
+H01. Presentación inicial del proyecto al cliente & 10/05/2026 & 10/05/2026 & 0 & Realizada en la fecha prevista, según confirmó el equipo. \\
+Acta de Constitución e Interesados & 13/05/2026 & 03/05/2026 & $-10$ & Primera versión subida para pedir devolución y seguir iterando; aprobada el 13/05. \\
+H02. Relevamiento de requerimientos & 20/05/2026 & 20/05/2026 & 0 & Realizado en la fecha prevista, según confirmó el equipo. \\
+H03. Definición del alcance del proyecto & 30/05/2026 & 24/05/2026 & $-6$ & Alcance entregado en la primera versión de la Declaración de Alcance. \\
+Declaración de Alcance & 03/06/2026 & 24/05/2026 & $-10$ & Primera versión el 24/05; EDT y matriz de trazabilidad en su versión 3 el 16/06; aprobada el 17/06. \\
+H04. Diseño de arquitectura del sistema & 15/06/2026 & 06/07/2026 & $+21$ & Fecha del Acta, replanificada en el cronograma aprobado (diseño hasta julio). Tecnologías definidas el 06/07 según el repositorio; documento de arquitectura incluido en el entregable de Análisis y Diseño. \\
+Cronograma & 24/06/2026 & 12/06/2026 & $-12$ & Versión 1 preliminar para recibir devolución (12/06); versión 4 el 25/06 y versión 5 el 29/10; aprobado el 25/06. \\
+H05. Construcción del dataset clínico en LSA & 30/06/2026 & 02/07/2026 & $+2$ & Primer dataset propio con el modo de captura el 02/07 (historial del repositorio); se sigue ampliando. \\
+Plan Financiero & 08/07/2026 & 07/07/2026 & $-1$ & Versión 1 el 07/07 y versión 3 el 11/07; estado resuelta, aprobado el 14/07. \\
+H06. Desarrollo del PMV & 30/07/2026 & 17/07/2026 & $-13$ & Versión inicial funcional con reconocimiento básico y plantillas médicas, según el repositorio: el desarrollo empezó el 29/06 y quedó lista antes de la fecha. Primera entrega formal en el entregable de Implementación y Pruebas (21/10). \\
+H07. Pruebas piloto en entorno controlado & 15/08/2026 & 20/10/2026 & $+66$ & Fecha del Acta, replanificada en el cronograma aprobado (25/06) y alineada al calendario de la cátedra. Ciclos formales de prueba el 20/10 y el 21/10. \\
+Plan de Riesgos & 26/08/2026 & 02/09/2026 & $+7$ & Versión 1 el 02/09 y versión 2 el 08/09; aprobado el 14/09. El Plan de Dirección lo planifica para el 02/09. \\
+H08. Ajustes y optimización del modelo & 01/09/2026 & 01/09/2026 & 0 & Realizado en la fecha prevista; optimización de latencia y ajuste del modelo en agosto. \\
+H09. Implementación piloto en guardia & 15/09/2026 & --- & --- & Fuera del PMV de la materia; queda previsto para la etapa posterior del proyecto. \\
+Plan de Gestión de Proyectos & 23/09/2026 & 18/09/2026 & $-5$ & Versión 1 el 18/09 y versión 2 el 25/09; aprobado el 04/10. \\
+Análisis y Diseño (parcial) & 30/09/2026 & 28/09/2026 & $-2$ & Versión 1 el 28/09 y versión 2 el 18/10; aprobado el 28/10. \\
+Análisis y Diseño (total) & 14/10/2026 & 28/09/2026 & $-16$ & Documentado en el entregable parcial por indicación del cotutor; cerrado el 28/10. \\
+H10. Evaluación de impacto operativo & 15/10/2026 & --- & --- & Fuera del PMV; requiere el piloto en guardia. \\
+H11. Presentación de versión final con manual de uso & 01/11/2026 & --- & --- & Fuera del PMV; se entregó el PMV ejecutable (28/10 y 02/11). \\
+Implementación y Pruebas & 02/11/2026 & 21/10/2026 & $-12$ & Primera versión subida el 21/10, fecha del avance parcial; PMV el 28/10 y autoejecutable el 02/11; en evaluación del cotutor. \\
+H12. Informe final de tesis y defensa & 15/11/2026 & 11/11/2026 & $-4$ & Exposición oral fijada por la cátedra para el 11/11/2026; se adelanta a la fecha del Acta. \\
+Informe Final & 18/11/2026 & 18/11/2026 & 0 & Pronóstico igual a la fecha límite. \\
+\midrule
+\textbf{Total} & & & $\mathbf{-9}$ & \\
+\end{longtable}
+}
+
+El balance acumulado es de nueve días de adelanto. Las demoras positivas son cuatro: el diseño de la arquitectura (21~días) y las pruebas piloto en entorno controlado (66~días), ambos por reprogramación del cronograma aprobado respecto de las fechas del Acta, además del Plan de Riesgos (7~días) y la construcción del dataset (2~días). El resto de las entregas se anticipó, en parte porque la fecha real registra la primera entrega y no la aprobación final. Los hitos de implementación piloto en guardia, evaluación de impacto operativo y presentación de la versión final con manual de uso quedan fuera del PMV y se prevén para la etapa posterior del proyecto.
 
 \section{Resultados esperados e indicadores de evaluación}
-\pendiente{criterios de éxito CRIT-01 a CRIT-07. Fuente: TP1 y TP2.}
+
+Los criterios de aceptación del producto fijan los resultados esperados y la forma de medirlos. La tabla~\ref{tab:crit} los presenta junto con los objetivos y requisitos a los que responden.
+
+\begin{table}[htbp]
+\centering
+\caption{Criterios de aceptación e indicadores de evaluación.}\label{tab:crit}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}lXXl@{}}
+\toprule
+\textbf{ID} & \textbf{Criterio de éxito} & \textbf{Indicador y medición} & \textbf{Relación} \\
+\midrule
+CRIT-01 & Latencia percibida inferior a 1~segundo bajo condiciones operativas normales. & Latencia promedio del sistema en condiciones normales. & OE07; RF-01; RNF-01 \\
+CRIT-02 & \emph{Accuracy} mínimo del 90~\% en el reconocimiento de señas clínicas en entornos controlados. & \emph{Accuracy}, \emph{recall} y \emph{F1-score}. & OE06; RNF-02 \\
+CRIT-03 & Precisión mínima del 85~\% en las pruebas operativas en la guardia real del sanatorio. & Precisión en pruebas operativas reales, con control de falsos positivos. & OE06; RF-05 \\
+CRIT-04 & El 100~\% de las interacciones de video se procesa en tiempo real, sin almacenamiento persistente de imágenes o video en discos locales o externos. & Auditorías técnicas que verifiquen almacenamiento persistente igual a cero. & OE10; RNF-03 \\
+CRIT-05 & El dataset clínico ampliado cuenta con el aval formal de la comunidad de intérpretes de LSA. & Aval formal de los intérpretes sobre el dataset. & OE04; RNF-05; RNF-06 \\
+CRIT-06 & Las estaciones operan exclusivamente con componentes estándar de mercado (cámaras web comunes y pantallas duplicadas), sin hardware médico especializado. & Verificación de los componentes de las estaciones. & OE03; RNF-04; RNF-07 \\
+CRIT-07 & Pantalla de consentimiento obligatoria antes del inicio de la consulta. & Presencia de la pantalla de consentimiento previa a la activación de la cámara. & OE10; RF-03 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Los criterios CRIT-01 a CRIT-06 figuran en la Declaración de Alcance; CRIT-07 se incorpora en la matriz de trazabilidad de requisitos y en el Plan de Dirección, asociado al requisito RF-03. Los diez objetivos específicos del capítulo anterior aportan las metas de impacto (tiempos, horas recuperadas, comprensión clínica, readmisiones, adopción y satisfacción), mientras que estos criterios definen las condiciones de aceptación técnica del producto. El contraste con los valores obtenidos se presenta en el capítulo de Resultados.
 
 \section{Metodología de desarrollo}
-\pendiente{comparativa de metodologías y justificación de la elegida.}
+
+El Plan de Dirección no incluye una sección que nombre la metodología de desarrollo. Lo que surge de la documentación del proyecto es un enfoque combinado:
+\begin{itemize}
+  \item \textbf{Gestión planificada.} La iniciación y la planificación siguen la estructura del PMI: acta de constitución, declaración de alcance, EDT con paquetes de trabajo que tienen responsable, esfuerzo y entradas y salidas, cronograma, plan financiero y registro de riesgos, con entregables asociados a fechas de control.
+  \item \textbf{Construcción incremental del producto.} Primero se obtuvo una versión mínima funcional (el desarrollo comenzó el 29/06 y la versión inicial estuvo lista el 17/07), luego se ajustó el modelo y se optimizó la latencia (agosto) y finalmente se ejecutaron dos ciclos formales de prueba (20 y 21/10). El modo de captura permite ampliar el vocabulario de forma incremental.
+  \item \textbf{Retroalimentación frecuente.} Varios entregables se presentaron en una primera versión para recibir la devolución del cotutor e iterar antes de su aprobación, y los documentos formales fueron revisados por el tutor y el cotutor.
+\end{itemize}
+
+La tabla~\ref{tab:metodologias} compara las alternativas consideradas para este contexto.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparación de enfoques de desarrollo frente a las condiciones del proyecto.}\label{tab:metodologias}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}p{2.6cm}XX@{}}
+\toprule
+\textbf{Enfoque} & \textbf{Fortalezas} & \textbf{Limitaciones en este proyecto} \\
+\midrule
+Cascada (secuencial) & Documentación y control claros; adecuado cuando los requisitos están cerrados. & Posterga la validación del modelo de IA hasta el final, cuando la precisión y la latencia son el principal riesgo técnico. \\
+Iterativo e incremental & Entrega una versión funcional temprana y la mejora por ciclos; absorbe la incertidumbre técnica. & Requiere un marco de planificación y control para cumplir los entregables fijos de la cátedra. \\
+Ágil (por ejemplo, Scrum) & Adaptación rápida y retroalimentación continua. & Presupone un equipo estable con ceremonias regulares; el equipo es de cuatro integrantes con carga académica variable (riesgos 22 y 25) y fecha final improrrogable. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Justificación.} Las condiciones del proyecto son una fecha límite improrrogable (15/11/2026), entregables formales con requisitos y criterios de aceptación trazados en una matriz, un equipo de cuatro integrantes y una incertidumbre técnica concentrada en el modelo de reconocimiento (riesgos 5, 9 y 16). Esas condiciones favorecen planificar y controlar el proyecto con la estructura del PMI y construir el producto de manera incremental, priorizando un PMV que permita medir latencia y precisión de forma temprana. El enfoque combinado conserva la trazabilidad exigida y reduce el riesgo técnico mejor que una secuencia estrictamente lineal.
+
+\pendiente{confirmar con el equipo la denominación formal de la metodología adoptada; el Plan de Dirección no incluye una sección de metodología y el texto anterior se infiere de la práctica documentada en la EDT, el cronograma y el Informe Final.}
 
 \section{Registro de interesados}
-\pendiente{fuente: Registro de Interesados (sin datos personales).}
+
+El Registro de Interesados (versión del 05/06/2026) clasifica a cada parte según su postura (defensor, crítico o neutral) y la ubica en la matriz poder-interés para definir la estrategia de gestión. La tabla~\ref{tab:interesados} lo resume sin datos de contacto.
+
+{\footnotesize
+\begin{longtable}{@{}p{2.7cm}p{2.0cm}p{3.6cm}p{1.4cm}p{2.0cm}p{2.0cm}@{}}
+\caption{Registro de interesados.}\label{tab:interesados}\\
+\toprule
+\textbf{Interesado} & \textbf{Rol} & \textbf{Expectativas principales} & \textbf{Tipo} & \textbf{Postura} & \textbf{Estrategia} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Interesado} & \textbf{Rol} & \textbf{Expectativas principales} & \textbf{Tipo} & \textbf{Postura} & \textbf{Estrategia} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{6}{r}{\emph{Continúa en la página siguiente}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+Francisco Vicente & Tutor & Sistema robusto y alta precisión del traductor. & Externo & Defensor / crítico & Gestionar de cerca \\
+Emmanuel López & Cotutor & No registradas. & Externo & Defensor / crítico & Gestionar de cerca \\
+Sanatorio 9 de Julio & Cliente & Mejorar la comunicación y la eficiencia de la guardia. & Interno & Crítico & Gestionar de cerca \\
+Estado (Ley 27.710) & Marco legal & No registradas. & Externo & Neutral & Mantener satisfecho \\
+Recepcionista & Usuario & Comunicación directa y privada con el paciente. & Interno & Crítico & Gestionar de cerca \\
+Enfermero/a & Usuario & Comunicación directa y privada con el paciente. & Interno & Crítico & Gestionar de cerca \\
+Personas que se comunican con LSA & Usuario & Comunicación directa y privada con el personal. & Externo & Crítico & Gestionar de cerca \\
+Natalia García Escudé & Doctora que aporta información & Que el grupo ponga en práctica el proyecto pronto. & Externo & Defensor & Mantener informado \\
+Competencia & --- & Que el producto no supere al suyo. & Externo & Latente & --- \\
+Creadores del dataset público de LSA & Aporte de datos & No registradas. & Externo & Neutral & Esfuerzo mínimo \\
+Frameworks y librerías de código & MediaPipe, NumPy, Pandas, TensorFlow, OpenCV & No registradas. & Externo & Neutral & Esfuerzo mínimo \\
+\end{longtable}
+}
+
+Los interesados de alto poder y alto interés (tutor, cotutor, sanatorio, recepcionista, enfermero/a y pacientes usuarios de LSA) se gestionan de cerca; el Estado y la competencia, de alto poder y bajo interés, se mantienen satisfechos o monitoreados; la doctora colaboradora, de bajo poder y alto interés, se mantiene informada; y los creadores del dataset y las librerías requieren esfuerzo mínimo. El Acta de Constitución y el Plan de Dirección identifican, además, a la comunidad de intérpretes de LSA (validación lingüística del dataset), a la cátedra y la universidad, a otras universidades referentes (UTN, UNC y UNLP) y al personal médico y administrativo como usuarios operativos del sistema.
 
 \section{Gestión de riesgos del proyecto}
+
 \subsection{Identificación y análisis cualitativo}
-\pendiente{fuente: TP5 (Registro de riesgos).}
+
+El Registro de Riesgos identifica 26 eventos, cada uno asociado a un paquete de la EDT. Para cada riesgo se estimó el impacto en una escala de 1 a 5, la probabilidad de ocurrencia y el área del proyecto afectada (tiempo, alcance o coste); el valor monetario esperado (VME) resulta del producto entre impacto y probabilidad, y la calificación clasifica el riesgo como inaceptable, aceptable con atención o aceptable. De los 26 riesgos, 13 son inaceptables, 11 son aceptables con atención y 2 son aceptables; todos figuran en estado abierto. La tabla~\ref{tab:riesgos} los detalla.
+
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{@{}p{0.6cm}p{0.95cm}p{5.4cm}p{2.0cm}p{0.9cm}p{1.0cm}p{0.9cm}p{2.1cm}@{}}
+\caption{Registro de riesgos: identificación y análisis cualitativo.}\label{tab:riesgos}\\
+\toprule
+\textbf{ID} & \textbf{EDT} & \textbf{Descripción del riesgo} & \textbf{Área afectada} & \textbf{Imp.} & \textbf{Prob.} & \textbf{VME} & \textbf{Calificación} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{EDT} & \textbf{Descripción del riesgo} & \textbf{Área afectada} & \textbf{Imp.} & \textbf{Prob.} & \textbf{VME} & \textbf{Calificación} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{8}{r}{\emph{Continúa en la página siguiente}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+1 & 3.2.5 & Falta de disponibilidad de intérpretes oficiales de LSA para validar el dataset clínico y las señas médicas. & Tiempo, alcance, coste & 5 & 30~\% & 1,5 & Inaceptable \\
+2 & 5.2.2 & Sobreajuste del modelo durante el entrenamiento, que limita la generalización de las señas. & Tiempo, alcance & 4 & 40~\% & 1,6 & Aceptable con atención \\
+3 & 1.1.2 & Resistencia o falta de colaboración del personal de guardia en la recolección de requisitos. & Tiempo & 3 & 50~\% & 1,5 & Aceptable con atención \\
+4 & 6.2.1 & Iluminación deficiente en los boxes de admisión que impida a la cámara captar rasgos y profundidad. & Alcance & 5 & 25~\% & 1,25 & Inaceptable \\
+5 & 4.1.3 & Latencia del procesamiento de video con IA superior al umbral de 1~segundo. & Alcance, coste & 5 & 35~\% & 1,75 & Inaceptable \\
+6 & 5.2.1 & Ruido visual del entorno hospitalario que afecte la extracción de coordenadas (x, y, z) de la postura. & Alcance, tiempo & 4 & 60~\% & 2,4 & Aceptable con atención \\
+7 & 6.2.1 & Interrupción del suministro eléctrico o de la red local durante las pruebas piloto. & Tiempo & 3 & 45~\% & 1,35 & Aceptable con atención \\
+8 & 6.1.1 & Hardware local del sanatorio con capacidad insuficiente para ejecutar con fluidez los contenedores Docker. & Tiempo, coste & 4 & 20~\% & 0,8 & Inaceptable \\
+9 & 3.2.4 & Dificultad para compilar y grabar suficientes muestras de LSA de vocabulario médico específico (por ejemplo, niveles de dolor). & Alcance, tiempo & 5 & 30~\% & 1,5 & Inaceptable \\
+10 & 4.2.1 & Diseño de interfaz confuso o poco ergonómico para pacientes sordos durante la atención. & Tiempo, alcance & 3 & 40~\% & 1,2 & Aceptable con atención \\
+11 & 3.2.3 & Audio poco natural o incomprensible del módulo de texto a voz sin conexión. & Alcance & 2 & 50~\% & 1,0 & Aceptable \\
+12 & 5.4.2 & Falta de stock local o aumento de precios de las pantallas de doble cara y cámaras web estándar. & Tiempo, coste & 4 & 35~\% & 1,4 & Inaceptable \\
+13 & 4.1.1 & Restricciones legales o cambios en normativas de privacidad del sanatorio sobre la captura de video de pacientes. & Alcance, tiempo, coste & 5 & 15~\% & 0,75 & Inaceptable \\
+14 & 2.2.1 & Renuncia, enfermedad o reasignación de un desarrollador clave del equipo. & Tiempo, coste & 5 & 20~\% & 1,0 & Inaceptable \\
+15 & 5.4.3 & El personal administrativo prefiere su método tradicional y no se adapta a la estación fija. & Alcance, tiempo & 4 & 45~\% & 1,8 & Aceptable con atención \\
+16 & 5.2.2 & Falla del modelo de IA al capturar e interpretar gestos faciales no manuales vitales en la sintaxis de la LSA. & Alcance & 5 & 30~\% & 1,5 & Inaceptable \\
+17 & 2.3.2 & Inflación e inestabilidad económica que superen la reserva de gestión y contingencia del presupuesto. & Coste & 3 & 70~\% & 2,1 & Aceptable con atención \\
+18 & 5.4.1 & Problemas de integración y sincronización de datos entre el \emph{frontend} y el motor de inferencia. & Tiempo & 3 & 50~\% & 1,5 & Aceptable con atención \\
+19 & 5.2.1 & Fallo del algoritmo al normalizar el tamaño de manos y cuerpo según la distancia del paciente a la pantalla. & Alcance, tiempo & 4 & 40~\% & 1,6 & Aceptable con atención \\
+20 & 3.1.2 & Publicación de una tecnología abierta de traducción médica que vuelva obsoleta parte de la base tecnológica. & Alcance & 2 & 15~\% & 0,3 & Aceptable \\
+21 & 5.4.3 & El sanatorio revoca o posterga el acceso físico a los boxes de triaje para el piloto. & Tiempo, coste & 5 & 20~\% & 1,0 & Inaceptable \\
+22 & 5.1.1 & Un integrante reduce drásticamente su participación por no regularizar materias correlativas. & Alcance, tiempo & 5 & 30~\% & 1,5 & Inaceptable \\
+23 & 5.3.1 & Retraso severo en tareas de la ruta crítica con holgura cero, que compromete la fecha de entrega de la tesis. & Tiempo, coste & 5 & 35~\% & 1,75 & Inaceptable \\
+24 & 5.4.1 & Flujos de datos entre \emph{frontend} y modelo de IA con latencias inmanejables, que exigen reescribir la lógica de conexión. & Alcance, tiempo, coste & 5 & 30~\% & 1,5 & Inaceptable \\
+25 & 5.1.1 & Un integrante disminuye su ritmo durante los exámenes parciales, sin abandonar el proyecto. & Tiempo & 3 & 70~\% & 2,1 & Aceptable con atención \\
+26 & 5.2.2 & El entrenamiento toma un 15~\% más de cómputo del planificado para superar la precisión mínima del 85~\% (CRIT-03). & Tiempo, coste & 3 & 50~\% & 1,5 & Aceptable con atención \\
+\end{longtable}
+}
+
+La tabla~\ref{tab:matriz} ubica los riesgos en la matriz de impacto y probabilidad; los identificadores en negrita corresponden a riesgos inaceptables. Los 11 riesgos de impacto 5 son todos inaceptables, entre ellos la disponibilidad de intérpretes, la latencia, la disponibilidad de muestras clínicas, la captura de gestos no manuales y la ruta crítica.
+
+\begin{table}[htbp]
+\centering
+\caption{Matriz de impacto y probabilidad (identificadores de riesgo).}\label{tab:matriz}
+\small
+\begin{tabularx}{\textwidth}{@{}lXXXX@{}}
+\toprule
+\textbf{Probabilidad} & \textbf{Impacto 2} & \textbf{Impacto 3} & \textbf{Impacto 4} & \textbf{Impacto 5} \\
+\midrule
+15~\% & 20 & --- & --- & \textbf{13} \\
+20~\% & --- & --- & \textbf{8} & \textbf{14}, \textbf{21} \\
+25~\% & --- & --- & --- & \textbf{4} \\
+30~\% & --- & --- & --- & \textbf{1}, \textbf{9}, \textbf{16}, \textbf{22}, \textbf{24} \\
+35~\% & --- & --- & \textbf{12} & \textbf{5}, \textbf{23} \\
+40~\% & --- & 10 & 2, 19 & --- \\
+45~\% & --- & 7 & 15 & --- \\
+50~\% & 11 & 3, 18, 26 & --- & --- \\
+60~\% & --- & --- & 6 & --- \\
+70~\% & --- & 17, 25 & --- & --- \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
 \subsection{Plan de respuesta}
-\pendiente{matriz impacto/probabilidad y plan por riesgo principal. Fuente: TP5.}
+
+Los 13 riesgos inaceptables cuentan con un plan de respuesta que combina acciones para evitar, mitigar o transferir el riesgo y acciones de contingencia, estas últimas con cargo, cuando corresponde, a la reserva de gestión. La tabla~\ref{tab:respuesta} lo sintetiza.
+
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{longtable}{@{}p{1.5cm}p{3.5cm}p{5.0cm}p{4.9cm}@{}}
+\caption{Plan de respuesta a los riesgos inaceptables.}\label{tab:respuesta}\\
+\toprule
+\textbf{Riesgo} & \textbf{Evitar o transferir} & \textbf{Mitigar} & \textbf{Contingencia} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Riesgo} & \textbf{Evitar o transferir} & \textbf{Mitigar} & \textbf{Contingencia} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{4}{r}{\emph{Continúa en la página siguiente}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+1. Intérpretes de LSA & Validación asincrónica con secuencias grabadas de 30 \emph{frames}. & Contacto temprano con la Confederación Argentina de Sordos o asociaciones locales; dos integrantes depuran y estructuran el dataset antes de enviarlo. & Entrenar el PMV solo con LSA64 de manera temporal; contratar intérpretes externos por videollamada con la reserva de gestión. \\
+4. Iluminación & Instalar las estaciones solo en áreas con iluminación comprobada. & Aumento de datos; pruebas sobre hardware físico; cámaras de 720p/1080p con buena compensación de exposición. & Paneles LED direccionales con la reserva de contingencia; reubicar el piloto en otro box. \\
+5. Latencia & Extraer solo las coordenadas (x, y, z) con MediaPipe en lugar de procesar píxeles. & Inferencia 100~\% local; modelo espacio-temporal que clasifica solo vectores numéricos; medir los tiempos durante el desarrollo del servidor API. & Procesar solo los 21 puntos de manos y rostro; dotar a la estación de una GPU básica con la reserva. \\
+8. Hardware del sanatorio & Restringir el diseño a componentes estándar de mercado. & Solo coordenadas (más liviano que el video); scripts de inicio y parada; pruebas tempranas sobre el hardware físico. & GPU básica con la reserva; trasladar la inferencia a un servidor local de la intranet. \\
+9. Muestras de vocabulario médico & Reuniones previas con intérpretes para confirmar el vocabulario antes de grabar. & Prototipar con LSA64; grabar coordenadas en lugar de video. & Aumento de datos propio; grabación piloto de emergencia reducida a 10 señas críticas con 5 personas. \\
+12. Stock y precios de hardware & Hardware comercial genérico; \emph{transferir:} comprar los componentes en las etapas iniciales. & Monitorear inflación y divisas; cotizar en dólares a proveedores e inversores. & Reserva de gestión para sobrecostos; soporte propio que una dos monitores o tabletas. \\
+13. Normativa de privacidad & Arquitectura sin almacenamiento persistente (CRIT-04); inferencia 100~\% local. & Extraer solo características numéricas; consentimiento explícito antes de capturar señas. & Limitar las pruebas a laboratorio hasta la aprobación legal del sanatorio; operar solo con seguimiento de manos. \\
+14. Desarrollador clave & Confirmar tempranamente los compromisos académicos. & Revisiones de código cruzadas; validación grupal de las estimaciones de la EDT; documentación técnica exhaustiva. & Contratar un recurso temporal con la reserva; reasignar tareas al equipo. \\
+16. Gestos no manuales & Variar distancia e iluminación en la captura propia de datos. & Aumento de datos sintético; evaluación continua con datos de validación; limitar el vocabulario al triaje de baja urgencia. & Ajustar pesos según las matrices de confusión; reducir el PMV a 10 señas críticas de mayor confianza. \\
+21. Acceso al sanatorio & Formalizar acuerdos tempranos de disponibilidad de las instalaciones. & Docker y scripts para portabilidad; hardware que no requiera intervenir la red; pruebas E2E en un laboratorio de la facultad. & Trasladar el piloto al Hospital Nuestra Señora del Carmen; replantear el cronograma con la reserva financiera. \\
+22. Participación reducida & Consultar la carga académica real antes de asignar paquetes largos. & Reuniones grupales periódicas para redistribuir cargas; documentación técnica exhaustiva. & Reasignar tareas; apoyo temporal con la reserva. \\
+23. Ruta crítica & Lecciones aprendidas y juicio de expertos al estimar. & Coeficientes de contingencia de tiempo; monitoreo estricto de las tareas sin holgura. & Compresión (\emph{crashing}) con las reservas; desarrollo paralelo de \emph{frontend} y \emph{backend}. \\
+24. Flujos \emph{frontend}--modelo & Aprobar los \emph{wireframes} con el personal médico antes de programar. & Guía de usuario anticipada; transiciones de estado de escucha muy simples. & Vista médica reducida a un chat básico; capacitación presencial en los cambios de turno. \\
+\end{longtable}
+}
+
+\pendiente{el riesgo 24 se describe en el Registro de Riesgos como latencia entre \emph{frontend} y modelo de IA, pero su hoja de plan (y el Plan de Dirección) responde a un rechazo del personal médico durante las pruebas; corregir en la fuente o ajustar la fila de la tabla antes de entregar.}
+
+Varias de las medidas de evitación y mitigación se materializaron en el PMV: el procesamiento es íntegramente local, el \emph{backend} recibe solo las coordenadas de las manos y la estación del paciente exige consentimiento antes de activar la cámara, lo que responde a los riesgos 5, 8 y 13.
 
 \section{Plan de gestión del proyecto}
-\pendiente{EDT, roles y responsabilidades, comunicaciones y presupuesto. Fuente: TP3, TP4 (Planificación Financiera) y TP6 (Plan de Dirección).}
+
+\subsection{Estructura de desglose del trabajo}
+
+La EDT descompone el proyecto en seis fases, dieciséis entregables y 36 paquetes de trabajo, con un esfuerzo total de 1.136~horas. La tabla~\ref{tab:edt} la resume hasta el nivel de paquete.
+
+{\footnotesize
+\begin{longtable}{@{}p{3.0cm}p{3.4cm}p{6.9cm}p{1.1cm}@{}}
+\caption{Estructura de desglose del trabajo: fases, entregables y paquetes.}\label{tab:edt}\\
+\toprule
+\textbf{Fase (nivel 1)} & \textbf{Entregable (nivel 2)} & \textbf{Paquetes de trabajo (nivel 3)} & \textbf{Horas} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Fase (nivel 1)} & \textbf{Entregable (nivel 2)} & \textbf{Paquetes de trabajo (nivel 3)} & \textbf{Horas} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{4}{r}{\emph{Continúa en la página siguiente}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+\textbf{1. Documentación inicial} (24~h) & 1.1 Documentación inicial & 1.1.1 Acta de Constitución; 1.1.2 Registro de interesados & 24 \\
+\midrule
+\textbf{2. Plan de gestión del proyecto} (216~h) & 2.1 Alcance, matriz de trazabilidad y EDT & 2.1.1 Matriz de trazabilidad de requisitos; 2.1.2 Definición del alcance; 2.1.3 EDT & 68 \\
+ & 2.2 Cronograma & 2.2.1 Planificación de actividades; 2.2.2 Confección del cronograma & 48 \\
+ & 2.3 Viabilidad económica & 2.3.1 Estimación económica; 2.3.2 Determinación del presupuesto & 44 \\
+ & 2.4 Plan de gestión de riesgos & 2.4.1 Identificar los riesgos; 2.4.2 Planificar la gestión de riesgos & 56 \\
+\midrule
+\textbf{3. Análisis} (250~h) & 3.1 Informe de investigación & 3.1.1 Obtención de tecnologías; 3.1.2 Investigación de sistemas similares & 68 \\
+ & 3.2 Documentación del análisis & 3.2.1 Especificación de funcionalidades; 3.2.2 Análisis del dataset y del modelo de IA; 3.2.3 Análisis del módulo de texto a voz; 3.2.4 Dataset médico especializado; 3.2.5 Validación lingüística con intérpretes de LSA & 182 \\
+\midrule
+\textbf{4. Diseño} (110~h) & 4.1 Diseño de arquitectura y APIs & 4.1.1 Arquitectura del sistema; 4.1.2 Endpoints; 4.1.3 Flujo de datos & 72 \\
+ & 4.2 Diseño de interfaz de usuario & 4.2.1 Wireframes; 4.2.2 Maquetación estética y estilos & 38 \\
+\midrule
+\textbf{5. Desarrollo del sistema} (484~h) & 5.1 Desarrollo del \emph{frontend} & 5.1.1 Estructura y maquetación del cliente; 5.1.2 Consumo de endpoints & 236 \\
+ & 5.2 Desarrollo de la IA y procesamiento del dataset & 5.2.1 Preprocesamiento de datos; 5.2.2 Entrenamiento y validación de la IA & 88 \\
+ & 5.3 Desarrollo del \emph{backend} & 5.3.1 Servidor API de interconexión & 36 \\
+ & 5.4 Pruebas del sistema & 5.4.1 Pruebas E2E; 5.4.2 Pruebas con hardware físico; 5.4.3 Validación con usuarios reales (médicos) & 88 \\
+ & 5.5 Presentación de la versión final & 5.5.1 Guía de usuario; 5.5.2 Informe final del sistema & 36 \\
+\midrule
+\textbf{6. Despliegue y seguridad de datos} (52~h) & 6.1 Contenedorización y empaquetado & 6.1.1 Entornos aislados (Docker); 6.1.2 Scripts de automatización & 30 \\
+ & 6.2 Pruebas de despliegue & 6.2.1 Pruebas de funcionamiento en entorno desconectado & 22 \\
+\end{longtable}
+}
+
+\subsection{Roles y responsabilidades}
+
+La tabla~\ref{tab:roles} presenta la estructura del equipo. Cada paquete de la EDT tiene un integrante responsable y la matriz de asignación de responsabilidades del Plan de Dirección indica quién responde y quién participa en cada uno. Medido por el esfuerzo de los paquetes que cada integrante lidera, la carga es de 248 horas para Hamada, 300 para Arnedo, 296 para García Tarcic y 292 para Véliz, lo que suma las 1.136 horas de la EDT.
+
+\begin{table}[htbp]
+\centering
+\caption{Roles y responsabilidades.}\label{tab:roles}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}p{3.1cm}p{3.3cm}X@{}}
+\toprule
+\textbf{Integrante} & \textbf{Rol} & \textbf{Responsabilidades} \\
+\midrule
+Hamada, Santino & Director de Proyecto y Líder Técnico & Coordinación general, gestión del cliente, planificación, control del cronograma, asignación de tareas, definición de la arquitectura y supervisión técnica. \\
+García Tarcic, Iñaki Ezequiel & Analista Funcional y Desarrollador Backend & Relevamiento de requisitos, definición de KPI y evaluación de impacto; diseño e implementación de la lógica del servidor, las APIs y la integración de servicios. \\
+Véliz, Héctor Matías & QA y Testing; Desarrollador Frontend & Diseño de pruebas, validación del sistema y medición de métricas operativas; diseño y desarrollo de la interfaz de usuario. \\
+Arnedo, Emmanuel Augusto & Desarrollador IA; Fullstack y QA & Implementación de los modelos de visión por computadora y optimización del sistema; desarrollo integral de \emph{frontend} y \emph{backend} y aseguramiento de la calidad. \\
+Vicente, Francisco José & Tutor & Supervisión académica y técnica principal; orientación metodológica y directrices estratégicas. \\
+López, Emmanuel & Cotutor & Asistencia en la tutoría y supervisión técnica; acompañamiento en las decisiones de diseño y ejecución. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Como subcontratistas y proveedores, el Plan de Dirección identifica a los intérpretes de LSA (validación lingüística del dataset y asesoramiento en vocabulario clínico), los proveedores de hardware (cámaras y pantallas) y las instituciones de salud locales (espacio para pruebas piloto y validación en entorno real).
+
+\subsection{Comunicaciones}
+
+La documentación del proyecto no incluye un plan de comunicaciones formal; las prácticas registradas son las siguientes. El tutor, el cotutor, el sanatorio y los usuarios (recepción, enfermería y pacientes) se gestionan de cerca según el Registro de Interesados. El relevamiento se realizó mediante entrevistas con el personal de salud y una reunión con el cliente para definir los requisitos. Los documentos formales se redactaron en conjunto y fueron revisados por el tutor y el cotutor, y varios entregables se subieron en una primera versión para recibir su devolución. Como medida de gestión de riesgos, se previeron reuniones grupales periódicas para evaluar la carga del equipo y redistribuir tareas.
+
+\pendiente{canales y frecuencia de las comunicaciones internas y con el cliente: no figuran en el Plan de Dirección ni en el Registro de Interesados; completar con el equipo.}
+
+\subsection{Presupuesto}
+
+El Plan Financiero estima la ejecución entre el 12/05/2026 y el 17/12/2026, con un esfuerzo total de 1.136~horas. Los importes se expresan en pesos argentinos; la tabla~\ref{tab:presupuesto} los resume por rubro, con y sin la contingencia asignada a cada uno.
+
+\begin{table}[htbp]
+\centering
+\caption{Resumen del presupuesto por rubro (en pesos, sin IVA salvo indicación).}\label{tab:presupuesto}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}p{3.0cm}Xrr@{}}
+\toprule
+\textbf{Rubro} & \textbf{Detalle} & \textbf{Sin contingencia} & \textbf{Con contingencia} \\
+\midrule
+Personal & 1.136~horas de cuatro integrantes. & 10.780.000 & 11.876.000 \\
+Subcontrataciones & 26~horas de intérpretes de LSA a \$7.000 por hora; 32~horas de personal de salud sin costo. & 182.000 & 191.100 \\
+Costes varios & Cuatro notebooks, internet, electricidad, cámara y micrófono. & 784.560 & 806.582,88 \\
+Otros gastos & Material y equipo (viáticos de reunión), viajes y cuentas compartidas de un asistente de IA. & 217.200 & 221.544 \\
+\midrule
+\textbf{Total de costes y gastos} & Contingencia total: \$1.132.240. & \textbf{11.963.760} & \textbf{13.096.000} \\
+Margen fijo (15~\%) & Sobre el total con contingencia. & & 1.964.400 \\
+\textbf{Precio de venta (sin IVA)} & & & \textbf{15.060.400} \\
+Precio de venta con IVA (21~\%) & & & 18.223.084 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+El costo de personal se calculó con tarifas de \$10.000 por hora para las categorías de Líder Técnico y Desarrollador Backend, y de \$9.000 por hora para Desarrollador Frontend y para QA y Desarrollador Fullstack; las horas por categoría son 258 de Líder Técnico (132 y 126), 298 de Desarrollador Backend (166 y 132), 342 de Desarrollador Frontend (182 y 160) y 238 de QA y Fullstack (126 y 112). Las tasas de contingencia varían por rubro entre el 1~\% y el 11~\%.
+
+Según el Plan Financiero, los ingresos provendrían de fondos de investigación y desarrollo (FONCyT y PROINE) y de la participación en el Premio INVAP a las mejores tesis de ingeniería, distribuidos en ocho pagos escalonados a lo largo de la ejecución: \$1.000.000, \$4.000.000, \$3.000.000, \$2.000.000, \$1.000.000, \$1.500.000, \$1.000.000 y \$2.000.000, que suman \$15.500.000. El Plan de Dirección agrega los aportes del cliente principal, el Sanatorio 9 de Julio, dentro de un esquema financiero mixto.

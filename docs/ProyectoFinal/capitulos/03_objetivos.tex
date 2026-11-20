@@ -1,7 +1,40 @@
 \chapter{Objetivos}
 
 \section{Objetivo general}
-\pendiente{propósito central, sin indicadores. Fuente: TP1 (Acta).}
+
+Desarrollar e implementar un sistema tecnológico basado en inteligencia artificial y visión por computadora que facilite la comunicación entre las personas usuarias de la Lengua de Señas Argentina (LSA) y el personal de salud en entornos de atención médica, con el fin de mejorar la accesibilidad, la calidad de la interacción clínica y la equidad en el acceso al sistema sanitario.
 
 \section{Objetivos específicos}
-\pendiente{objetivos específicos del Acta: medibles, con plazo, realistas y verificables. Cada uno se retoma en el capítulo de Resultados.}
+
+El Acta de Constitución define diez objetivos específicos, cada uno con una meta cuantificada, un plazo y un medio de verificación. La tabla~\ref{tab:objetivos} los resume; cada uno se retoma en el capítulo de Resultados.
+
+{\footnotesize
+\begin{longtable}{@{}p{0.9cm}p{2.8cm}p{5.3cm}p{2.8cm}p{2.2cm}@{}}
+\caption{Objetivos específicos del proyecto.}\label{tab:objetivos}\\
+\toprule
+\textbf{ID} & \textbf{Objetivo} & \textbf{Meta} & \textbf{Verificación} & \textbf{Plazo} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Objetivo} & \textbf{Meta} & \textbf{Verificación} & \textbf{Plazo} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{5}{r}{\emph{Continúa en la página siguiente}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+OE01 & Reducir el tiempo de comunicación & Reducir al menos un 80~\% el tiempo promedio de las interacciones administrativas y de triaje de pacientes usuarios de LSA: de 4~minutos a menos de 1~minuto por interacción. & Registros del sistema & Primeros 6~meses de implementación \\
+OE02 & Optimizar el flujo en urgencias & Contribuir a reducir al menos un 50~\% la brecha de permanencia entre pacientes sordos y oyentes (hoy 30~minutos adicionales). & Evolución del indicador, controlando variables contextuales & Primer año de uso operativo \\
+OE03 & Recuperar horas operativas & Recuperar un mínimo estimado de 150~horas anuales del personal de guardia, sobre un volumen aproximado de 50.000 consultas, a partir del triaje de baja complejidad (categorías verde y azul). & Extrapolación de tiempos promedio registrados & Primer año de implementación \\
+OE04 & Mejorar la comprensión clínica & Elevar la comprensión adecuada de diagnósticos e indicaciones médicas desde un valor base cercano al 18~\% a niveles superiores al 90~\%. & Encuestas estructuradas posatención y preguntas de control & 12~meses posteriores a la adopción \\
+OE05 & Reducir readmisiones & Evaluar y contribuir a reducir la readmisión hospitalaria a 30~días de valores cercanos al 24,3~\% a niveles inferiores al 15~\%. & Análisis longitudinal de datos & Primeros 24~meses de funcionamiento \\
+OE06 & Precisión del reconocimiento & Alcanzar una precisión mínima del 90~\% en contextos clínicos controlados y de al menos el 85~\% en entornos reales de guardia. & Métricas estándar de clasificación (\emph{accuracy}, \emph{recall}, \emph{F1-score}) & Fase piloto y primeros 6~meses de operación \\
+OE07 & Latencia del sistema & Garantizar un tiempo de respuesta inferior a 1~segundo en la interpretación de señas en tiempo real. & Latencia promedio en condiciones operativas normales & Despliegue inicial \\
+OE08 & Adopción por el personal & Lograr que al menos el 70~\% del personal de recepción y triaje utilice activamente el sistema. & Registros de uso e interacción & Primeros 6~meses de implementación \\
+OE09 & Satisfacción del usuario & Alcanzar una satisfacción superior al 85~\% en pacientes usuarios de LSA, considerando claridad comunicacional, autonomía y percepción de dignidad. & Encuestas posconsulta & No especificado en el Acta \\
+OE10 & Protección de la privacidad & Garantizar que el 100~\% de las interacciones se realicen sin almacenamiento persistente de imágenes o datos sensibles. & Auditorías técnicas y cumplimiento de normativas de protección de datos & Todo el ciclo de vida del sistema \\
+\end{longtable}
+}
+
+Los objetivos se agrupan en tres atributos: tiempos (OE01, OE02, OE07), costos y recursos (OE03) y alcance y calidad (OE04, OE06, OE08, OE09, OE10); OE05 mide el resultado clínico a largo plazo. Su formulación como metas con plazo y medio de verificación permite contrastarlos con los resultados obtenidos. Varios de ellos (OE02, OE03, OE05, OE08 y OE09) requieren operación sostenida en la guardia del sanatorio, etapa que el Informe Final registra como posterior al PMV.
