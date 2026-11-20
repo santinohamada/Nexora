@@ -1,2 +1,57 @@
-\chapter{Conclusiones}
-\pendiente{conclusiones del proyecto, limitaciones del PMV y trabajo futuro (vocabulario ampliado, validación con intérpretes, instalación en la guardia).}
+\chapter{Conclusiones}\label{cap:conclusiones}
+
+Este capítulo cierra el informe: valora en qué medida el proyecto cumplió su objetivo general, resume lo aprendido en la gestión, declara con franqueza las limitaciones del Producto Mínimo Viable (PMV) y propone el trabajo futuro. Las cifras provienen del capítulo de Resultados (capítulo~\ref{cap:resultados}) y no se reproducen más que lo necesario.
+
+\section{Conclusiones generales}\label{sec:concl-generales}
+
+El objetivo general (capítulo de Objetivos) consistía en desarrollar e implementar un sistema basado en inteligencia artificial y visión por computadora que facilite la comunicación entre personas usuarias de la Lengua de Señas Argentina (LSA) y el personal de salud. Con el alcance de un PMV, ese objetivo se cumplió \emph{en su parte de desarrollo}: existe un sistema funcional que traduce señas a texto y voz en español y permite al personal responder por texto o dictado. La parte de \emph{implementación} en la guardia del Sanatorio 9 de Julio no se realizó, por lo que el impacto sobre la accesibilidad, la calidad de la interacción y la equidad en el acceso, que son el fin último del objetivo general, no pudo medirse (sección~\ref{sec:res-objetivos}).
+
+Lo que el proyecto sí demostró, con evidencia propia, es lo siguiente:
+\begin{itemize}
+  \item \textbf{Reconocimiento local y en tiempo real con hardware comercial.} Los 15 casos de prueba quedaron aprobados al cierre del ciclo~2 y la latencia percibida cumplió la meta de 1~segundo (OE07, CRIT-01), usando una PC y una cámara web comunes, sin hardware médico ni servicios en la nube (tabla~\ref{tab:metricas}). Esto es coherente con lo anticipado en el estado del arte sobre el reconocimiento de pose en el dispositivo (capítulo~\ref{cap:estado-arte}).
+  \item \textbf{Privacidad por diseño.} Al backend solo llegan coordenadas de \emph{landmarks}; las imágenes no salen del navegador, la cámara se activa únicamente tras el consentimiento y el sistema funcionó sin conexión a Internet (CRIT-04 y CRIT-07, tabla~\ref{tab:crit-res}). La verificación fue propia y no una auditoría independiente.
+  \item \textbf{Canal bidireccional.} El flujo completo, desde la seña hasta la respuesta del personal, está implementado en dos estaciones (Paciente y Recepción), con una herramienta interna, el Modo Captura, que permite ampliar el vocabulario y reentrenar el modelo (sección~\ref{sec:res-producto}).
+  \item \textbf{Exactitud en condición controlada.} La validación cruzada arrojó una exactitud media del 98,67~\% sobre el vocabulario del PMV, por encima de la meta del 90~\% (OE06, CRIT-02), con la salvedad de generalización que se detalla más abajo.
+\end{itemize}
+
+En síntesis, de los diez objetivos específicos uno se cumplió, dos se cumplieron parcialmente y siete no son evaluables con un PMV (tabla~\ref{tab:res-objetivos}). Esa distribución no es un fracaso del proyecto sino la consecuencia de su alcance: los objetivos de impacto operativo y clínico exigen operación sostenida en la guardia, una etapa que el plan registró desde el inicio como posterior al PMV.
+
+\section{Conclusiones sobre la gestión}\label{sec:concl-gestion}
+
+El proyecto se gestionó con la Guía del PMBOK como marco de planificación y control y con desarrollo iterativo e incremental del producto (capítulo~\ref{cap:gestion}). Esa combinación permitió disponer de una versión mínima funcional temprana, que hizo posible medir latencia y precisión antes de las pruebas formales, y conservar la trazabilidad entre requisitos, casos de prueba y criterios de aceptación que exigían los entregables de la cátedra.
+
+En términos de cronograma, el balance acumulado fue de nueve días de adelanto sobre las fechas originales del Informe Final, aunque con hitos demorados (sección~\ref{sec:res-gestion}); el PMV estuvo dentro de la fecha del Acta y las pruebas formales se ejecutaron en dos ciclos. El segundo ciclo cerró los defectos abiertos por el primero, lo que muestra que el proceso de prueba cumplió su función: el ciclo~1 aprobó 2 de 15 casos y detectó defectos críticos que el ciclo~2 permitió verificar como corregidos (anexo~\ref{anx:defectos}).
+
+Funcionó bien: acotar el alcance a un vocabulario pequeño y decidirlo de forma explícita; atender temprano los riesgos de privacidad, latencia y portabilidad con medidas que terminaron materializadas en el producto; y construir un dataset propio con el Modo Captura en lugar de depender de datos ajenos. Quedó pendiente el registro de costos reales, que el Informe Final no incluye, por lo que no es posible contrastar el gasto con el presupuesto.
+
+\section{Limitaciones del PMV}\label{sec:concl-limitaciones}
+
+Las siguientes limitaciones deben leerse junto con cualquier cifra del informe.
+
+\begin{itemize}
+  \item \textbf{Vocabulario mínimo.} El sistema reconoce cuatro señas (yo, cabeza, dolor y respirar) más la clase de reposo. Los resultados no se extrapolan a un vocabulario clínico más amplio.
+  \item \textbf{Una sola sesión de grabación.} Las particiones de la validación cruzada provienen de una única sesión (misma persona, iluminación y día). La exactitud del 98,67~\% puede por ello sobrestimar la generalización a otras personas y condiciones, y no se midió el \emph{F1-score}.
+  \item \textbf{Margen de latencia estrecho.} El p95 de 945~ms cumple la meta de 1~s, pero con poca holgura, y se midió con una persona en la estación de prueba. Debe repetirse en la estación definitiva.
+  \item \textbf{Sin validación lingüística.} Las señas provienen de un diccionario de referencia (Spreadthesign) y no cuentan con el aval de intérpretes de LSA ni de la comunidad sorda, por lo que CRIT-05 no se cumplió.
+  \item \textbf{Sin piloto en la guardia.} Al no haberse operado en el sanatorio, OE01 a OE05, OE08 y OE09 no son evaluables, y no se evaluó la precisión en entorno real (parte de OE06). Las líneas de base de OE02, OE04 y OE05 provienen de estudios en otras poblaciones (sección~\ref{sec:guardias}); su primera medición local forma parte de esa etapa.
+  \item \textbf{Estación física pendiente.} La estación fija de doble cara (RNF-07) no forma parte del PMV; la prueba usó componentes estándar (CRIT-06).
+  \item \textbf{Verificación de privacidad propia.} OE10 se verificó mediante pruebas del equipo; una auditoría independiente y la revisión normativa son posteriores.
+\end{itemize}
+
+\section{Trabajo futuro}\label{sec:concl-futuro}
+
+Se ordenan por prioridad, de lo que condiciona la validez de los resultados actuales a lo que amplía el alcance del producto.
+
+\begin{enumerate}
+  \item \textbf{Ampliar el vocabulario y la diversidad de las grabaciones.} Incorporar señas del triaje de baja complejidad mediante el Modo Captura, con grabaciones de varias personas, incluidas personas sordas usuarias de LSA, en distintas condiciones de iluminación y cámara. Es la medida que más directamente reduce el riesgo de sobreestimar la generalización.
+  \item \textbf{Validar con intérpretes y con la comunidad.} Someter las señas y las traducciones a la revisión de intérpretes de LSA y de personas de la comunidad sorda, para cumplir CRIT-05 y reemplazar la fuente de referencia por un vocabulario avalado.
+  \item \textbf{Realizar un piloto en la guardia del sanatorio.} Operar el sistema en el servicio, medir localmente las líneas de base y los indicadores de OE01 a OE05, OE08 y OE09, y evaluar la precisión en entorno real, con las salvaguardas éticas y de consentimiento correspondientes.
+  \item \textbf{Repetir la medición de latencia en la estación definitiva} y con más de una persona, para confirmar que el margen del p95 se sostiene.
+  \item \textbf{Construir la estación fija de doble cara} (sistema completo), con el hardware y la verificación que exige RNF-07.
+  \item \textbf{Incorporar componentes no manuales.} Aprovechar expresión facial y posición de cabeza y torso, que el estado del arte señala como parte de la gramática de la LSA y que los sistemas suelen aprovechar poco.
+  \item \textbf{Pasar del reconocimiento de señas aisladas al de oraciones continuas}, de modo que la traducción respete la gramática propia de la LSA y no solo el orden de las señas.
+\end{enumerate}
+
+\section{Cierre}\label{sec:concl-cierre}
+
+La Ley 27.710 reconoce a la LSA como lengua natural y originaria, pero deja sin resolver cómo garantizar ese derecho en cada institución de salud. LSA Salud no resuelve ese problema por sí sola ni reemplaza a los intérpretes humanos; aporta una prueba de concepto de que un canal de comunicación local, que no almacena imágenes y corre en hardware común, es técnicamente viable. Que llegue a ser una herramienta útil para las personas sordas que se atienden en una guardia depende de lo que este informe deja explícitamente pendiente: la validación con la comunidad y la prueba en el servicio.
