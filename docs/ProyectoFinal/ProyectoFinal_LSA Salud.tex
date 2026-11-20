@@ -1,0 +1,42 @@
+% ============================================================================
+% ProyectoFinal_LSA Salud.tex — Informe de Proyecto Final de Grado.
+% Estructura: plantilla UTN-FRT 2023 + requisitos mínimos de la Ord. 1825
+% (resumen de hasta ~200 palabras y palabras clave). Citas en APA.
+% Compilar: latexmk -pdf -outdir=build "ProyectoFinal_LSA Salud.tex"
+% ============================================================================
+\documentclass[12pt, a4paper, oneside]{report}
+\usepackage{lsasalud-pf}
+\addbibresource{referencias.bib}
+
+\hypersetup{pdftitle={\tituloProyecto}}
+
+\begin{document}
+
+\pagenumbering{roman}
+\caratula
+\input{capitulos/00_preliminares}
+
+\tableofcontents
+\listoffigures
+\listoftables
+\cleardoublepage
+\pagenumbering{arabic}
+
+\input{capitulos/01_resumen_ejecutivo}
+\input{capitulos/02_tema}
+\input{capitulos/03_objetivos}
+\input{capitulos/04_estado_arte}
+\input{capitulos/05_gestion}
+\input{capitulos/06_desarrollo}
+\input{capitulos/07_manual_usuario}
+\input{capitulos/08_manual_instalacion}
+\input{capitulos/09_incumbencias}
+\input{capitulos/10_resultados}
+\input{capitulos/11_conclusiones}
+
+\printbibliography[heading=bibintoc, title={Bibliografía}]
+
+\appendix
+\input{capitulos/12_anexos}
+
+\end{document}
