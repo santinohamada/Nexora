@@ -10,12 +10,16 @@
 
 \chapter*{Resumen}
 \addcontentsline{toc}{chapter}{Resumen}
-\pendiente{hasta 200 palabras (Ord. 1825, 3.2): objetivos, metodología, resultados y conclusiones. Se escribe al final.}
+Las personas sordas usuarias de la Lengua de Señas Argentina (LSA) carecen de un canal de comunicación directo con el personal de salud en la recepción, el triaje y la guardia. Este proyecto desarrolló LSA Salud, un sistema que traduce señas a texto y voz en español y permite al personal responder por texto o dictado, destinado al Sanatorio 9 de Julio de Tucumán. El proyecto se gestionó según la Guía del PMBOK y el producto se construyó de forma iterativa e incremental. El Producto Mínimo Viable opera con dos estaciones, Paciente y Recepción, sobre una PC y una cámara comerciales: el navegador extrae puntos de referencia de manos, pose y rostro con MediaPipe, un modelo LSTM clasifica las secuencias y un modelo de lenguaje local redacta las oraciones, sin almacenar imágenes ni requerir Internet. Con un vocabulario de cuatro señas, los 15 casos de prueba resultaron aprobados, la exactitud media fue del 98,67~\% en validación cruzada y la latencia percibida tuvo un p95 de 945~ms. Se concluye que el reconocimiento local en tiempo real es viable con hardware común; ampliar el vocabulario, validar con intérpretes y realizar un piloto en la guardia son los pasos siguientes.
 
-\noindent\textbf{Palabras clave:} \pendiente{de 4 a 6 palabras clave (Ord. 1825, 3.3).}
+\medskip
+\noindent\textbf{Palabras clave:} Lengua de Señas Argentina, reconocimiento de señas, visión por computadora, inteligencia artificial, accesibilidad en salud, privacidad por diseño.
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-\pendiente{traducción al inglés del resumen (opcional, recomendado).}
+\begin{otherlanguage}{english}
+Deaf users of Argentine Sign Language (LSA) lack a direct communication channel with healthcare staff at reception, triage and the emergency department. This project developed LSA Salud, a system that translates signs into Spanish text and speech and lets staff reply by text or dictation, intended for Sanatorio 9 de Julio in San Miguel de Tucumán, Argentina. The project was managed following the PMBOK Guide, and the product was built iteratively and incrementally. The Minimum Viable Product runs two stations, Patient and Reception, on an off-the-shelf PC and webcam: the browser extracts hand, pose and face landmarks with MediaPipe, an LSTM model classifies the sequences, and a local language model writes them as sentences, without storing images or requiring Internet access. With a four-sign vocabulary, all 15 test cases passed, mean accuracy was 98.67\,\% in cross-validation, and perceived latency had a p95 of 945~ms. The results show that local, real-time sign recognition is feasible on commodity hardware; expanding the vocabulary, validating with interpreters and running a pilot in the emergency department are the next steps.
 
-\noindent\textbf{Keywords:} \pendiente{keywords.}
+\medskip
+\noindent\textbf{Keywords:} Argentine Sign Language, sign language recognition, computer vision, artificial intelligence, healthcare accessibility, privacy by design.
+\end{otherlanguage}
