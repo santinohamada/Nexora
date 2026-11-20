@@ -1,20 +1,182 @@
 \chapter{Estado del Arte del Tema}
-\pendiente{fundamentación teórica (LSA, reconocimiento de señas con visión por computadora, LSTM sobre landmarks) con citas académicas.}
+
+Este capítulo ubica a LSA Salud dentro del conocimiento y las soluciones existentes. Primero se presenta la fundamentación teórica del reconocimiento automático de lenguas de señas; luego, el contexto social, normativo y sanitario de la LSA en Latinoamérica, Argentina y Tucumán; a continuación, qué aporta el proyecto frente a ese estado del arte, a quiénes beneficia y qué necesidades justifican su desarrollo; y, por último, una comparación con las tecnologías similares. Las cifras que el proyecto tomó de sus documentos de planificación se atribuyen a ellos, y las que provienen de estudios externos se citan con su fuente original.
+
+\section{Fundamentación teórica}\label{sec:fundamentacion}
+
+\subsection{La Lengua de Señas Argentina}
+
+La Lengua de Señas Argentina (LSA) es una lengua de modalidad visoespacial, con una estructura gramatical propia y distinta de la del castellano \parencite{ley27710}. Su gramática no se apoya solo en la forma y el movimiento de las manos (componentes manuales), sino también en la expresión facial, la posición de la cabeza y del torso, y el uso del espacio de señado (componentes no manuales), que los sistemas de reconocimiento suelen aprovechar poco \parencite{koller2020survey}. Por eso traducir una lengua de señas no equivale a sustituir cada seña por una palabra: la traducción debe resolver una diferencia de gramática y de canal, no solo de vocabulario.
+
+\subsection{Reconocimiento y traducción de lenguas de señas por visión por computadora}
+
+La literatura distingue dos problemas. El \emph{reconocimiento} de lengua de señas clasifica señas aisladas o secuencias de señas (glosas); la \emph{traducción} produce directamente una oración en lengua oral y exige modelar la gramática de ambas lenguas \parencite{camgoz2018nslt,rastgoo2021survey}. El segundo problema es considerablemente más difícil: \textcite{koller2020survey} revisó cerca de 300 trabajos de reconocimiento publicados desde 1983 y señaló que, para el reconocimiento continuo con vocabularios medianos y grandes, solo existe un \emph{benchmark} de referencia de alcance mundial (RWTH-PHOENIX-Weather, con 1.080 señas), y que los componentes no manuales se utilizan poco en esos sistemas. El mismo estudio identifica una tendencia sostenida desde sensores intrusivos (guantes, dispositivos de captura de movimiento) hacia la captura no intrusiva con cámaras comunes, y desde características locales hacia características globales.
+
+Un sistema de reconocimiento por visión se organiza, en general, en tres etapas: captura del video, extracción de características de la persona que señala y clasificación de la secuencia resultante \parencite{rastgoo2021survey}. Las diferencias entre enfoques se concentran en la segunda etapa.
+
+\subsection{Extracción de características: enfoques basados en \emph{landmarks}}
+
+Una alternativa a trabajar sobre los píxeles del video es estimar primero la postura de la persona y trabajar con ella. Los \emph{landmarks} son las coordenadas de puntos anatómicos de referencia (articulaciones de los dedos, muñecas, hombros, puntos del rostro) que un modelo de estimación de pose extrae de cada cuadro. MediaPipe es un marco de trabajo para construir flujos de percepción que combina modelos de este tipo \parencite{lugaresi2019mediapipe}, y su módulo de manos permite el seguimiento en tiempo real en el propio dispositivo \parencite{zhang2020mediapipehands}.
+
+Este enfoque tiene tres ventajas para el proyecto. La primera es la dimensionalidad: cada cuadro se reduce a un vector de pocas centenas de números en lugar de una imagen, lo que permite clasificadores pequeños que se ejecutan en una CPU común. La segunda es la robustez frente a variaciones irrelevantes para la seña, como el fondo, la ropa o el color de piel. La tercera, decisiva en un entorno clínico, es la privacidad: si la extracción se ejecuta en el navegador y solo se transmiten coordenadas, ninguna imagen del paciente sale de la estación. Su costo es que el clasificador depende de la calidad de la estimación de pose: una mano ocluida o una iluminación deficiente degradan los \emph{landmarks} y, con ellos, la clasificación (véase la sección de riesgos en el capítulo de Gestión del proyecto).
+
+\subsection{Modelos de secuencias: LSTM y \emph{Transformer}}
+
+Una seña dinámica es una secuencia temporal de poses, de modo que el clasificador debe modelar el tiempo. Las redes recurrentes procesan la secuencia cuadro a cuadro manteniendo un estado interno. Las redes de memoria a corto y largo plazo (LSTM) incorporan celdas de memoria con compuertas que permiten conservar información relevante a lo largo de muchos pasos y mitigan el problema del desvanecimiento del gradiente de las recurrentes simples \parencite{hochreiter1997lstm}. Los modelos basados en atención (\emph{Transformer}) reemplazan la recurrencia por mecanismos de atención que relacionan todos los cuadros de la secuencia entre sí \parencite{vaswani2017attention} y se han adoptado para la traducción continua de lengua de señas \parencite{camgoz2020transformers}, a costa de requerir mucho más volumen de datos y de cómputo.
+
+Para vocabularios acotados, la combinación de \emph{landmarks} de MediaPipe con redes recurrentes es una práctica documentada. En un sistema bidireccional de lengua de señas mexicana (LSM) y español que compara redes recurrentes, bidireccionales, LSTM, GRU y \emph{Transformer} sobre puntos clave de MediaPipe, el mejor modelo alcanzó una exactitud del 98,8~\% \parencite{gonzalez2024msl}. Esos valores corresponden a las condiciones de cada conjunto de datos y no son comparables entre trabajos, pero respaldan la elección de una arquitectura pequeña para un vocabulario reducido, justificada en la tabla~\ref{tab:comparativa} del capítulo de Desarrollo del tema.
+
+\subsection{Trabajo previo sobre la LSA}
+
+El principal recurso público es LSA64, un conjunto de 3.200 videos de 64 señas de la LSA realizadas por 10 personas, que usaron guantes de colores para facilitar el seguimiento de las manos \parencite{ronchetti2016lsa64}. Sobre ese conjunto, \textcite{ronchetti2016bow} lograron un 97~\% de exactitud con un modelo probabilístico que combina clasificadores de posición, movimiento y forma de la mano sin depender del orden de los cuadros. Para traducción, \textcite{dalbianco2022lsat} publicaron LSA-T, el primer conjunto de datos continuo de LSA, con 14.880 videos de oraciones tomados de un canal de YouTube, acompañados de su traducción al español y de los puntos clave de cada persona. Ambos recursos son de propósito general: no contienen vocabulario clínico, y LSA64 se grabó con guantes, condición que no es la de una estación de guardia. Esta limitación es la que motiva la construcción de un conjunto de datos de dominio clínico dentro del proyecto (véase el capítulo Tema).
 
 \section{Contexto actual en Latinoamérica, Argentina y Tucumán}
-\pendiente{población sorda, Ley 27.710 de reconocimiento de la LSA, situación en las guardias.}
+
+\subsection{Población sorda e hipoacúsica}
+
+A nivel mundial, la Organización Mundial de la Salud estima que más de 430 millones de personas requieren rehabilitación por pérdida auditiva discapacitante y proyecta que casi 2.500 millones tendrán algún grado de pérdida auditiva en 2050; señala además que algunas personas sordas usan lengua de señas para comunicarse \parencite{oms2025sordera}.
+
+En Argentina, el Estudio Nacional sobre el Perfil de las Personas con Discapacidad (ENPD) 2018 del INDEC informa que el 10,2~\% de la población de 6 años o más presenta alguna dificultad, y que el 20,8~\% de ese grupo refiere dificultad auditiva (el 49,0~\% de ellos no puede oír o usa audífono o implante coclear, y el 51,0~\% tiene mucha dificultad para oír) \parencite{indec2018}. Combinadas, las dos cifras indican que cerca del 2,1~\% de la población de 6 años o más tiene alguna dificultad auditiva (cálculo propio). Debe interpretarse con cautela: el estudio no releva el uso de la LSA, por lo que no permite estimar cuántas personas la usan como lengua principal. Dimensiona una población con necesidades de accesibilidad comunicacional, no el número de usuarios de LSA, y no se identificaron estadísticas oficiales de usuarios para ese fin. Para el nivel provincial no se verificaron cifras específicas de Tucumán.
+
+En Latinoamérica ocurre algo similar. En México, por ejemplo, se estima que unos dos millones de personas usan la lengua de señas mexicana como forma principal de comunicación, y la literatura reciente señala que los trabajos de reconocimiento orientados a escenarios de salud son escasos \parencite{becerril2025msl}.
+
+\subsection{Marco normativo: Ley 27.710}
+
+La Ley 27.710, sancionada el 13 de abril de 2023 y publicada en el Boletín Oficial el 3 de mayo de 2023, reconoce a la LSA como lengua natural y originaria, parte del patrimonio lingüístico y cultural de las personas sordas, y garantiza la participación y la inclusión plena de quienes eligen comunicarse en ella (art.~1) \parencite{ley27710}. Define a la LSA como lengua visoespacial con gramática propia, distinta del castellano (art.~2), y faculta al Poder Ejecutivo nacional a promover su acceso y uso con el fin de eliminar barreras comunicacionales y diseñar estrategias que aseguren la accesibilidad comunicacional en las políticas públicas (art.~4). El texto de la ley no regula medidas específicas para los servicios de salud ni para la provisión de intérpretes: establece el marco de derechos, pero la forma concreta de garantizarlos en cada institución queda sin resolver. Ese vacío operativo es el espacio en el que se inscribe LSA Salud.
+
+\subsection{Situación en las guardias}
+
+La evidencia más directa sobre la atención de personas sordas en urgencias proviene de Estados Unidos. En una revisión retrospectiva de historias clínicas de un sistema de salud, \textcite{james2022ed} encontraron que las personas sordas o hipoacúsicas usuarias de lengua de señas estadounidense (ASL) permanecían en el servicio de urgencias unos 30 minutos más que las personas oyentes, sin diferencias en la gravedad de la consulta (medida por el índice de severidad de urgencias). Es la referencia de la cifra de demora que el proyecto adopta como línea de base (OE02, tabla~\ref{tab:objetivos}); el estudio no se realizó en Argentina y su muestra proviene de un único sistema de salud, por lo que se la toma como indicio de orden de magnitud y no como medición local.
+
+Sobre el efecto de la mediación lingüística profesional, \textcite{lindholm2012} analizaron 3.060 internaciones de pacientes adultos con dominio limitado del inglés en un hospital universitario. Los pacientes sin intérprete profesional ni en la admisión ni en el alta tuvieron una tasa de readmisión a 30 días del 24,3~\%, frente al 14,9~\% de quienes lo tuvieron en ambos momentos (valores sin ajustar). El estudio trata sobre barreras entre idiomas hablados, no sobre población sorda, de modo que sirve como evidencia indirecta de la importancia de la comunicación efectiva en los puntos críticos de la atención, y no como una estimación para usuarios de LSA.
+
+El resto de las cifras de contexto que el proyecto utiliza proviene de sus documentos de planificación. Según la solicitud de aprobación del tema \parencite{solicitudtema2026}, el 57~\% de la población sorda e hipoacúsica identifica la dificultad para comunicarse con el personal de salud como su principal barrera de acceso, y aproximadamente el 60~\% de las consultas de guardia en Tucumán corresponde a triaje verde y azul (baja urgencia, con interacciones breves, repetitivas y estructuradas). Según el Acta de Constitución \parencite{actaconstitucion2026}, la comprensión de diagnósticos e indicaciones pasa del 18~\% sin mediación adecuada al 93~\% con ella; la solicitud de tema aclara que estos valores provienen de estudios sobre mediación lingüística que no se limitan a población sorda. Son datos de referencia de la etapa de planificación y no fueron verificados de forma independiente ni medidos en el Sanatorio 9 de Julio durante este proyecto.
+
+Dos conclusiones importan para el diseño. Primero, los pacientes de triaje de baja complejidad realizan intercambios cortos y repetitivos, que son los más aptos para un vocabulario acotado. Segundo, no se identificaron en Argentina mediciones publicadas sobre la atención de usuarios de LSA en guardias, lo que reafirma que parte del valor del proyecto es generar datos propios en la etapa de piloto.
 
 \section{Innovación tecnológica del proyecto}
-\pendiente{qué aporta el proyecto frente al estado del arte.}
+
+LSA Salud no propone un algoritmo nuevo de reconocimiento. Su aporte es de integración y aplicación: combina técnicas conocidas (extracción de \emph{landmarks} en el navegador, clasificación con LSTM, un modelo de lenguaje local y síntesis de voz) en un sistema utilizable en un punto de atención, con restricciones que la mayoría de los trabajos revisados no consideran. En concreto:
+\begin{itemize}
+  \item \textbf{Lengua y dominio.} Se orienta a la LSA y a vocabulario clínico, mientras que las aplicaciones comerciales identificadas atienden otras lenguas o fines generales, y los recursos públicos de LSA (LSA64, LSA-T) son de propósito general. El PMV reconoce cuatro señas clínicas (\emph{yo}, \emph{cabeza}, \emph{dolor} y \emph{respirar}).
+  \item \textbf{Privacidad por diseño.} Los \emph{landmarks} se extraen en el navegador y el backend recibe solo coordenadas: no se almacenan ni se transmiten imágenes ni video. El modelo de lenguaje y la síntesis de voz también se ejecutan localmente, sin servicios en la nube.
+  \item \textbf{Hardware comercial.} Funciona con una cámara estándar y una PC, sin guantes ni sensores de profundidad, a diferencia de soluciones que requieren equipamiento específico (tabla~\ref{tab:similares}).
+  \item \textbf{Comunicación en ambos sentidos.} La estación del Paciente traduce señas a texto y voz; la de Recepción permite responder por texto o dictado, con una conversación compartida entre ambas.
+  \item \textbf{Manejo de la incertidumbre.} El sistema descarta las predicciones de baja confianza para no mostrar una traducción incorrecta (RF-05) y permite reportar traducciones erróneas para mejorar el modelo (RF-06), un requisito particularmente sensible en el ámbito clínico.
+\end{itemize}
+
+Estos aportes deben leerse con sus límites, que se detallan en el capítulo de Desarrollo del tema. El PMV es una prueba de concepto con cuatro señas y dos estaciones de cliente (Paciente y Recepción), no una estación fija de guardia, y no se validó aún con intérpretes oficiales de LSA ni en el sanatorio. En las pruebas, los 15 casos de prueba definidos fueron aprobados (15 de 15); el modelo alcanzó una exactitud del 98,67~\% en validación cruzada de cinco particiones, pero todas las particiones provienen de una única sesión de grabación (misma persona, iluminación y día), por lo que el valor puede sobrestimar la generalización a otras personas y condiciones; y la latencia percibida tuvo un p95 de 945~ms, inferior al umbral de 1~s con un margen estrecho. Estos resultados no son comparables con los de otros trabajos, que usan otros vocabularios, personas y condiciones, y se discuten en el capítulo de Resultados.
 
 \section{Impacto social del proyecto}
-\pendiente{beneficiarios, de qué forma se benefician y otros impactos.}
+
+\paragraph{Beneficiarios directos.} Los pacientes sordos e hipoacúsicos usuarios de LSA se benefician al poder expresar síntomas y recibir información de forma directa, sin depender de un acompañante. El personal de recepción y de enfermería se beneficia al contar con un canal de comunicación que reduce la ambigüedad y el tiempo de las interacciones administrativas y de triaje.
+
+\paragraph{Beneficiarios indirectos.} Se benefician los profesionales de salud, que reciben información más precisa del paciente; el Sanatorio 9 de Julio, que mejora el flujo de su guardia; y el sistema sanitario en general, que sufre las demoras operativas asociadas. Los acompañantes también se benefician, porque dejan de asumir una mediación involuntaria en un momento de estrés.
+
+\paragraph{De qué forma se benefician.} El principal beneficio es la autonomía: el paciente se comunica por sí mismo y su relato llega al profesional sin intermediarios, lo que protege la confidencialidad y la dignidad en el acto médico. A ello se suma la accesibilidad en una lengua que la Ley 27.710 reconoce como lengua natural y originaria \parencite{ley27710}, y una menor probabilidad de errores de comprensión en diagnósticos e indicaciones.
+
+\paragraph{Otros impactos.} El proyecto se alinea con los Objetivos de Desarrollo Sostenible 3 (salud y bienestar), 9 (industria, innovación e infraestructura) y 10 (reducción de las desigualdades), según su solicitud de tema \parencite{solicitudtema2026}. Además, la ampliación del vocabulario clínico, con validación de intérpretes oficiales, genera un recurso que puede reutilizarse en otras investigaciones sobre LSA, y el esquema de implementación y soporte permite extender la solución a otras instituciones. Estos impactos son esperados y no se midieron: la evaluación en un entorno real requiere el piloto previsto en el alcance del sistema completo.
 
 \section{Necesidades y oportunidades que justifican el proyecto}
-\pendiente{situación actual contra situación esperada.}
+
+La tabla~\ref{tab:necesidades} contrasta la situación actual, descrita en el capítulo Tema y en el Acta de Constitución \parencite{actaconstitucion2026}, con la situación esperada que fijan los objetivos específicos (tabla~\ref{tab:objetivos}).
+
+\begin{table}[H]
+  \centering
+  \caption{Situación actual y situación esperada}\label{tab:necesidades}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.9cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+    \toprule
+    \textbf{Aspecto} & \textbf{Situación actual} & \textbf{Situación esperada} \\
+    \midrule
+    Comunicación & Sin herramientas de mediación en recepción, admisión, triaje y guardia; se recurre a papel, lectura de labios o acompañantes. & Canal directo y bidireccional entre el paciente y el personal, en LSA y español. \\
+    Tiempo de interacción & Aproximadamente 4~minutos para una interacción administrativa básica (OE01). & Menos de 1~minuto por interacción (OE01). \\
+    Permanencia en urgencias & Unos 30~minutos más que los pacientes oyentes \parencite{james2022ed}. & Reducir al menos el 50~\% de esa brecha (OE02). \\
+    Comprensión clínica & Cercana al 18~\% sin mediación adecuada (Acta). & Superior al 90~\% (OE04). \\
+    Privacidad y autonomía & Dependencia de terceros para traducir; vulnera la confidencialidad. & Comunicación directa, sin almacenar imágenes ni video (OE10). \\
+    Atención de baja complejidad & Alrededor del 60~\% de las consultas de guardia en Tucumán es triaje verde y azul, con intercambios lentos sin canal directo. & Interacciones breves y estructuradas resueltas sin demora adicional. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Las oportunidades se desprenden de tres factores. El marco legal de la Ley 27.710 crea un reconocimiento que las instituciones aún deben traducir en medidas concretas. Los avances en estimación de pose en el dispositivo \parencite{zhang2020mediapipehands} permiten hoy ejecutar el reconocimiento en hardware común. Y el dominio de triaje de baja complejidad, con interacciones breves y repetitivas, es adecuado para un vocabulario acotado.
 
 \section{Beneficios cuantitativos y cualitativos}
-\pendiente{beneficios medibles y no medibles.}
 
-\section{Tecnologías similares}
-\pendiente{comparativa de traductores de lengua de señas existentes y justificación de la elección.}
+\subsection{Beneficios cuantitativos}
+
+La tabla~\ref{tab:beneficios} resume los beneficios medibles. Con excepción de los dos últimos renglones, son metas y estimaciones de la etapa de planificación \parencite{actaconstitucion2026,solicitudtema2026}, y no mediciones realizadas con el PMV; su verificación depende del piloto en la guardia.
+
+\begin{table}[H]
+  \centering
+  \caption{Beneficios cuantitativos esperados y medidos}\label{tab:beneficios}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.6cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{4.2cm}}
+    \toprule
+    \textbf{Beneficio} & \textbf{Valor esperado} & \textbf{Estado} \\
+    \midrule
+    Tiempo por interacción & De unos 4 a menos de 1~minuto (OE01); la solicitud de tema estima una reducción del 80~\% al 85~\%. & Estimación; requiere medición en el piloto. \\
+    Horas operativas & Entre 33 y 250 horas por año sobre 50.000 consultas anuales (solicitud de tema); meta de al menos 150 horas (OE03). & Estimación; requiere piloto. \\
+    Brecha de permanencia & Reducción de al menos el 50~\% de la diferencia de 30~minutos (OE02). & Estimación; requiere piloto. \\
+    Comprensión clínica & Del 18~\% a más del 90~\% (OE04). & Estimación; requiere encuestas. \\
+    Readmisión a 30 días & Del 24,3~\% a menos del 15~\% (OE05), valores tomados de \textcite{lindholm2012} para otra población. & Estimación; requiere seguimiento de 24~meses. \\
+    Exactitud del reconocimiento & Al menos el 90~\% en condiciones controladas (OE06). & Medido en el PMV: 98,67~\% en validación cruzada de una única sesión de grabación. \\
+    Latencia & Menos de 1~segundo (OE07). & Medido en el PMV: p95 de 945~ms. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Beneficios cualitativos}
+
+Los beneficios no medibles de forma directa son los siguientes.
+\begin{itemize}
+  \item \textbf{Autonomía y dignidad:} el paciente deja de ser invisibilizado en la consulta y de depender de un tercero.
+  \item \textbf{Confidencialidad:} el procesamiento local y la ausencia de almacenamiento de imágenes y de la conversación protegen la información clínica.
+  \item \textbf{Calidad del vínculo médico-paciente:} una comunicación más directa reduce ambigüedades y favorece la confianza.
+  \item \textbf{Equidad de acceso:} la atención se brinda en la lengua natural del paciente, en línea con la Ley 27.710.
+  \item \textbf{Menor carga para el personal:} se reduce el esfuerzo de improvisar mecanismos de comunicación en una guardia saturada.
+  \item \textbf{Bajo costo de adopción y sostenibilidad:} hardware comercial y funcionamiento sin servicios de pago en la nube, como se detalla en el modelo de negocio del capítulo de Desarrollo del tema.
+\end{itemize}
+
+\section{Tecnologías similares}\label{sec:similares}
+
+Se compararon las soluciones existentes que se pudieron documentar: productos comerciales, un diccionario de uso extendido y trabajos académicos de LSA y de lengua de señas mexicana. La tabla~\ref{tab:similares} incluye únicamente las características confirmadas en la fuente indicada; lo que la fuente no informa figura como ``no informado''. Los trabajos académicos son prototipos de investigación y no productos, y se incluyen como referencia del estado de la técnica.
+
+\begin{table}[H]
+  \centering
+  \caption{Comparación de LSA Salud con soluciones similares}\label{tab:similares}
+  \footnotesize
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{1.6cm} >{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{1.9cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{2.2cm}}
+    \toprule
+    \textbf{Solución} & \textbf{Lengua} & \textbf{Dirección} & \textbf{Dominio} & \textbf{Procesamiento, privacidad y hardware} & \textbf{Estado} \\
+    \midrule
+    SignAll \parencite{cordis2019signall} & ASL; adaptación a lenguas europeas prevista & Seña a otra lengua & General & Cámaras y sensores, y guantes específicos; privacidad no informada. & Comercial (informe de 2019); estado actual no informado. \\
+    Hand Talk \parencite{handtalk} & Libras y ASL & Texto o audio a seña, con avatar 3D & General & Aplicación móvil (Android, iOS); privacidad no informada. & Disponible; su sitio no describe reconocimiento de señas. \\
+    Spreadthesign \parencite{spreadthesign} & Varias, con edición argentina & Consulta de diccionario (palabra a video) & General & Diccionario en sitio web; resto no informado. & Disponible. \\
+    Enséñame \parencite{quiroga2023ensename} & LSA & Voz a texto y a seña, con avatar 3D & Educativo & ``Equipamiento adecuado''; privacidad no informada. & Piloto, no publicado. \\
+    Ronchetti et~al. \parencite{ronchetti2016bow,ronchetti2016lsa64} & LSA & Seña a clase (señas aisladas) & General (64 señas) & Videos con guantes de colores; resto no informado. & Investigación. \\
+    LSM--español \parencite{gonzalez2024msl} & LSM & Bidireccional & General & Puntos clave de MediaPipe; modelos recurrentes y \emph{Transformer}. & Investigación (98,8~\% de exactitud en su conjunto). \\
+    LSM en salud \parencite{becerril2025msl} & LSM & Seña a clase (señas aisladas) & Salud (150 señas) & Redes recurrentes entrenadas con secuencias sintéticas. & Investigación (98,36~\% de precisión aislada; 45,45~\% en narrativas). \\
+    \midrule
+    \textbf{LSA Salud (PMV)} & LSA & Bidireccional (seña a texto y voz; texto o voz a texto) & Salud (4 señas) & \emph{Landmarks} en el navegador, inferencia y modelo de lenguaje locales, sin almacenar imágenes; cámara y PC comerciales. & PMV; sin piloto en el sanatorio. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Análisis}
+
+Tres observaciones se desprenden de la comparación. La primera es que los productos con difusión comercial identificados atienden otras lenguas (ASL, Libras) o resuelven la dirección opuesta, de texto a seña mediante un avatar, sin reconocer a la persona que señala. La segunda es que los trabajos sobre LSA son de propósito general o educativo, y los de salud más cercanos corresponden a otra lengua y se entrenaron con datos sintéticos; incluso en ese caso, la inferencia sobre narrativas cortas es mucho menos precisa (45,45~\%) que la clasificación de señas aisladas \parencite{becerril2025msl}, lo que muestra que el reconocimiento continuo sigue siendo un problema abierto \parencite{koller2020survey}. La tercera es que SignAll, el único sistema comercial de reconocimiento identificado, requiere guantes y cámaras específicas, lo que choca con la restricción del proyecto de usar hardware comercial de bajo costo. No se identificó una solución de reconocimiento de LSA orientada a la guardia que esté disponible y documentada.
+
+LSA Salud no pretende reemplazar al intérprete humano, presencial o por video: el Acta señala la falta de intérpretes disponibles como parte del problema \parencite{actaconstitucion2026}, y el sistema apunta a los intercambios breves y estructurados de baja complejidad, donde un vocabulario acotado alcanza.
+
+\subsection{Justificación de la elección}
+
+A partir de la comparación se justifican las decisiones de diseño del proyecto.
+\begin{itemize}
+  \item \textbf{LSA y vocabulario clínico:} ninguna de las soluciones revisadas ofrece reconocimiento de LSA para salud; los recursos de LSA existentes no incluyen vocabulario clínico, por lo que se construye un conjunto de datos propio.
+  \item \textbf{Reconocimiento por \emph{landmarks} con LSTM:} es la opción que cumple a la vez las restricciones de cámara estándar, ejecución local y ausencia de imágenes en el servidor, con un modelo pequeño adecuado a un vocabulario reducido; los \emph{Transformer} y los modelos de traducción continua exigen volúmenes de datos que el proyecto no tiene.
+  \item \textbf{Inferencia local:} evita enviar datos del paciente a servicios externos y permite operar sin conexión a Internet, un requisito de privacidad (OE10) y de portabilidad.
+  \item \textbf{Hardware comercial:} reduce el costo de adopción frente a soluciones con guantes o sensores específicos.
+  \item \textbf{Bidireccionalidad en un mismo sistema:} una solución que solo traduzca seña a texto, o solo texto a seña, deja sin resolver la mitad de la conversación en la guardia.
+\end{itemize}
