@@ -1,2 +1,167 @@
 \chapter{Anexos}
-\pendiente{información complementaria: enlace al repositorio, planillas completas (riesgos, casos de prueba, defectos) y documentos de la cátedra.}
+
+\pendiente{enlace al repositorio del código y documentos de la cátedra; las planillas completas de casos de prueba (fichas de los 15 casos) y de riesgos no se reproducen en este informe.}
+
+\section{Matriz de trazabilidad de requisitos}\label{anx:trazabilidad}
+
+La tabla~\ref{tab:trazabilidad} vincula cada sub-requisito funcional de la ERS con los casos de uso que lo realizan y con los requisitos no funcionales relacionados. La tabla~\ref{tab:trazabilidad-rnf} indica los sub-requisitos técnicos de cada requisito no funcional de origen.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}p{5.0cm} >{\raggedright\arraybackslash}p{6.4cm}}
+  \caption{Matriz de trazabilidad entre requisitos funcionales, casos de uso y requisitos no funcionales}\label{tab:trazabilidad}\\
+  \toprule
+  \textbf{Requisito funcional} & \textbf{Casos de uso} & \textbf{Requisitos no funcionales} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Requisito funcional} & \textbf{Casos de uso} & \textbf{Requisitos no funcionales} \\
+  \midrule
+  \endhead
+  RF-01.1 & CU-01 & RNF-T-01 \\
+  RF-01.2 & CU-01 & RNF-T-01, RNF-01.1 \\
+  RF-01.3 & CU-01, CU-02 & RNF-01.1 \\
+  RF-01.4 & CU-01 & RNF-T-05, RNF-01.1 \\
+  RF-01.5 & CU-02 & RNF-T-01, RNF-01.1 \\
+  RF-01.6 & CU-03 & RNF-T-01, RNF-01.1 \\
+  RF-01.7 & CU-01, CU-04 & RNF-T-05 \\
+  RF-01.8 & CU-02 & --- \\
+  RF-02.1 & CU-04 & --- \\
+  RF-02.2 & CU-05 & RNF-T-04 (compatibilidad de navegador) \\
+  RF-T-01 & CU-07 & --- \\
+  RF-T-02 & CU-07 & --- \\
+  RF-T-03 & CU-06 & --- \\
+  RF-T-04 & CU-06 & RNF-03.1 \\
+  RF-T-05 & CU-08 & --- \\
+  RF-T-06 & Precondición de CU-01 y CU-04 & --- \\
+  \midrule
+  RF-03.1 & CU-09 & RNF-03.1 \\
+  RF-04.1 & CU-11 & RNF-03.1 \\
+  RF-06.1 & CU-10 & RNF-03.1 \\
+  \bottomrule
+\end{longtable}
+
+\begin{table}[H]
+  \centering
+  \caption{Requisitos no funcionales de origen y sus sub-requisitos}\label{tab:trazabilidad-rnf}
+  \small
+  \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5.2cm} X}
+    \toprule
+    \textbf{Requisito no funcional} & \textbf{Sub-requisito técnico} \\
+    \midrule
+    RNF-01 (latencia) & RNF-01.1 \\
+    RNF-02 (precisión) & RNF-02.1 \\
+    RNF-03 (seguridad y privacidad) & RNF-03.1 \\
+    RNF-04 (hardware) & RNF-04.1, compartido con RNF-07.1 \\
+    RNF-05 (dataset especializado) & RNF-05.1 \\
+    RNF-06 (fuente lingüística) & RNF-06.1 \\
+    RNF-07 (estación fija) & RNF-07.1, compartido con RNF-04.1 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\section{Diccionario de datos de SQLite}\label{anx:diccionario}
+
+Las tablas de la base de datos \texttt{data/lsa\_salud.db} implementan el modelo lógico de la figura~\ref{fig:modelo-logico}. La tabla~\ref{tab:dic-sqlite} detalla sus atributos y restricciones; las marcas de tiempo se expresan en formato ISO~8601 UTC.
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{3.8cm} >{\raggedright\arraybackslash}p{2.9cm} >{\raggedright\arraybackslash}p{7.9cm}}
+  \caption{Diccionario de datos de las tablas de SQLite}\label{tab:dic-sqlite}\\
+  \toprule
+  \textbf{Atributo} & \textbf{Tipo} & \textbf{Restricciones y descripción} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{Atributo} & \textbf{Tipo} & \textbf{Restricciones y descripción} \\
+  \midrule
+  \endhead
+  \multicolumn{3}{l}{\textbf{Tabla \texttt{reported\_message}}} \\
+  \texttt{id} & \texttt{INTEGER} & Clave primaria autoincremental. \\
+  \texttt{client\_message\_id} & \texttt{INTEGER} & Identificador asignado por el frontend; admite nulo. Junto con \texttt{text} es único, para no duplicar el mensaje cuando ambas caras lo reportan. \\
+  \texttt{text} & \texttt{TEXT} & Texto del mensaje señalado, de 1 a 500 caracteres. \\
+  \texttt{first\_reported\_at} & \texttt{TEXT} & Fecha y hora del primer reporte; obligatorio. \\
+  \midrule
+  \multicolumn{3}{l}{\textbf{Tabla \texttt{recognized\_word}}} \\
+  \texttt{message\_id} & \texttt{INTEGER} & Clave foránea hacia \texttt{reported\_message}, con eliminación en cascada; forma parte de la clave primaria. \\
+  \texttt{position} & \texttt{INTEGER} & Posición de la palabra en la frase, mayor o igual a cero; forma parte de la clave primaria. \\
+  \texttt{word} & \texttt{TEXT} & Etiqueta de la seña reconocida, de 1 a 32 caracteres. \\
+  \midrule
+  \multicolumn{3}{l}{\textbf{Tabla \texttt{translation\_report}}} \\
+  \texttt{id} & \texttt{INTEGER} & Clave primaria autoincremental. \\
+  \texttt{message\_id} & \texttt{INTEGER} & Clave foránea indexada hacia \texttt{reported\_message}. \\
+  \texttt{station} & \texttt{TEXT} & Estación que reportó: \texttt{paciente} o \texttt{recepcion}. \\
+  \texttt{reported\_at} & \texttt{TEXT} & Marca temporal del reporte. \\
+  \midrule
+  \multicolumn{3}{l}{\textbf{Tabla \texttt{audit\_event}}} \\
+  \texttt{id} & \texttt{INTEGER} & Clave primaria autoincremental. \\
+  \texttt{type} & \texttt{TEXT} & \texttt{prediction}, \texttt{sentence}, \texttt{report}, \texttt{consent}, \texttt{translation\_displayed}, \texttt{reply\_sent} o \texttt{fin\_atencion}; indexado junto con \texttt{occurred\_at}. \\
+  \texttt{occurred\_at} & \texttt{TEXT} & Marca temporal de ocurrencia. \\
+  \texttt{station} & \texttt{TEXT} & Nulo, \texttt{paciente} o \texttt{recepcion}. \\
+  \texttt{consent} & \texttt{TEXT} & Nulo, \texttt{accepted} o \texttt{declined} (RF-03.1). \\
+  \texttt{lstm\_ms}, \texttt{translation\_ms}, \texttt{tts\_ms}, \texttt{total\_ms} & \texttt{REAL} & Tiempos de cada etapa en el backend, en milisegundos. \\
+  \texttt{e2e\_ms} & \texttt{REAL} & Latencia extremo a extremo percibida en el frontend, entre 0 y 60.000~ms. \\
+  \texttt{confidence} & \texttt{REAL} & Confianza devuelta por el modelo, en porcentaje. \\
+  \texttt{source} & \texttt{TEXT} & Origen de la traducción: plantilla, caché o modelo de lenguaje. \\
+  \texttt{word\_count} & \texttt{INTEGER} & Cantidad de palabras de la frase procesada. \\
+  \bottomrule
+\end{longtable}
+
+\section{Diagramas de colaboración complementarios}\label{anx:colaboracion}
+
+Se incluyen los siete diagramas de colaboración que no figuran en el cuerpo del informe. La figura~\ref{fig:dc02} corresponde al cierre de la oración y su traducción (SO-02, CU-02); la figura~\ref{fig:dc03}, a la síntesis de voz (SO-03, CU-03); la figura~\ref{fig:dc04}, al envío de una respuesta del personal (SO-04, CU-04); la figura~\ref{fig:dc05}, a la captura de una muestra de entrenamiento (SO-05, CU-06); la figura~\ref{fig:dc06}, al consentimiento de cámara (SO-06, CU-09); la figura~\ref{fig:dc07}, al registro de eventos de auditoría (SO-07, CU-11) y la figura~\ref{fig:dc09}, a la limpieza de la conversación al finalizar la atención (SO-09, CU-12).
+
+\figuraTP{08_colaboracion_dc02}{0.8\textwidth}{DC-02: colaboración para \texttt{cerrarOracionYTraducir(secuencia)}}{fig:dc02}
+
+\figuraTP{08_colaboracion_dc03}{\textwidth}{DC-03: colaboración para \texttt{sintetizarVoz(oracion)}}{fig:dc03}
+
+\figuraTP{08_colaboracion_dc04}{0.85\textwidth}{DC-04: colaboración para \texttt{enviarRespuesta(mensaje)}}{fig:dc04}
+
+\figuraTP{08_colaboracion_dc05}{\textwidth}{DC-05: colaboración para \texttt{capturarMuestra(frames, etiqueta)}}{fig:dc05}
+
+\figuraTP{08_colaboracion_dc06}{\textwidth}{DC-06: colaboración para \texttt{otorgarConsentimiento(paciente)}}{fig:dc06}
+
+\figuraTP{08_colaboracion_dc07}{0.9\textwidth}{DC-07: colaboración para \texttt{registrarEventoAuditoria(operacion)}}{fig:dc07}
+
+\figuraTP{08_colaboracion_dc09}{\textwidth}{DC-09: colaboración para \texttt{limpiarConversacion()}}{fig:dc09}
+
+\section{Registro de defectos}\label{anx:defectos}
+
+La tabla~\ref{tab:defectos} lista los 28 defectos de la prueba de sistema: DM-LSA-001 a DM-LSA-019 se detectaron en el ciclo~1 y DM-LSA-020 a DM-LSA-028 en el ciclo~2. Al finalizar el ciclo~2 los 28 estaban cerrados. La severidad se califica de 1 (crítico) a 4 (bajo).
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{2.2cm} >{\centering\arraybackslash}p{1.0cm} >{\raggedright\arraybackslash}p{2.4cm} >{\raggedright\arraybackslash}p{8.7cm}}
+  \caption{Defectos registrados en los ciclos 1 y 2}\label{tab:defectos}\\
+  \toprule
+  \textbf{ID} & \textbf{Sev.} & \textbf{Caso de uso o requisito} & \textbf{Título} \\
+  \midrule
+  \endfirsthead
+  \toprule
+  \textbf{ID} & \textbf{Sev.} & \textbf{Caso de uso o requisito} & \textbf{Título} \\
+  \midrule
+  \endhead
+  DM-LSA-001 & 1 & CU-02 & La traducción agrega contenido clínico no señado e incluye fragmentos de instrucciones internas. \\
+  DM-LSA-002 & 2 & CU-02 & Una traducción no clara no se descarta y se muestra al personal como una oración. \\
+  DM-LSA-003 & 2 & RNF-03.1, RNF-T-06 & El backend permite cualquier origen (CORS abierto) y acepta WebSocket de orígenes ajenos. \\
+  DM-LSA-004 & 2 & CU-06 & Los endpoints de captura y predicción no validan la forma de los datos: archivos corruptos, errores 500 y valores NaN. \\
+  DM-LSA-005 & 2 & CU-04, CU-11 & Al enviar una respuesta del personal no se registra el evento de auditoría. \\
+  DM-LSA-006 & 2 & CU-12 & No existe el botón ``Finalizar atención'' en la pantalla de recepción. \\
+  DM-LSA-007 & 2 & CU-09 & No se informa al paciente cuando se deniega el acceso a la cámara. \\
+  DM-LSA-008 & 2 & CU-06, CU-07 & El Modo Captura informa ``¡Guardado!'' con etiquetas o repeticiones inválidas sin haber guardado nada. \\
+  DM-LSA-009 & 2 & RNF-T-02 & La ruta de landmarks por defecto depende de Internet y la cámara no se activa sin conexión. \\
+  DM-LSA-010 & 2 & RNF-01.1 & La traducción con modelo de lenguaje no cumple el p95 de 1~s. \\
+  DM-LSA-011 & 2 & RNF-T-05 & La interfaz presenta violaciones de accesibilidad graves o críticas. \\
+  DM-LSA-012 & 3 & CU-06 & El botón ``Detener'' no aborta la grabación ni la secuencia de repeticiones. \\
+  DM-LSA-013 & 3 & CU-05 & El dictado por voz sobrescribe el texto escrito y el botón de detener actúa sobre otra instancia. \\
+  DM-LSA-014 & 3 & CU-05 & El dictado continuo pierde los segmentos anteriores de la transcripción. \\
+  DM-LSA-015 & 3 & CU-11 & La consulta de métricas rechaza marcas de tiempo ISO~8601 con sufijo ``Z''. \\
+  DM-LSA-016 & 3 & RNF-01.1 & La ruta con plantilla supera la meta de latencia en el entorno de prueba (dependiente del entorno). \\
+  DM-LSA-017 & 3 & CU-10, CU-11 & La validación de los endpoints de reporte y de auditoría acepta tipos incorrectos. \\
+  DM-LSA-018 & 3 & CU-01 & El protocolo WebSocket binario v2 es inalcanzable. \\
+  DM-LSA-019 & 4 & CU-05 & Sin soporte de reconocimiento de voz se muestran dos avisos duplicados. \\
+  DM-LSA-020 & 2 & CU-06 & En Modo Captura las muestras se guardaban vacías (sin pose, manos ni rostro). \\
+  DM-LSA-021 & 1 & CU-01 & Sin ninguna persona frente a la cámara se reconocía ``dolor'' con 80~\% de confianza. \\
+  DM-LSA-022 & 1 & CU-01 & Al iniciar la cámara el reposo se reconocía como ``dolor'' (96~\%). \\
+  DM-LSA-023 & 2 & CU-01 & La oración se cerraba durante la pausa entre dos señas. \\
+  DM-LSA-024 & 2 & CU-01 & El reconocimiento confundía ``dolor'' con ``yo''. \\
+  DM-LSA-025 & 2 & RNF-04 & Con WebGL por software la detección caía a unos 1,4~fps y congelaba la interfaz. \\
+  DM-LSA-026 & 2 & CU-09 & Al denegar la cámara, la carga de los modelos ocultaba el aviso de error. \\
+  DM-LSA-027 & 3 & CU-06 & Durante la grabación la detección caía de 20 a unos 8~fps por efectos visuales animados. \\
+  DM-LSA-028 & 4 & CU-01 & En la pantalla del paciente el panel de la cámara se agrandaba con la conversación. \\
+  \bottomrule
+\end{longtable}

@@ -8,6 +8,17 @@
 \usepackage{lsasalud-pf}
 \addbibresource{referencias.bib}
 
+% Las figuras de Análisis y Diseño se reutilizan desde docs/TP7/img sin duplicarlas.
+\graphicspath{{img/}{../TP7/img/}}
+% \figuraTP{archivo sin extensión}{ancho}{leyenda}{etiqueta}
+\newcommand{\figuraTP}[4]{%
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=#2]{#1}
+        \caption{#3}
+        \label{#4}
+    \end{figure}}
+
 \hypersetup{pdftitle={\tituloProyecto}}
 
 \begin{document}
