@@ -29,6 +29,9 @@
 \RequirePackage{xcolor}
 \RequirePackage{multirow}
 \RequirePackage{listings}
+\RequirePackage{pgfgantt}
+% Spanish month abbreviations for the Gantt calendar titles.
+\renewcommand*{\pgfcalendarmonthshortname}[1]{\ifcase#1\or Ene\or Feb\or Mar\or Abr\or May\or Jun\or Jul\or Ago\or Sep\or Oct\or Nov\or Dic\fi}
 \RequirePackage[titles]{tocloft}
 \RequirePackage[expansion=false]{microtype}
 \RequirePackage{xurl}
