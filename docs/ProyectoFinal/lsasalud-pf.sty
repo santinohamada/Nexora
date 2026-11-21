@@ -100,7 +100,9 @@
 \newcommand{\pendiente}[1]{{\color{red}\itshape [Pendiente: #1]}\par}
 
 % --- Datos del proyecto -----------------------------------------------------------
-\newcommand{\tituloProyecto}{LSA Salud: traductor de Lengua de Señas Argentina a texto y voz para la atención en guardia}
+\newcommand{\nombreProyecto}{LSA Salud}
+\newcommand{\subtituloProyecto}{traductor de Lengua de Señas Argentina a texto y voz para la atención en guardia}
+\newcommand{\tituloProyecto}{\nombreProyecto: \subtituloProyecto}
 \newcommand{\carreraProyecto}{Ingeniería en Sistemas de Información}
 \newcommand{\clienteProyecto}{Sanatorio 9 de Julio}
 \newcommand{\tutorProyecto}{Vicente, Francisco José}
@@ -114,29 +116,44 @@
     Arnedo, Emmanuel Augusto}
 
 % --- Carátula (Ord. 1825, 3.1 + plantilla UTN-FRT 2023) -----------------------------
+% Layout modeled on previous cátedra theses: institutional header, project logo,
+% then small-caps labelled blocks. Legajos instead of e-mails (no contact data).
 % El campo "Director" de la plantilla solo aplica a proyectos de investigación.
+\newcommand{\caratulaEtiqueta}[1]{{\scshape #1}\\[0.1cm]}
+\newcommand{\caratulaAlumno}[2]{\begin{tabular}[t]{@{}c@{}}#1\\{\small\itshape Legajo N.º #2}\end{tabular}}
 \newcommand{\caratula}{%
     \begin{titlepage}
         \centering
-        {\Large\bfseries Universidad Tecnológica Nacional}\\[0.2cm]
-        {\large Facultad Regional Tucumán}\\[0.2cm]
-        {\large Departamento de \carreraProyecto}\\[0.2cm]
-        {\large Carrera: \carreraProyecto}\\[2cm]
+        \includegraphics[width=4.2cm]{logo_utn}\\[0.6cm]
+        {\small UNIVERSIDAD TECNOLÓGICA NACIONAL\\
+        FACULTAD REGIONAL TUCUMÁN}\\[0.4cm]
+        {\small CÁTEDRA DE PROYECTO FINAL\\
+        CARRERA: \MakeUppercase{\carreraProyecto}}\\[1.1cm]
 
-        \rule{\textwidth}{1.5pt}\\[0.5cm]
-        {\LARGE\bfseries\color{sectioncolor} \tituloProyecto}\\[0.3cm]
-        {\large Proyecto Final de Grado}\\[0.5cm]
-        \rule{\textwidth}{1.5pt}\\[2cm]
+        \includegraphics[width=3.2cm]{logo_nexora}\\[0.5cm]
+        {\LARGE\bfseries\color{sectioncolor} \MakeUppercase{\nombreProyecto}}\\[0.2cm]
+        {\large Traductor de Lengua de Señas Argentina a texto y voz\\para la atención en guardia}\\[0.25cm]
+        {\normalsize Proyecto Final de Grado}\\[1.1cm]
 
-        {\large
-        \begin{tabular}{@{}r l@{}}
-            \textbf{Autores:}  & \begin{tabular}[t]{@{}l@{}}\autoresProyecto\end{tabular} \\[0.5cm]
-            \rule{0pt}{0.9cm}\textbf{Tutor:} & \tutorProyecto \\[0.25cm]
-            \textbf{Cotutor:}  & \cotutorProyecto \\[0.25cm]
-            \textbf{Cliente:}  & \clienteProyecto \\
-        \end{tabular}}
+        \caratulaEtiqueta{Cliente}
+        \clienteProyecto\\[0.8cm]
+
+        \caratulaEtiqueta{Alumnos}
+        \begin{tabular}{@{}c@{\hspace{1.5cm}}c@{}}
+            \caratulaAlumno{Arnedo, Emmanuel Augusto}{52304} &
+            \caratulaAlumno{García Tarcic, Iñaki Ezequiel}{56962} \\[1.2cm]
+            \caratulaAlumno{Hamada, Santino}{56070} &
+            \caratulaAlumno{Véliz, Héctor Matías}{52417} \\
+        \end{tabular}\\[0.8cm]
+
+        \begin{tabular}{@{}c@{\hspace{2cm}}c@{}}
+            {\scshape Tutor} & {\scshape Cotutor} \\[0.1cm]
+            \tutorProyecto & \cotutorProyecto \\
+        \end{tabular}\\[0.8cm]
+
+        \caratulaEtiqueta{Lugar y año}
+        San Miguel de Tucumán, \anioProyecto
         \vfill
-        {\large San Miguel de Tucumán, \anioProyecto}
     \end{titlepage}
 }
 
